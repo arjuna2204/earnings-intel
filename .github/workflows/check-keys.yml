@@ -1,0 +1,42 @@
+name: Check API keys
+
+# Runs when this check is changed, or manually from the Actions tab.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/check-keys.yml"
+      - "pipeline/scripts/check_keys.py"
+
+permissions:
+  contents: write # to save ops/key-check.json (pass/fail only, no keys)
+
+concurrency:
+  group: check-keys
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Check keys
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ALPHA_VANTAGE_API_KEY: ${{ secrets.ALPHA_VANTAGE_API_KEY }}
+          TIINGO_API_KEY: ${{ secrets.TIINGO_API_KEY }}
+          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+        run: python pipeline/scripts/check_keys.py
+      - name: Save result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ops/key-check.json
+          git commit -m "Key check result [skip ci]" || echo "No change"
+          git pull --rebase origin main
+          git push origin HEAD:main
