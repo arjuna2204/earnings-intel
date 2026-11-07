@@ -1,0 +1,35 @@
+{
+  "checked_at": "2026-11-07T23:53:48+00:00",
+  "results": {
+    "anthropic": {
+      "ok": true,
+      "required_models_available": {
+        "claude-haiku-5-5": true,
+        "claude-sonnet-5-5": true
+      }
+    },
+    "alpha_vantage": {
+      "ok": true,
+      "transcript_turns": 37,
+      "turn_fields": [
+        "content",
+        "sentiment",
+        "speaker",
+        "title"
+      ],
+      "has_speaker_titles": true
+    },
+    "tiingo": {
+      "ok": true,
+      "rows": 4238,
+      "first_date": "2010-01-04T00:00:00.000Z",
+      "last_date": "2026-11-06T00:00:00.000Z",
+      "has_adjusted_close": true
+    },
+    "sec": {
+      "ok": true,
+      "format_looks_valid": true,
+      "sample_company": "Apple Inc."
+    }
+  }
+}
