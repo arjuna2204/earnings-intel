@@ -8,6 +8,7 @@ A private, password-protected research site for one person. Type any US-listed t
 4. **Financials** — 15 years of financial statements as interactive charts (annual and quarterly).
 5. **Peers** — 3–7 comparable companies, ranked side by side on Street metrics, with a scatter map.
 6. **Sources** — every filing the app used, with links to SEC.gov.
+7. **Backtest** (top bar) — whether the app's signals came before stocks beating or lagging their sector.
 
 **The rule above all:** every sentence links to its source — a quote from the call, a passage from a filing, or a number from SEC data. If something isn't in the sources, the app shows "Not reported" instead of guessing.
 
@@ -42,6 +43,19 @@ You can close the tab while something is loading — the work runs on GitHub, no
 3. **The app's standardized adjusted figures** — calculated from SEC data when a company doesn't publish its own: adjusted EBITDA = operating income + D&A + stock-based pay + restructuring + impairments; adjusted EPS adds those back after tax. Always labeled "computed by this app," with the formula shown.
 
 **Peers** = competitors named in the 10-K (when the company names any) + companies in the same SEC industry code with similar revenue and total assets. If an industry code has too few companies, the app widens to related codes and says so.
+
+---
+
+## Backtest
+
+For every earnings report and every new 10-K of the companies you've loaded, the app records a signal (earnings surprise, revenue growth speeding up or slowing, change in management's tone and hedging on the call, stronger risk-factor wording, new risk factors, guidance raised vs. cut) and the stock's return **minus its sector ETF**:
+
+- **Next day** — the market's immediate reaction (shows a signal matters, but too late to act on).
+- **1 month / 3 months** — the 20 / 60 trading days *after* the reaction day. This is the real test.
+
+Events are split into groups (top third vs. bottom third, or any vs. none), and the page shows the difference with a 95% "likely range". If the range crosses zero, treat it as luck. With 7 signals and 2 horizons, one result can look significant by chance, so look for results that hold up as more data arrives.
+
+History grows every morning within the free limits (transcripts: Alpha Vantage, keeping 8 calls a day for your own use; old 10-Ks: SEC, free). No AI is used, so the backtest costs nothing. This is research, not a trading recommendation.
 
 ---
 
