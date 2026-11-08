@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -29,6 +30,7 @@ def main() -> None:
     out["earnings_quarterly_count"] = len(q)
     out["earnings_notice"] = earn.get("Information") or earn.get("Note")
 
+    time.sleep(3)  # free tier: max 1 request/second
     tr = get({"function": "EARNINGS_CALL_TRANSCRIPT", "symbol": "AAPL", "quarter": "2024Q1"})
     turns = tr.get("transcript") or []
     out["transcript_top_keys"] = sorted(tr.keys())
