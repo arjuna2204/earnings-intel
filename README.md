@@ -20,6 +20,7 @@ A private, password-protected research site for one person. Type any US-listed t
 - **Add a company:** type a ticker or name on the home page, open it, and press **Load ⟨TICKER⟩ data**. The first load takes 1–3 minutes (it downloads 15 years of SEC data and prices). After that it opens instantly.
 - **Write a brief:** open the company → **Brief** → pick two quarters (the same quarter a year apart shows risk-factor changes too) → **Write brief**. Takes 2–4 minutes the first time.
 - **Peers:** **Peers** → **Find peers**. Edit the list any time with **Edit peers**.
+- **Bull, base & bear:** each Brief opens with three scenarios. The values are arithmetic, not forecasts: analysts' low / consensus / high earnings estimates for the next 12 months × the stock's own forward P/E range over the past 3 years (20th percentile / median / 80th percentile). The reasoning for each case is written by AI from the verified sources only, with a "what to watch next quarter" list.
 - **Check a claim:** tap any small green number next to a sentence. A panel opens with the exact quote or figure and a link to the original document.
 - **Your take:** at the bottom of each brief, mark the quarter Better / Same / Worse. Next quarter's brief reminds you what you said.
 - **Is everything working?** Open **Status** (top right) for the AI budget, free-tier usage and recent jobs, or `/api/health` for a setup check.
@@ -55,7 +56,7 @@ For every earnings report and every new 10-K of the companies you've loaded, the
 
 Events are split into groups (top third vs. bottom third, or any vs. none), and the page shows the difference with a 95% "likely range". If the range crosses zero, treat it as luck. With 7 signals and 2 horizons, one result can look significant by chance, so look for results that hold up as more data arrives.
 
-History grows every morning within the free limits (transcripts: Alpha Vantage, keeping 8 calls a day for your own use; old 10-Ks: SEC, free). No AI is used, so the backtest costs nothing. This is research, not a trading recommendation.
+History grows every morning within the free limits (transcripts: Alpha Vantage, using the whole 25-a-day allowance; old 10-Ks: SEC, free). Because the morning run uses the full allowance, a brief on quarters whose transcripts aren't stored yet may pause until the next day. No AI is used, so the backtest costs nothing. This is research, not a trading recommendation.
 
 ---
 
