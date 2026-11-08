@@ -35,6 +35,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <span className="text-accent">●</span> {APP_NAME}
             </Link>
             <nav className="ml-auto flex items-center gap-1 text-sm">
+              <Link href="/backtest" className="rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground">
+                Backtest
+              </Link>
               <Link href="/status" className="rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground">
                 Status
               </Link>
