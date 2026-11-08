@@ -268,7 +268,8 @@ def normalize(
             continue
         facts = _collect(companyfacts, m, currency)
         if not facts:
-            out.unresolved[m.name] = "No matching XBRL tag found in this company's filings"
+            if not m.internal:
+                out.unresolved[m.name] = "No matching XBRL tag found in this company's filings"
             continue
         if m.kind == "instant":
             _place_instants(out, m, facts.values(), cal)

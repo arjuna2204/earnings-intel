@@ -337,16 +337,41 @@ def _tax_rate(c: Ctx, fy: int, fp: str) -> tuple[float, str]:
 
 
 def _total_debt(c: Ctx, fy: int, fp: str) -> tuple[float | None, str]:
+    """Total debt, preferring a reported total, then standard components. Leases are excluded
+    unless the company only reports debt combined with finance leases (noted in the formula)."""
+    combined = c.v("debt_combined_total", fy, fp)
+    if combined is not None:
+        return combined, "Total debt as reported (long-term + short-term combined)"
     short = c.v("debt_short", fy, fp) or 0.0
     total = c.v("debt_long_total", fy, fp)
     if total is not None:
         return total + short, "Long-term debt (incl. current portion) + short-term borrowings"
-    nonc, curr = c.v("debt_long_noncurrent", fy, fp), c.v("debt_long_current", fy, fp)
+    current_total = c.v("debt_current_total", fy, fp)
+    nonc = c.v("debt_long_noncurrent", fy, fp)
     if nonc is not None:
-        return nonc + (curr or 0.0) + short, "Long-term debt (noncurrent + current portion) + short-term borrowings"
+        if current_total is not None:
+            return nonc + current_total, "Long-term debt (noncurrent) + all debt due within one year"
+        return nonc + (c.v("debt_long_current", fy, fp) or 0.0) + short, (
+            "Long-term debt (noncurrent + current portion) + short-term borrowings"
+        )
+    nonc_leases = c.v("debt_noncurrent_incl_leases", fy, fp)
+    if nonc_leases is not None:
+        return nonc_leases + (current_total or 0.0), (
+            "Long-term debt incl. finance leases (noncurrent) + all debt due within one year"
+        )
     ifrs = c.v("debt_ifrs_total", fy, fp)
     if ifrs is not None:
         return ifrs, "Total borrowings (IFRS)"
+    parts = {
+        "notes payable": c.v("debt_notes_payable", fy, fp),
+        "secured debt/mortgages": c.v("debt_secured", fy, fp),
+        "unsecured debt": c.v("debt_unsecured", fy, fp),
+        "line of credit": c.v("debt_line_of_credit", fy, fp),
+        "commercial paper/short-term": c.v("debt_short", fy, fp),
+    }
+    present = {k: v for k, v in parts.items() if v is not None}
+    if present and any(k != "commercial paper/short-term" for k in present):
+        return float(sum(present.values())), "Sum of reported debt lines: " + ", ".join(present)
     return None, ""
 
 

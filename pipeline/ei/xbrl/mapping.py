@@ -25,6 +25,7 @@ class MetricDef:
     additive: bool = True  # can quarters be summed / subtracted? (False for share counts)
     approx_when_derived: bool = False  # e.g. EPS: Q4 = FY - 9M is only approximate
     packs: tuple[str, ...] = ("general", "bank", "reit", "insurer")
+    internal: bool = False  # building block for a derived metric; never shown or reported missing on its own
 
 
 M = MetricDef
@@ -232,6 +233,42 @@ REPORTED: tuple[MetricDef, ...] = (
         ("ShorttermBorrowings", "CurrentBorrowings"),
     ),
     M("debt_ifrs_total", "Borrowings (IFRS total)", "instant", "money", (), ("Borrowings",)),
+    M(
+        "debt_combined_total",
+        "Total debt (as reported)",
+        "instant",
+        "money",
+        ("DebtLongtermAndShorttermCombinedAmount", "DebtAndCapitalLeaseObligations"),
+    ),
+    M(
+        "debt_current_total",
+        "Debt due within one year (total)",
+        "instant",
+        "money",
+        ("DebtCurrent", "LongTermDebtAndCapitalLeaseObligationsCurrent"),
+    ),
+    M(
+        "debt_noncurrent_incl_leases",
+        "Long-term debt incl. finance leases, noncurrent",
+        "instant",
+        "money",
+        ("LongTermDebtAndCapitalLeaseObligations",),
+    ),
+    # Component debt lines (summed only when no total is reported; e.g. REITs).
+    M("debt_notes_payable", "Notes payable", "instant", "money", ("NotesPayable",)),
+    M("debt_secured", "Secured debt / mortgages", "instant", "money", ("SecuredDebt",)),
+    M("debt_unsecured", "Unsecured debt", "instant", "money", ("UnsecuredDebt",)),
+    M("debt_line_of_credit", "Line of credit", "instant", "money", ("LineOfCredit",)),
+    # D&A pieces (combined in derive.py when no single D&A tag exists).
+    M("depreciation_only", "Depreciation", "duration", "money", ("Depreciation",), ("DepreciationExpense",)),
+    M(
+        "amortization_intangibles",
+        "Amortization of intangibles",
+        "duration",
+        "money",
+        ("AmortizationOfIntangibleAssets",),
+        ("AmortisationExpense",),
+    ),
     # --- Bank pack ---
     M(
         "net_interest_income",
@@ -339,6 +376,37 @@ REPORTED: tuple[MetricDef, ...] = (
     ),
 )
 
+_INTERNAL = {
+    "pretax_income",
+    "income_tax",
+    "goodwill",
+    "intangibles",
+    "preferred_equity",
+    "shares_outstanding_bs",
+    "debt_long_total",
+    "debt_long_noncurrent",
+    "debt_long_current",
+    "debt_short",
+    "debt_ifrs_total",
+    "debt_combined_total",
+    "debt_current_total",
+    "debt_noncurrent_incl_leases",
+    "debt_notes_payable",
+    "debt_secured",
+    "debt_unsecured",
+    "debt_line_of_credit",
+    "depreciation_only",
+    "amortization_intangibles",
+    "dac_amortization",
+    "other_underwriting_expense",
+    "loans_net",
+    "loans_gross",
+    "loan_allowance",
+    "deposits",
+    "net_chargeoffs",
+    "losses_incurred",
+}
+REPORTED = tuple(MetricDef(**{**m.__dict__, "internal": m.name in _INTERNAL}) for m in REPORTED)
 BY_NAME: dict[str, MetricDef] = {m.name: m for m in REPORTED}
 
 # Cover-page share count (dei taxonomy), used for current market cap.
