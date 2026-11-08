@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { SESSION_COOKIE, SESSION_MAX_AGE_SECONDS, createSessionValue, passwordMatches } from "@/lib/session";
-import { clearFailures, isBlocked, recordFailure } from "@/lib/rate-limit";
+import { isBlocked, recordFailure } from "@/lib/rate-limit";
 
 function clientIp(req: NextRequest): string {
   return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
@@ -24,16 +24,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.redirect(url, 303);
   };
 
-  if (isBlocked(ip)) return back("locked");
+  if (await isBlocked(ip)) return back("locked");
 
   const password = form.get("password");
   if (typeof password !== "string" || !(await passwordMatches(password))) {
-    recordFailure(ip);
+    await recordFailure(ip);
     await new Promise((r) => setTimeout(r, 600)); // slow down guessing
     return back("wrong");
   }
 
-  clearFailures(ip);
   const res = NextResponse.redirect(new URL(next, req.url), 303);
   res.cookies.set(SESSION_COOKIE, await createSessionValue(), {
     httpOnly: true,

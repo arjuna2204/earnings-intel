@@ -1,26 +1,37 @@
-// Simple per-IP limiter for login attempts: 5 failures per 15 minutes.
-// Phase 0 note: this lives in server memory, so it resets when Vercel starts a fresh
-// server instance. In Phase 1 it moves to a Supabase table so it holds across instances.
+import "server-only";
+import { dbConfigured, insert, select } from "@/lib/db";
+
+// Login attempts: at most 5 failures per IP per 15 minutes. Stored in Supabase so the limit
+// holds across Vercel server instances; falls back to memory if the database isn't configured.
 
 const WINDOW_MS = 15 * 60 * 1000;
 const MAX_FAILURES = 5;
+const memory = new Map<string, number[]>();
 
-const failures = new Map<string, number[]>();
-
-function recent(ip: string, now: number): number[] {
-  const list = (failures.get(ip) ?? []).filter((t) => now - t < WINDOW_MS);
-  failures.set(ip, list);
-  return list;
+export async function isBlocked(ip: string): Promise<boolean> {
+  const since = Date.now() - WINDOW_MS;
+  if (!dbConfigured()) return (memory.get(ip) ?? []).filter((t) => t > since).length >= MAX_FAILURES;
+  try {
+    const rows = await select<{ id: number }>("login_attempts", {
+      ip: `eq.${ip}`,
+      attempted_at: `gte.${new Date(since).toISOString()}`,
+      select: "id",
+      limit: String(MAX_FAILURES),
+    });
+    return rows.length >= MAX_FAILURES;
+  } catch {
+    return false; // never lock the owner out because the database hiccuped
+  }
 }
 
-export function isBlocked(ip: string, now: number = Date.now()): boolean {
-  return recent(ip, now).length >= MAX_FAILURES;
-}
-
-export function recordFailure(ip: string, now: number = Date.now()): void {
-  recent(ip, now).push(now);
-}
-
-export function clearFailures(ip: string): void {
-  failures.delete(ip);
+export async function recordFailure(ip: string): Promise<void> {
+  if (!dbConfigured()) {
+    memory.set(ip, [...(memory.get(ip) ?? []), Date.now()]);
+    return;
+  }
+  try {
+    await insert("login_attempts", { ip });
+  } catch {
+    memory.set(ip, [...(memory.get(ip) ?? []), Date.now()]);
+  }
 }

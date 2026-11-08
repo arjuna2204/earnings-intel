@@ -40,11 +40,18 @@ def main() -> int:
             with gzip.open(OUT / f"{ticker}.json.gz", "wt", encoding="utf-8") as f:
                 json.dump(trimmed, f, separators=(",", ":"))
             subs = sec.submissions(cik)
+            # Inventory of every tag the company uses (tag -> latest period end), to guide the mapping.
+            inventory = {
+                f"{tax}:{tag}": max((r.get("end", "") for u in node.get("units", {}).values() for r in u), default="")
+                for tax, tags in facts.get("facts", {}).items()
+                for tag, node in tags.items()
+            }
             meta = {
                 "cik": cik,
                 "sic": subs.get("sic"),
                 "fiscalYearEnd": subs.get("fiscalYearEnd"),
                 "name": subs.get("name"),
+                "tag_inventory": dict(sorted(inventory.items())),
             }
             (OUT / f"{ticker}.meta.json").write_text(json.dumps(meta, indent=2) + "\n")
             print(ticker, "ok", (OUT / f"{ticker}.json.gz").stat().st_size, "bytes")

@@ -1,16 +1,65 @@
+import { connection } from "next/server";
+import { Suspense } from "react";
+import Link from "next/link";
+import SearchBox from "@/components/SearchBox";
+import { select } from "@/lib/db";
+import type { Company } from "@/lib/types";
+
 export default function Home() {
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center px-6 py-16">
-      <p className="text-sm font-medium text-emerald-500">Phase 0 ✓</p>
-      <h1 className="mt-2 text-4xl font-semibold tracking-tight">You&apos;re in.</h1>
-      <p className="mt-4 text-lg opacity-70">
-        The password lock works. Ticker search, charts and analysis arrive in the next phases.
+    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 pb-16 pt-16 sm:pt-24">
+      <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">What changed?</h1>
+      <p className="mt-3 text-lg text-muted">
+        Earnings calls, SEC filings and 15 years of financials — every number linked to its source.
       </p>
-      <form action="/api/logout" method="post" className="mt-10">
-        <button type="submit" className="rounded-full border border-current/20 px-5 py-2 text-sm opacity-70 hover:opacity-100">
-          Log out
-        </button>
-      </form>
+      <div className="mt-8">
+        <SearchBox autoFocus large />
+      </div>
+      <Suspense fallback={<RecentSkeleton />}>
+        <Recent />
+      </Suspense>
     </main>
+  );
+}
+
+async function Recent() {
+  await connection(); // always live data
+  let rows: Pick<Company, "ticker" | "name" | "last_ingested_at">[] = [];
+  try {
+    rows = await select("companies", {
+      select: "ticker,name,last_ingested_at",
+      is_primary: "eq.true",
+      order: "last_ingested_at.desc.nullslast",
+      limit: "12",
+    });
+  } catch {
+    return <p className="mt-10 text-sm text-muted">The database isn&apos;t connected yet.</p>;
+  }
+  if (!rows.length) return <p className="mt-10 text-sm text-muted">No companies loaded yet — search for one to start.</p>;
+  return (
+    <section className="mt-12">
+      <h2 className="text-sm font-semibold text-muted">Your companies</h2>
+      <ul className="mt-3 divide-y divide-border rounded-2xl border border-border">
+        {rows.map((c) => (
+          <li key={c.ticker}>
+            <Link href={`/c/${c.ticker}`} className="flex items-baseline gap-4 px-5 py-3.5 hover:bg-card">
+              <span className="w-16 font-semibold">{c.ticker}</span>
+              <span className="truncate text-muted">{c.name}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function RecentSkeleton() {
+  return (
+    <div className="mt-12 space-y-2">
+      <div className="skeleton h-4 w-32" />
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="skeleton h-12" />
+      ))}
+    </div>
   );
 }
