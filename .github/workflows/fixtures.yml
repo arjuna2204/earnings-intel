@@ -8,6 +8,7 @@ on:
     paths:
       - "pipeline/scripts/fetch_fixtures.py"
       - "pipeline/ei/xbrl/mapping.py"
+      - "pipeline/scripts/fetch_filing_fixtures.py"
 
 permissions:
   contents: write
@@ -31,12 +32,14 @@ jobs:
       - name: Fetch fixtures
         env:
           SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
-        run: python pipeline/scripts/fetch_fixtures.py
+        run: |
+          python pipeline/scripts/fetch_fixtures.py
+          python pipeline/scripts/fetch_filing_fixtures.py
       - name: Save fixtures
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add pipeline/tests/fixtures
           git commit -m "Refresh SEC test fixtures [skip ci]" || echo "No change"
-          git pull --rebase origin main
+          git pull --rebase --autostash origin main
           git push origin HEAD:main
