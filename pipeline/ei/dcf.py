@@ -9,13 +9,14 @@ it came from; the Excel download rebuilds the same model with live formulas so a
 from __future__ import annotations
 
 import itertools
+import re
 import statistics
 from datetime import date, timedelta
 from typing import Any
 
 from ei.db import Db
 
-VERSION = "dcf-v3"
+VERSION = "dcf-v4"
 YEARS = 5
 RISK_FREE = 0.0425  # 10-year US Treasury yield assumption (editable in the Excel model)
 EQUITY_RISK_PREMIUM = 0.05
@@ -403,6 +404,111 @@ def defaults(
     return "ok", note, hist, a
 
 
+METHODS = {
+    "model": "Free cash flow to the firm = EBIT × (1 − tax rate) + depreciation & amortization − capital expenditures − increase in operating working capital. Five forecast years, end-of-year discounting at WACC, terminal value = year-5 free cash flow × (1 + g) ÷ (WACC − g).",
+    "fade": "Years 3–5 revenue growth moves in equal steps from year-2 growth to the terminal growth rate.",
+    "capex": "When capex is well above depreciation (a build-out phase), it fades in equal steps to 1.2× D&A by year 5; otherwise it is held at the latest 2-year average.",
+    "beta": "Beta from weekly returns over 5 years vs. SPY (S&P 500 ETF), adjusted toward 1 (0.67 × measured + 0.33), kept between 0.5 and 2.0.",
+    "wacc": "WACC = equity weight × (risk-free + beta × equity risk premium) + debt weight × pre-tax cost of debt × (1 − tax rate); weights from market value of equity and book value of debt.",
+    "macro": "Market assumptions (not from company filings): 10-year Treasury yield 4.25%, equity risk premium 5.0%, long-run growth 2.5% (about nominal GDP). Update them in the Excel model.",
+    "nwc": "Operating working capital = (current assets − cash) − (current liabilities − short-term debt − current portion of long-term debt).",
+}
+_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+def footnotes(
+    db: Db, company: dict[str, Any], hist: list[dict[str, Any]], a: dict[str, dict[str, Any]]
+) -> tuple[list[dict[str, Any]], dict[str, list[int]], dict[str, list[int]]]:
+    """Numbered sources for every assumption and every historical year: SEC filings (with links),
+    data providers, and the model's methods. Returns (footnotes, notes per assumption, notes per FY)."""
+    filings = db.select(
+        "filings",
+        {
+            "cik": f"eq.{company['cik']}",
+            "form": "in.(10-K,10-K/A,10-Q,10-Q/A,20-F,40-F)",
+            "select": "form,report_date,filed_date,url,accession",
+            "order": "filed_date.desc",
+            "limit": "200",
+        },
+    )
+    notes: list[dict[str, Any]] = []
+    index: dict[str, int] = {}
+
+    def add(key: str, text: str, url: str | None = None) -> int:
+        if key not in index:
+            notes.append({"id": len(notes) + 1, "text": text, "url": url})
+            index[key] = len(notes)
+        return index[key]
+
+    def filing(period_end: str | None) -> int | None:
+        if not period_end:
+            return None
+        pe = date.fromisoformat(period_end[:10])
+        cands = [
+            f
+            for f in filings
+            if f.get("report_date")
+            and abs((date.fromisoformat(str(f["report_date"])[:10]) - pe).days) <= 15
+            and not f["form"].endswith("/A")
+        ]
+        if not cands:
+            return None
+        f = sorted(cands, key=lambda x: (x["form"] not in {"10-K", "20-F", "40-F"}, str(x["filed_date"])))[0]
+        idx_url = f["url"].rsplit("/", 1)[0] + "/" if f.get("url") else None
+        return add(
+            f"filing:{f['accession']}",
+            f"{f['form']} for the period ending {f['report_date']}, filed {f['filed_date']} (SEC EDGAR)",
+            idx_url,
+        )
+
+    fy_notes: dict[str, list[int]] = {}
+    for y in hist:
+        n = filing(str(y.get("period_end")))
+        fy_notes[str(y["fiscal_year"])] = [n] if n else []
+    last3 = [i for y in hist[-3:] for i in fy_notes.get(str(y["fiscal_year"]), [])]
+    last = fy_notes.get(str(hist[-1]["fiscal_year"]), []) if hist else []
+    av = add(
+        "av",
+        "Analyst consensus estimates (Alpha Vantage EARNINGS_ESTIMATES): revenue and EPS for upcoming fiscal years and quarters.",
+    )
+    tiingo = add("tiingo", "Daily share prices (Tiingo), split-adjusted.")
+    model = add("m:model", METHODS["model"])
+
+    by_key: dict[str, list[int]] = {}
+    for k, x in a.items():
+        src = x.get("source", "")
+        dates = _DATE.findall(src)
+        ids: list[int] = []
+        if k.startswith("growth_"):
+            ids = ([av] if "Alpha Vantage" in src else []) + last
+            if k in {"growth_3", "growth_4", "growth_5"}:
+                ids.append(add("m:fade", METHODS["fade"]))
+        elif k.startswith("margin_"):
+            n = filing(dates[0]) if dates else None
+            ids = [n] if n else last
+        elif k.startswith("capex_"):
+            ids = [*last3, add("m:capex", METHODS["capex"])]
+        elif k in {"tax_rate", "da_pct"}:
+            ids = last3
+        elif k == "nwc_pct":
+            ids = [*last3, add("m:nwc", METHODS["nwc"])]
+        elif k == "price":
+            ids = [tiingo]
+        elif k in {"shares", "net_debt"}:
+            ids = [i for i in (filing(d) for d in dates) if i] or last
+        elif k == "beta":
+            ids = [tiingo, add("m:beta", METHODS["beta"])]
+        elif k in {"risk_free", "erp", "terminal_growth"}:
+            ids = [add("m:macro", METHODS["macro"])]
+        elif k == "cost_of_debt":
+            ids = last if "SEC" in src else [add("m:macro", METHODS["macro"])]
+        elif k in {"equity_weight", "wacc"}:
+            ids = [add("m:wacc", METHODS["wacc"]), tiingo]
+        by_key[k] = list(dict.fromkeys(ids))
+    by_key["_model"] = [model]
+    return notes, by_key, fy_notes
+
+
 def run_dcf(db: Db, company: dict[str, Any], today: date | None = None) -> dict[str, Any]:
     today = today or date.today()
     status, note, hist, a = defaults(db, company, today)
@@ -420,6 +526,13 @@ def run_dcf(db: Db, company: dict[str, Any], today: date | None = None) -> dict[
         vals = {k: float(x["value"]) for k, x in a.items()}
         res = build(hist, vals)
         res["sensitivity"] = sensitivity(hist, vals)
+        fns, by_key, fy_notes = footnotes(db, company, hist, a)
+        res["footnotes"] = fns
+        res["fy_notes"] = fy_notes
+        for k, ids in by_key.items():
+            if k in a:
+                a[k]["notes"] = ids
+        res["model_notes"] = by_key["_model"]
         row["result"] = res
     db.upsert("dcf_models", [row], on_conflict="cik")
     return {

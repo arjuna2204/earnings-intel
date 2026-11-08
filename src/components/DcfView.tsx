@@ -8,6 +8,20 @@ const bn = (v: number) => (Math.abs(v) >= 1e9 ? `$${(v / 1e9).toFixed(1)}B` : `$
 const PCT_KEYS = /growth|margin|capex|tax|pct|risk_free|erp|cost_of_debt|weight|wacc/;
 
 /** DCF summary with sensitivity and assumptions; the Excel download has the same model with live formulas. */
+function Notes({ ids }: { ids?: number[] }) {
+  if (!ids?.length) return null;
+  return (
+    <sup className="ml-0.5 whitespace-nowrap">
+      {ids.map((n, i) => (
+        <a key={n} href={`#dcf-fn-${n}`} className="px-px text-[11px] font-semibold text-accent hover:underline">
+          {n}
+          {i < ids.length - 1 ? "," : ""}
+        </a>
+      ))}
+    </sup>
+  );
+}
+
 export default function DcfView({ ticker, dcf }: { ticker: string; dcf: DcfModel }) {
   const [all, setAll] = useState(false);
   if (dcf.status !== "ok" || !dcf.result) {
@@ -37,7 +51,10 @@ export default function DcfView({ ticker, dcf }: { ticker: string; dcf: DcfModel
         </a>
       </div>
       <div>
-        <div className="text-sm text-muted">Value per share</div>
+        <div className="text-sm text-muted">
+          Value per share
+          <Notes ids={r.model_notes} />
+        </div>
         <div className="mt-1 text-4xl font-semibold tracking-tight tabular-nums">{r.per_share != null ? `$${r.per_share.toFixed(2)}` : "—"}</div>
         <div className={`mt-1 font-semibold tabular-nums ${up >= 0 ? "text-up" : "text-down"}`}>
           {up >= 0 ? "▲" : "▼"} {Math.abs(up * 100).toFixed(1)}% vs. ${price.toFixed(2)} today
@@ -137,6 +154,7 @@ export default function DcfView({ ticker, dcf }: { ticker: string; dcf: DcfModel
                     : k === "capex_1"
                       ? `Capex, % of revenue (year 1${a.capex_5 && a.capex_5.value !== a.capex_1.value ? ` → ${pct(a.capex_5.value)} by year 5` : ", all years"})`
                       : a[k].label}
+                <Notes ids={a[k].notes} />
                 <span className="mt-0.5 block text-xs text-muted">{a[k].source}</span>
               </span>
               <span className="shrink-0 font-semibold tabular-nums">{fmtA(k, a[k].value)}</span>
@@ -147,6 +165,37 @@ export default function DcfView({ ticker, dcf }: { ticker: string; dcf: DcfModel
           {all ? "Show fewer" : `Show all ${keys.length} assumptions`}
         </button>
       </div>
+      {r.footnotes && r.footnotes.length > 0 && (
+        <div>
+          <div className="font-semibold">Footnotes</div>
+          <ol className="mt-2 divide-y divide-border text-sm">
+            {r.footnotes.map((f) => (
+              <li key={f.id} id={`dcf-fn-${f.id}`} className="flex scroll-mt-24 gap-3 py-2.5 target:bg-accent/10">
+                <span className="w-5 shrink-0 font-semibold tabular-nums text-accent">{f.id}</span>
+                <span className="min-w-0 leading-relaxed">
+                  {f.text}
+                  {f.url && (
+                    <>
+                      {" "}
+                      <a href={f.url} target="_blank" rel="noreferrer" className="whitespace-nowrap font-semibold text-accent hover:underline">
+                        Open on SEC.gov ↗
+                      </a>
+                    </>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ol>
+          {r.fy_notes && (
+            <p className="mt-2 text-xs text-muted">
+              Historical years:{" "}
+              {Object.entries(r.fy_notes)
+                .map(([fy, ids]) => `FY${fy} [${ids.join(", ") || "—"}]`)
+                .join(" · ")}
+            </p>
+          )}
+        </div>
+      )}
       <p className="text-xs leading-relaxed text-muted">
         Built by code from SEC filings, analyst revenue consensus and market prices. Free cash flow = EBIT × (1 − tax) + D&amp;A − capex − increase in
         working capital, discounted at WACC; terminal value by the Gordon growth formula. Change any input in the Excel model — the value per share

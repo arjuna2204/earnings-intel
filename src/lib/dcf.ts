@@ -1,7 +1,8 @@
 import "server-only";
 import { select } from "@/lib/db";
 
-export type Assumption = { value: number; label: string; source: string };
+export type Assumption = { value: number; label: string; source: string; notes?: number[] };
+export type Footnote = { id: number; text: string; url: string | null };
 export type DcfRow = { year: number; revenue: number; growth: number; ebit: number; margin: number; nopat: number; da: number; capex: number; d_nwc: number; fcf: number; pv: number };
 export type DcfModel = {
   status: "ok" | "not_applicable" | "insufficient";
@@ -20,6 +21,9 @@ export type DcfModel = {
     terminal_share: number | null;
     implied_exit_ev_ebitda: number | null;
     sensitivity: { waccs: number[]; growths: number[]; values: (number | null)[][] };
+    footnotes?: Footnote[];
+    fy_notes?: Record<string, number[]>;
+    model_notes?: number[];
   } | null;
   created_at: string;
 };

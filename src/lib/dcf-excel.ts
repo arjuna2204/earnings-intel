@@ -21,11 +21,11 @@ export function buildDcfWorkbook(company: { name: string; ticker: string; cik: n
 
   // ---------------- Assumptions
   const as = wb.addWorksheet("Assumptions", { views: [{ state: "frozen", ySplit: 4 }] });
-  as.columns = [{ width: 46 }, { width: 14 }, { width: 110 }];
+  as.columns = [{ width: 46 }, { width: 14 }, { width: 100 }, { width: 14 }];
   as.getCell("A1").value = `${company.name} (${company.ticker}) — DCF assumptions`;
   as.getCell("A1").font = { bold: true, size: 14 };
   as.getCell("A2").value = "Yellow cells are inputs — change them and the DCF, value per share and sensitivity table update. Dollar figures in millions except per-share.";
-  as.getRow(4).values = ["Assumption", "Value", "Default source"];
+  as.getRow(4).values = ["Assumption", "Value", "Default source", "Footnotes"];
   as.getRow(4).font = BOLD;
   const ref: Record<string, string> = {};
   const pctKeys = new Set(["tax_rate", "da_pct", "capex_pct", "nwc_pct", "risk_free", "erp", "cost_of_debt", "equity_weight", "terminal_growth"]);
@@ -50,6 +50,7 @@ export function buildDcfWorkbook(company: { name: string; ticker: string; cik: n
     c.font = { color: BLUE };
     c.fill = INPUT_FILL;
     row.getCell(3).value = x.source;
+    if (x.notes?.length) row.getCell(4).value = x.notes.map((n) => `[${n}]`).join(" ");
     ref[k] = `Assumptions!$B$${r}`;
     r++;
   }
@@ -92,6 +93,9 @@ export function buildDcfWorkbook(company: { name: string; ticker: string; cik: n
   hs.getCell("A1").font = { bold: true, size: 13 };
   hs.getRow(3).values = ["", ...hist.map((h) => `FY${h.fiscal_year}`)];
   hs.getRow(3).font = BOLD;
+  const fyNotes = dcf.result.fy_notes ?? {};
+  hs.getRow(2).values = ["Source (see Footnotes sheet)", ...hist.map((h) => (fyNotes[String(h.fiscal_year)] ?? []).map((n) => `[${n}]`).join(" "))];
+  hs.getRow(2).font = { italic: true, color: { argb: "FF666666" } };
   metrics.forEach(([k, label], i) => {
     const row = hs.getRow(4 + i);
     row.getCell(1).value = label;
@@ -184,7 +188,7 @@ export function buildDcfWorkbook(company: { name: string; ticker: string; cik: n
   S(26, "Upside / (downside)", "B24/B25-1", res.upside, PCT, true);
   S(27, "Terminal value as % of enterprise value", "B19/B20", res.terminal_share, PCT);
   ds.getCell("B24").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2F0D9" } };
-  ds.getCell("A29").value = "Free cash flow to the firm = EBIT × (1 − tax) + D&A − capex − increase in working capital. End-of-year discounting. Not investment advice.";
+  ds.getCell("A29").value = `Method: see footnote ${(res.model_notes ?? []).map((n) => `[${n}]`).join(" ")} on the Footnotes sheet. Not investment advice.`;
   ds.getCell("A29").font = { italic: true, color: { argb: "FF666666" } };
 
   // ---------------- Sensitivity
@@ -220,5 +224,22 @@ export function buildDcfWorkbook(company: { name: string; ticker: string; cik: n
     });
   });
 
+  // ---------------- Footnotes
+  const fs = wb.addWorksheet("Footnotes");
+  fs.columns = [{ width: 6 }, { width: 120 }, { width: 60 }];
+  fs.getCell("A1").value = "Footnotes — where every number comes from";
+  fs.getCell("A1").font = { bold: true, size: 13 };
+  fs.getRow(3).values = ["#", "Source", "Link"];
+  fs.getRow(3).font = BOLD;
+  (res.footnotes ?? []).forEach((f, i) => {
+    const row = fs.getRow(4 + i);
+    row.getCell(1).value = f.id;
+    row.getCell(2).value = f.text;
+    row.getCell(2).alignment = { wrapText: true, vertical: "top" };
+    if (f.url) {
+      row.getCell(3).value = { text: f.url, hyperlink: f.url };
+      row.getCell(3).font = { color: { argb: "FF0563C1" }, underline: true };
+    }
+  });
   return wb;
 }
