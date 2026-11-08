@@ -15,13 +15,13 @@ from typing import Any
 
 from ei.db import Db
 
-VERSION = "dcf-v2"
+VERSION = "dcf-v3"
 YEARS = 5
 RISK_FREE = 0.0425  # 10-year US Treasury yield assumption (editable in the Excel model)
 EQUITY_RISK_PREMIUM = 0.05
 TERMINAL_GROWTH = 0.025
 DEFAULT_TAX = 0.21
-NOT_APPLICABLE = {"bank": "Banks", "insurer": "Insurers"}
+NOT_APPLICABLE = {"bank": "Banks", "insurer": "Insurers", "reit": "REITs"}
 
 HIST_METRICS = [
     "revenue",
@@ -147,9 +147,21 @@ def defaults(
     """Returns (status, note, history, assumptions) where each assumption = {value, label, source}."""
     cik = company["cik"]
     if company.get("sector_pack") in NOT_APPLICABLE:
+        why = (
+            "funds from operations (FFO/AFFO) and property values"
+            if company["sector_pack"] == "reit"
+            else "book value and returns on equity — see P/TBV and ROE in Peers"
+        )
         return (
             "not_applicable",
-            f"{NOT_APPLICABLE[company['sector_pack']]} are valued on book value and returns on equity, not free cash flow — see P/TBV and ROE in Peers.",
+            f"{NOT_APPLICABLE[company['sector_pack']]} are valued on {why}, not a standard free-cash-flow DCF.",
+            [],
+            {},
+        )
+    if (company.get("currency") or "USD") != "USD":
+        return (
+            "not_applicable",
+            f"This company reports in {company['currency']} while its US shares trade in dollars (often as ADRs representing several shares). The DCF doesn't convert currencies or ADR ratios yet.",
             [],
             {},
         )
@@ -204,12 +216,17 @@ def defaults(
     )
     g1 = g2 = None
     src1 = src2 = ""
-    if future:
+    if len(future) >= 2:
+        # Annualized growth to the consensus two fiscal years out: robust to estimate rows that a data
+        # provider labels with the wrong year (one year looks flat, the next jumps).
+        cagr = (float(future[1]["revenue_avg"]) / last["revenue"]) ** 0.5 - 1
+        g1 = g2 = cagr
+        src1 = src2 = (
+            f"Annualized growth from FY{last['fiscal_year']} actual revenue (SEC) to analysts' revenue consensus for FY ending {future[1]['period_end']} (Alpha Vantage)"
+        )
+    elif future:
         g1 = float(future[0]["revenue_avg"]) / last["revenue"] - 1
         src1 = f"Analyst revenue consensus for FY ending {future[0]['period_end']} (Alpha Vantage) vs. FY{last['fiscal_year']} actual"
-        if len(future) > 1:
-            g2 = float(future[1]["revenue_avg"]) / float(future[0]["revenue_avg"]) - 1
-            src2 = f"Analyst revenue consensus for FY ending {future[1]['period_end']} vs. prior-year consensus"
     fallback = clamp(hist_cagr if hist_cagr is not None else 0.05, -0.05, 0.25)
     if g1 is None:
         g1, src1 = fallback, "3-year historical revenue growth rate (SEC), capped at 25%"
@@ -306,25 +323,31 @@ def defaults(
     # capital structure and WACC
     v = company.get("valuation") or {}
     price = float(v.get("price") or 0)
-    latest = db.select(
-        "metric_values",
-        {
-            "cik": f"eq.{cik}",
-            "metric": "in.(cash,total_debt,diluted_shares)",
-            "select": "metric,value,period_end",
-            "order": "period_end.desc",
-            "limit": "30",
-        },
-    )
     lv: dict[str, tuple[float, str]] = {}
-    for r in latest:
-        lv.setdefault(r["metric"], (float(r["value"]), str(r["period_end"])))
+    for metric in ("cash", "total_debt", "diluted_shares"):
+        got = db.select(
+            "metric_values",
+            {
+                "cik": f"eq.{cik}",
+                "metric": f"eq.{metric}",
+                "select": "value,period_end",
+                "order": "period_end.desc",
+                "limit": "1",
+            },
+        )
+        if got:
+            lv[metric] = (float(got[0]["value"]), str(got[0]["period_end"]))
     cash = lv.get("cash", (0.0, ""))
     debt = lv.get("total_debt", (0.0, ""))
     shares = lv.get("diluted_shares", (0.0, ""))
+    shares_src = f"Latest diluted share count, period ending {shares[1]} (SEC)"
+    stale = not shares[1] or date.fromisoformat(shares[1][:10]) < today - timedelta(days=400)
+    if stale and price and v.get("market_cap"):
+        shares = (float(v["market_cap"]) / price, "")
+        shares_src = f"{v.get('shares_source', 'Cover page shares outstanding')} (SEC) — no recent diluted share count"
     mcap = float(v.get("market_cap") or price * shares[0])
     put("price", price, "Share price", f"Close on {v.get('price_date')} (Tiingo)")
-    put("shares", shares[0], "Diluted shares", f"Latest diluted share count, period ending {shares[1]} (SEC)")
+    put("shares", shares[0], "Diluted shares", shares_src)
     put("net_debt", debt[0] - cash[0], "Net debt (debt − cash)", f"Total debt {debt[1]} minus cash {cash[1]} (SEC)")
     put("risk_free", RISK_FREE, "Risk-free rate", "10-year US Treasury yield assumption — update to today's rate")
     px = db.select(
