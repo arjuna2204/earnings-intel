@@ -1,0 +1,71 @@
+{
+ "sic_status": 200,
+ "sic_ctype": "application/atom+xml",
+ "sic_head": "<?xml version=\"1.0\" encoding=\"ISO-8859-1\" ?>\n  <feed xmlns=\"http://www.w3.org/2005/Atom\">\n    <author>\n      <email>webmaster@sec.gov</email>\n      <name>Webmaster</name>\n    </author>\n    <entry title=\"ARRAY(0x5639f65a4948)\">\n      <content type=\"text/xml\">\n        <company-info name=\"ARRAY(0x5639f65933d8)\">\n          <addresses>\n            <address type=\"business\">\n              <state>AZ</state>\n            </address>\n            <address type=\"mailing\" />\n          </addresses>\n          <cik>0001877461</cik>\n          <irs-number></irs-number>\n          <last-date>06 Technology</last-date>\n          <sic>7372</sic>\n          <state>AZ</state>\n        </company-info>\n      </content>\n      <id>urn:tag:www.sec.gov:cik=0001877461</id>\n      <link href=\"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&amp;CIK=0001877461&amp;owner=exclude&amp;hidefilings=0\" type=\"text/html\" />\n      <summary type=\"html\">&lt;strong&gt;CIK:&lt;/strong&gt; 0001877461, &lt;strong&gt;State:&lt;/strong&gt; AZ</summary>\n      <updated>2026-11-08T00:43:32-05:00</updated>\n    </entry>\n    <entry title=\"ARRAY(0x5639f659b6d0)\">\n      <content type=\"text/xml\">\n        <company-info name=\"ARRAY(0x5639f6569018)\">\n          <addresses>\n            <address type=\"business\">\n              <state>MD</state>\n            </address>\n            <address type=\"mailing\" />\n          </addresses>\n          <cik>0001459417</cik>\n          <irs-number>\n            <former-name-0 DATE=\"2012-04-06\" NAME=\"2tor",
+ "sic_ciks": [
+  "0001877461",
+  "0001459417",
+  "0001556753",
+  "0000910638",
+  "0001023748",
+  "0001010026",
+  "0000898441",
+  "0001097641",
+  "0001971975",
+  "0000898739",
+  "0001071058",
+  "0000887614",
+  "0001002388",
+  "0000804888",
+  "0001113222",
+  "0001063239",
+  "0001087243",
+  "0001424217",
+  "0000935036",
+  "0001055364"
+ ],
+ "sic_entries": 0,
+ "frames_status": 200,
+ "frames_keys": [
+  "taxonomy",
+  "tag",
+  "ccp",
+  "uom",
+  "label",
+  "description",
+  "pts",
+  "data"
+ ],
+ "frames_n": 2259,
+ "frames_sample": [
+  {
+   "accn": "0001193125-26-102079",
+   "cik": 2098,
+   "entityName": "ACME UNITED CORP",
+   "loc": "US-CT",
+   "start": "2025-01-01",
+   "end": "2025-12-31",
+   "val": 196541816
+  },
+  {
+   "accn": "0000002969-25-000055",
+   "cik": 2969,
+   "entityName": "AIR PRODUCTS AND CHEMICALS, INC.",
+   "loc": "US-PA",
+   "start": "2024-10-01",
+   "end": "2025-09-30",
+   "val": 12037300000
+  },
+  {
+   "accn": "0000003499-26-000005",
+   "cik": 3499,
+   "entityName": "ALEXANDERS INC",
+   "loc": "US-NJ",
+   "start": "2025-01-01",
+   "end": "2025-12-31",
+   "val": 213183000
+  }
+ ],
+ "frames_q_status": 200,
+ "frames_q_n": 2566
+}
