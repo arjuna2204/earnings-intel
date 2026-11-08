@@ -89,7 +89,7 @@ export default function FilingsView({ inputs, risks, la, lb }: { inputs: BriefIn
 function ReleaseTable({ rb, ra, la, lb, onQuote }: { rb?: Release | null; ra?: Release | null; la: string; lb: string; onQuote: (q: string, lbl: string) => void }) {
   if (!rb && !ra) {
     return (
-      <section className="rounded-2xl border border-dashed border-border p-5 text-sm text-muted">
+      <section className="text-sm text-muted">
         No earnings press release was found for these quarters, so company-reported adjusted figures aren&apos;t available. The app&apos;s own
         standardized adjusted figures are in Financials.
       </section>
@@ -111,7 +111,7 @@ function ReleaseTable({ rb, ra, la, lb, onQuote }: { rb?: Release | null; ra?: R
               <th className="py-1.5 text-right font-medium">{lb}</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-border border-t border-border">
             {kinds.map((k) => {
               const [kind, label] = k.split("|");
               const fB = rb?.figures.find((f) => f.kind === kind && f.label === label);
@@ -119,19 +119,19 @@ function ReleaseTable({ rb, ra, la, lb, onQuote }: { rb?: Release | null; ra?: R
               const aText = fA ? figureText(fA) : fB ? figureText(fB, "prior") : "—";
               const adjusted = /adjusted|core|ffo|affo/.test(kind);
               return (
-                <tr key={k} className="border-t border-border">
-                  <td className="py-2 pr-3">
+                <tr key={k}>
+                  <td className="py-3 pr-3">
                     {label}
-                    {adjusted && <span className="ml-2 rounded-full bg-accent/15 px-1.5 py-0.5 text-[10px] font-semibold text-accent">non-GAAP</span>}
+                    {adjusted && <span className="ml-2 text-xs text-muted">non-GAAP</span>}
                   </td>
-                  <td className="py-2 pr-3 text-right tabular-nums">
+                  <td className="py-3 pr-3 text-right tabular-nums text-muted">
                     {fA ? (
                       <button className="hover:text-accent" onClick={() => onQuote(fA.quote, la)}>{aText}</button>
                     ) : (
                       aText
                     )}
                   </td>
-                  <td className="py-2 text-right font-medium tabular-nums">
+                  <td className="py-3 text-right font-semibold tabular-nums">
                     {fB ? <button className="hover:text-accent" onClick={() => onQuote(fB.quote, lb)}>{figureText(fB)}</button> : "—"}
                   </td>
                 </tr>
@@ -163,15 +163,15 @@ function DriverList({ drivers, onQuote }: { drivers: Driver[]; onQuote: (d: Driv
   const groups = new Map<string, Driver[]>();
   for (const d of drivers) groups.set(d.metric, [...(groups.get(d.metric) ?? []), d]);
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="grid gap-x-8 sm:grid-cols-2">
       {[...groups.entries()].map(([metric, ds]) => {
         const dir = ds.find((d) => !d.offset)?.direction ?? ds[0].direction;
         return (
-          <div key={metric} className="rounded-2xl border border-border p-4">
+          <div key={metric} className="border-b border-border py-4">
             <div className="flex items-baseline justify-between gap-2">
               <span className="font-semibold">{metric}</span>
               <span className={`text-sm ${dir === "up" ? "text-up" : dir === "down" ? "text-down" : "text-muted"}`}>
-                {dir === "up" ? "▲" : dir === "down" ? "▼" : "◆"} {ds.find((d) => d.change_text)?.change_text ?? dir}
+                {dir === "up" ? "▲ " : dir === "down" ? "▼ " : ""}{ds.find((d) => d.change_text)?.change_text ?? dir}
               </span>
             </div>
             <ul className="mt-2 space-y-1 text-sm">
@@ -192,10 +192,10 @@ function DriverList({ drivers, onQuote }: { drivers: Driver[]; onQuote: (d: Driv
 }
 
 const STATUS_STYLE: Record<string, string> = {
-  added: "bg-up/15 text-up",
-  removed: "bg-down/15 text-down",
-  modified: "bg-accent/15 text-accent",
-  unchanged: "bg-border text-muted",
+  added: "text-up",
+  removed: "text-down",
+  modified: "text-foreground",
+  unchanged: "text-muted",
 };
 
 function RiskSection({ inputs, risks }: { inputs: BriefInputs; risks: RiskChange[] }) {
@@ -221,36 +221,36 @@ function RiskSection({ inputs, risks }: { inputs: BriefInputs; risks: RiskChange
       <p className="mb-3 text-xs text-muted">
         10-K for period ending {s.report_new} vs. {s.report_old}. Matched and compared by code (no AI).
       </p>
-      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
+      <div className="mb-5 grid grid-cols-2 gap-x-6 gap-y-4 border-y border-border py-4 sm:grid-cols-5">
         {[
           ["Added", s.counts.added ?? 0],
           ["Removed", s.counts.removed ?? 0],
           ["Reworded", s.counts.modified ?? 0],
-          ["Escalated language", s.escalated],
+          ["Stronger wording", s.escalated],
           ["Length", wordChange !== null ? `${Number(wordChange) >= 0 ? "+" : ""}${wordChange}%` : "—"],
         ].map(([k, v]) => (
-          <div key={String(k)} className="rounded-2xl border border-border p-3">
-            <div className="text-xs text-muted">{k}</div>
-            <div className="text-xl font-semibold tabular-nums">{v}</div>
+          <div key={String(k)}>
+            <div className="text-sm text-muted">{k}</div>
+            <div className="mt-1 text-2xl font-semibold tabular-nums">{v}</div>
           </div>
         ))}
       </div>
       <div className="mb-3 flex gap-2 text-sm">
         {(["changed", "escalated", "all"] as const).map((f) => (
-          <button key={f} onClick={() => setFilter(f)} className={`rounded-full px-3 py-1 ${filter === f ? "bg-foreground text-background" : "border border-border text-muted"}`}>
-            {f === "changed" ? "Changed" : f === "escalated" ? "Escalated" : "All"}
+          <button key={f} onClick={() => setFilter(f)} className={`rounded-full px-3.5 py-1.5 font-semibold ${filter === f ? "bg-foreground text-background" : "text-muted hover:text-foreground"}`}>
+            {f === "changed" ? "Changed" : f === "escalated" ? "Stronger wording" : "All"}
           </button>
         ))}
       </div>
-      <ul className="space-y-2">
+      <ul className="divide-y divide-border border-y border-border">
         {shown.map((r, i) => (
-          <li key={i} className="rounded-2xl border border-border">
-            <button className="flex w-full items-start gap-3 p-4 text-left" onClick={() => setOpen(open === i ? null : i)} aria-expanded={open === i}>
-              <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase ${STATUS_STYLE[r.status]}`}>{r.status === "modified" ? "reworded" : r.status}</span>
+          <li key={i}>
+            <button className="flex w-full items-start gap-3 py-4 text-left" onClick={() => setOpen(open === i ? null : i)} aria-expanded={open === i}>
+              <span className={`w-20 shrink-0 text-sm font-semibold capitalize ${STATUS_STYLE[r.status]}`}>{r.status === "modified" ? "Reworded" : r.status}</span>
               <span className="flex-1">
                 <span className="font-medium">{r.headline}</span>
                 {r.category && <span className="block text-xs text-muted">{r.category}</span>}
-                {r.escalations.length > 0 && <span className="mt-1 block text-xs text-amber-600 dark:text-amber-400">⚠ {r.escalations[0]}</span>}
+                {r.escalations.length > 0 && <span className="mt-1 block text-sm text-down">Stronger wording: {r.escalations[0]}</span>}
               </span>
               {r.status === "modified" && (
                 <span className="shrink-0 text-xs tabular-nums text-muted">
@@ -259,12 +259,12 @@ function RiskSection({ inputs, risks }: { inputs: BriefInputs; risks: RiskChange
               )}
             </button>
             {open === i && (
-              <div className="border-t border-border p-4 text-sm leading-relaxed">
+              <div className="pb-5 sm:pl-[5.75rem] text-sm leading-relaxed">
                 {r.old_headline && r.old_headline !== r.headline && <p className="mb-2 text-xs text-muted">Previously: “{r.old_headline}”</p>}
                 {r.escalations.length > 1 && (
-                  <ul className="mb-3 space-y-1 text-xs text-amber-600 dark:text-amber-400">
+                  <ul className="mb-3 space-y-1 text-sm text-down">
                     {r.escalations.map((e, k) => (
-                      <li key={k}>⚠ {e}</li>
+                      <li key={k}>{e}</li>
                     ))}
                   </ul>
                 )}

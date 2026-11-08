@@ -9,18 +9,11 @@ import type { Bridge, BriefExtras, StreakItem, Tile, Tone } from "@/lib/brief-ex
 import type { GuidanceChange, GuidanceItem } from "@/lib/types";
 
 const SOURCE_KIND: Record<string, string> = { X: "Financials", S: "Street", C: "Call", F: "Filing", R: "Risk factors" };
-const TONE_TEXT: Record<Tone, string> = { up: "text-up", down: "text-down", neutral: "text-muted", warn: "text-amber-600 dark:text-amber-400" };
-const TONE_CHIP: Record<Tone, string> = {
-  up: "bg-up/12 text-up border-up/30",
-  down: "bg-down/12 text-down border-down/30",
-  neutral: "bg-card text-foreground border-border",
-  warn: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30",
-};
-const ARROW: Record<Tone, string> = { up: "▲", down: "▼", neutral: "◆", warn: "⚠" };
+const TONE_TEXT: Record<Tone, string> = { up: "text-up", down: "text-down", neutral: "text-muted", warn: "text-down" };
+const ARROW: Partial<Record<Tone, string>> = { up: "▲", down: "▼", warn: "▼" };
 
-type SectionKey = "street" | "tensions" | "guidance" | "results" | "call" | "risks";
 
-/** The brief, laid out for a 30-second read first and drill-down second. */
+/** The brief: Robinhood-style — type-driven, flat, thin dividers, color only for direction. */
 export default function BriefView({
   brief,
   street,
@@ -35,56 +28,41 @@ export default function BriefView({
   lb: string;
 }) {
   const [open, setOpen] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState<Set<SectionKey>>(new Set(["street"]));
   const facts = brief.inputs.facts;
   const claims = (s: string) => brief.claims.filter((c) => c.section === s);
-  const toggle = (k: SectionKey, force?: boolean) =>
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (force ?? !next.has(k)) next.add(k);
-      else next.delete(k);
-      return next;
-    });
-  const jump = (k: string) => {
-    toggle(k as SectionKey, true);
-    requestAnimationFrame(() => document.getElementById(`brief-${k}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
-  };
-  const chips = (c: Claim) => <SourceChips refs={c.refs} onOpen={setOpen} />;
+  // Number each cited fact once, in order of first appearance, like footnotes.
+  const order: string[] = [];
+  for (const c of brief.claims) for (const r of c.refs) if (!order.includes(r)) order.push(r);
+  const note = (r: string) => order.indexOf(r) + 1;
+  const refs = (c: Claim) => <Refs refs={c.refs} note={note} onOpen={setOpen} />;
   const c = extras.counts;
+  const jump = (k: string) => document.getElementById(`brief-${k}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   return (
-    <div className="space-y-5">
-      {/* 30-second verdict */}
-      {extras.verdict.length > 0 && (
-        <div className="flex flex-wrap gap-2" aria-label="Verdict">
-          {extras.verdict.map((v, i) => (
-            <button key={i} onClick={() => jump(v.target)} className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition hover:brightness-110 ${TONE_CHIP[v.tone]}`}>
-              {ARROW[v.tone]} {v.label}
-            </button>
-          ))}
-        </div>
-      )}
+    <div className="space-y-12">
+      {/* Summary: headline sentences, then the key numbers */}
+      <section>
+        {claims("headline").map((cl, i) => (
+          <p key={i} className={i === 0 ? "text-2xl font-semibold leading-snug tracking-tight" : "mt-3 text-[17px] leading-relaxed"}>
+            {cl.text}
+            {refs(cl)}
+          </p>
+        ))}
+        {extras.verdict.length > 0 && (
+          <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+            {extras.verdict.map((v, i) => (
+              <button key={i} onClick={() => jump(v.target)} className={`font-semibold hover:underline ${TONE_TEXT[v.tone]}`}>
+                {ARROW[v.tone] ? `${ARROW[v.tone]} ` : ""}
+                {v.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
 
-      {/* Headline claims */}
-      {claims("headline").length > 0 && (
-        <div className="grid gap-3 md:grid-cols-2">
-          {claims("headline").map((cl, i) => (
-            <div key={i} className={`rounded-2xl border border-border bg-card p-4 leading-relaxed ${i === 0 ? "md:col-span-2 text-lg" : ""}`}>
-              {cl.text} {chips(cl)}
-            </div>
-          ))}
-        </div>
-      )}
-
-      <Section
-        id="street"
-        title="The Street view"
-        teaser={[extras.verdict.find((v) => v.target === "street")?.label, extras.bridge ? "GAAP → adjusted bridge" : null, `${extras.streak.length}-quarter beat history`].filter(Boolean).join(" · ")}
-        open={expanded.has("street")}
-        onToggle={() => toggle("street")}
-      >
+      <Section id="street" title="The Street view">
         {extras.tiles.length > 0 && (
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-x-8 gap-y-6 border-y border-border py-5 lg:grid-cols-4">
             {extras.tiles.map((t, i) => (
               <StatTile key={i} tile={t} />
             ))}
@@ -92,27 +70,17 @@ export default function BriefView({
         )}
         {extras.streak.length > 1 && <Streak items={extras.streak} />}
         {extras.bridge && <BridgeChart bridge={extras.bridge} lb={lb} />}
-        <ClaimList claims={claims("street")} chips={chips} />
-        {street.length > 0 && (
-          <details className="rounded-2xl border border-border p-4">
-            <summary className="cursor-pointer text-sm font-medium">Full Street scorecard</summary>
-            <Scorecard rows={street} la={la} lb={lb} onSource={setOpen} />
-          </details>
-        )}
+        <ClaimRows claims={claims("street")} refs={refs} />
+        {street.length > 0 && <Scorecard rows={street} la={la} lb={lb} onSource={setOpen} />}
       </Section>
 
       {claims("tensions").length > 0 && (
-        <Section
-          id="tensions"
-          title="Worth a closer look"
-          teaser={`${claims("tensions").length} place${claims("tensions").length > 1 ? "s" : ""} where the call and the filing don't line up`}
-          open={expanded.has("tensions")}
-          onToggle={() => toggle("tensions")}
-          accent
-        >
-          {claims("tensions").map((cl, i) => (
-            <Tension key={i} claim={cl} facts={facts} onOpen={setOpen} />
-          ))}
+        <Section id="tensions" title="Worth a closer look" subtitle="Where what management said on the call and what the filing shows don't line up.">
+          <div className="divide-y divide-border border-y border-border">
+            {claims("tensions").map((cl, i) => (
+              <Tension key={i} claim={cl} facts={facts} onOpen={setOpen} />
+            ))}
+          </div>
         </Section>
       )}
 
@@ -120,27 +88,22 @@ export default function BriefView({
         <Section
           id="guidance"
           title="Guidance"
-          teaser={[c.raised && `${c.raised} raised`, c.lowered && `${c.lowered} cut`, c.added && `${c.added} new`, c.dropped && `${c.dropped} quietly dropped`].filter(Boolean).join(" · ") || "No changes"}
-          open={expanded.has("guidance")}
-          onToggle={() => toggle("guidance")}
+          subtitle={[c.raised && `${c.raised} raised`, c.lowered && `${c.lowered} lowered`, c.added && `${c.added} new`, c.dropped && `${c.dropped} not repeated`].filter(Boolean).join(" · ") || undefined}
         >
           <GuidanceBars items={extras.guidance} la={la} lb={lb} />
-          <ClaimList claims={claims("guidance")} chips={chips} />
+          <ClaimRows claims={claims("guidance")} refs={refs} />
         </Section>
       )}
 
       {claims("results").length > 0 && (
-        <Section id="results" title="Results & what drove them" teaser={claims("results")[0].text} open={expanded.has("results")} onToggle={() => toggle("results")}>
-          <ClaimList claims={claims("results")} chips={chips} cards />
+        <Section id="results" title="Results">
+          <ClaimRows claims={claims("results")} refs={refs} limit={4} />
         </Section>
       )}
 
       {claims("call").length > 0 && (
-        <Section id="call" title="On the call" teaser={claims("call")[0].text} open={expanded.has("call")} onToggle={() => toggle("call")}>
-          <ClaimList claims={claims("call")} chips={chips} />
-          <Link href={`?tab=call&a=${la}&b=${lb}`} className="inline-block text-sm text-accent underline">
-            Open the full call comparison →
-          </Link>
+        <Section id="call" title="On the call" more={{ href: `?tab=call&a=${la}&b=${lb}`, label: "Full call comparison" }}>
+          <ClaimRows claims={claims("call")} refs={refs} />
         </Section>
       )}
 
@@ -148,37 +111,23 @@ export default function BriefView({
         <Section
           id="risks"
           title="Risk factors"
-          teaser={[c.riskAdded && `${c.riskAdded} added`, c.riskRemoved && `${c.riskRemoved} removed`, c.escalated && `${c.escalated} with escalated language`].filter(Boolean).join(" · ")}
-          open={expanded.has("risks")}
-          onToggle={() => toggle("risks")}
+          subtitle={[c.riskAdded && `${c.riskAdded} added`, c.riskRemoved && `${c.riskRemoved} removed`, c.escalated && `${c.escalated} reworded more strongly`].filter(Boolean).join(" · ") || undefined}
+          more={{ href: `?tab=filings&a=${la}&b=${lb}`, label: "Full redline" }}
         >
-          <ClaimList claims={claims("risks")} chips={chips} cards warn />
-          <Link href={`?tab=filings&a=${la}&b=${lb}`} className="inline-block text-sm text-accent underline">
-            See the full redline →
-          </Link>
+          <ClaimRows claims={claims("risks")} refs={refs} />
         </Section>
       )}
 
-      <p className="pt-2 text-xs text-muted">
-        Written by AI only from the facts listed below, then checked by code: every citation must exist and every number must appear in a
-        cited fact. {brief.dropped?.length ? `${brief.dropped.length} claim(s) failed the check and were removed. ` : ""}Charts and tiles are
-        computed by code. Cost ${Number(brief.cost_usd).toFixed(3)} · {new Date(brief.created_at).toLocaleDateString()}
+      <Sources order={order} facts={facts} onOpen={setOpen} />
+
+      <p className="text-xs leading-relaxed text-muted">
+        Written by AI only from the sources above and checked by code: every citation must exist and every number must appear in a cited
+        source. Charts and figures are computed by code. {brief.dropped?.length ? `${brief.dropped.length} sentence(s) failed the check and were removed. ` : ""}
+        Updated {new Date(brief.created_at).toLocaleDateString()}.
       </p>
-      <details className="rounded-2xl border border-border p-4 text-sm">
-        <summary className="cursor-pointer font-medium">All {Object.keys(facts).length} facts the brief could use</summary>
-        <ul className="mt-3 space-y-1.5">
-          {Object.entries(facts).map(([id, f]) => (
-            <li key={id}>
-              <button onClick={() => setOpen(id)} className="text-left hover:text-accent">
-                <span className="mr-2 font-mono text-xs text-muted">{id}</span>
-                {f.text.length > 220 ? f.text.slice(0, 217) + "…" : f.text}
-              </button>
-            </li>
-          ))}
-        </ul>
-      </details>
+
       {open && facts[open] && (
-        <SourcePanel title={`${SOURCE_KIND[open[0]] ?? "Source"} · ${open}`} onClose={() => setOpen(null)}>
+        <SourcePanel title={SOURCE_KIND[open[0]] ?? "Source"} onClose={() => setOpen(null)}>
           <FactDetail fact={facts[open]} />
         </SourcePanel>
       )}
@@ -189,88 +138,82 @@ export default function BriefView({
 function Section({
   id,
   title,
-  teaser,
-  open,
-  onToggle,
-  accent,
+  subtitle,
+  more,
   children,
 }: {
   id: string;
   title: string;
-  teaser: string;
-  open: boolean;
-  onToggle: () => void;
-  accent?: boolean;
+  subtitle?: string;
+  more?: { href: string; label: string };
   children: React.ReactNode;
 }) {
   return (
-    <section id={`brief-${id}`} className={`scroll-mt-20 rounded-2xl border ${accent ? "border-amber-500/40 bg-amber-500/[0.04]" : "border-border"}`}>
-      <button onClick={onToggle} aria-expanded={open} className="flex w-full items-center gap-3 p-4 text-left sm:p-5">
-        <span className="flex-1">
-          <span className="block text-lg font-semibold">{title}</span>
-          {!open && <span className="mt-0.5 line-clamp-1 block text-sm text-muted">{teaser}</span>}
-        </span>
-        <span className={`text-muted transition ${open ? "rotate-180" : ""}`} aria-hidden>
-          ⌄
-        </span>
-      </button>
-      {open && <div className="space-y-5 px-4 pb-5 sm:px-5">{children}</div>}
+    <section id={`brief-${id}`} className="scroll-mt-20">
+      <div className="mb-4 flex items-baseline justify-between gap-4 border-b border-border pb-3">
+        <div>
+          <h3 className="text-xl font-semibold tracking-tight">{title}</h3>
+          {subtitle && <p className="mt-0.5 text-sm text-muted">{subtitle}</p>}
+        </div>
+        {more && (
+          <Link href={more.href} className="shrink-0 text-sm font-semibold text-accent hover:underline">
+            {more.label}
+          </Link>
+        )}
+      </div>
+      <div className="space-y-6">{children}</div>
     </section>
   );
 }
 
-function SourceChips({ refs, onOpen }: { refs: string[]; onOpen: (id: string) => void }) {
+function Refs({ refs, note, onOpen }: { refs: string[]; note: (r: string) => number; onOpen: (id: string) => void }) {
   return (
-    <span className="inline-flex flex-wrap gap-1 align-middle">
-      {refs.map((r) => (
+    <sup className="ml-0.5 whitespace-nowrap">
+      {refs.map((r, i) => (
         <button
           key={r}
           onClick={() => onOpen(r)}
-          className="rounded-full border border-border px-2 py-0.5 text-[11px] font-medium text-muted transition hover:border-accent hover:text-foreground"
-          aria-label={`Source ${r}: ${SOURCE_KIND[r[0]] ?? "source"}`}
+          className="px-px text-[11px] font-semibold text-accent hover:underline"
+          aria-label={`Source ${note(r)}: ${SOURCE_KIND[r[0]] ?? "source"}`}
         >
-          {SOURCE_KIND[r[0]] ?? r[0]} {r.slice(1)}
+          {note(r)}
+          {i < refs.length - 1 ? "," : ""}
         </button>
       ))}
-    </span>
+    </sup>
   );
 }
 
-function ClaimList({ claims, chips, cards, warn }: { claims: Claim[]; chips: (c: Claim) => React.ReactNode; cards?: boolean; warn?: boolean }) {
+function ClaimRows({ claims, refs, limit }: { claims: Claim[]; refs: (c: Claim) => React.ReactNode; limit?: number }) {
+  const [all, setAll] = useState(false);
   if (!claims.length) return null;
-  if (cards) {
-    return (
-      <div className="grid gap-3 md:grid-cols-2">
-        {claims.map((c, i) => (
-          <div key={i} className={`rounded-xl border p-3.5 text-sm leading-relaxed ${warn ? "border-amber-500/30" : "border-border"}`}>
-            {warn && <span className="mr-1 text-amber-600 dark:text-amber-400">⚠</span>}
-            {c.text} {chips(c)}
-          </div>
-        ))}
-      </div>
-    );
-  }
+  const shown = limit && !all ? claims.slice(0, limit) : claims;
   return (
-    <ul className="space-y-2 text-sm leading-relaxed">
-      {claims.map((c, i) => (
-        <li key={i} className="flex gap-2">
-          <span className="text-muted">•</span>
-          <span>
-            {c.text} {chips(c)}
-          </span>
-        </li>
-      ))}
-    </ul>
+    <div>
+      <ul className="divide-y divide-border">
+        {shown.map((c, i) => (
+          <li key={i} className="py-3 text-[15px] leading-relaxed first:pt-0">
+            {c.text}
+            {refs(c)}
+          </li>
+        ))}
+      </ul>
+      {limit && claims.length > limit && (
+        <button onClick={() => setAll(!all)} className="mt-1 text-sm font-semibold text-accent hover:underline">
+          {all ? "Show less" : `Show ${claims.length - limit} more`}
+        </button>
+      )}
+    </div>
   );
 }
 
 function StatTile({ tile }: { tile: Tile }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-4">
-      <div className="text-xs text-muted">{tile.label}</div>
-      <div className="mt-1 text-2xl font-semibold tabular-nums">{tile.value}</div>
-      <div className={`mt-1 text-xs font-medium ${TONE_TEXT[tile.tone]}`}>
-        {tile.tone !== "neutral" && `${ARROW[tile.tone]} `}
+    <div>
+      <div className="text-sm text-muted">{tile.label}</div>
+      <div className="mt-1 text-[26px] font-semibold leading-none tracking-tight tabular-nums">{tile.value}</div>
+      <div className={`mt-2 text-sm font-medium tabular-nums ${TONE_TEXT[tile.tone]}`}>
+        {ARROW[tile.tone] ? `${ARROW[tile.tone]} ` : ""}
         {tile.sub}
       </div>
     </div>
@@ -278,35 +221,47 @@ function StatTile({ tile }: { tile: Tile }) {
 }
 
 function Streak({ items }: { items: StreakItem[] }) {
+  const [hover, setHover] = useState<number | null>(null);
   const max = Math.max(...items.map((i) => Math.abs(i.surprisePct)), 1);
   const beats = items.filter((i) => i.surprisePct >= 0).length;
+  const cur = items[hover ?? items.length - 1];
   return (
     <div>
-      <div className="mb-2 flex items-baseline justify-between">
-        <span className="text-sm font-semibold">Beat / miss history</span>
-        <span className="text-xs text-muted">
-          Beat {beats} of last {items.length} quarters
+      <div className="flex items-baseline justify-between">
+        <span className="font-semibold">Earnings vs. estimates</span>
+        <span className="text-sm text-muted">
+          Beat {beats} of {items.length}
         </span>
       </div>
-      <div className="flex items-end gap-1.5" style={{ height: 88 }}>
-        {items.map((it) => {
-          const h = Math.max((Math.abs(it.surprisePct) / max) * 60, 4);
+      <div className="mt-1 text-sm tabular-nums text-muted">
+        {cur.label}: <span className="text-foreground">${cur.reported.toFixed(2)}</span> actual · ${cur.estimated.toFixed(2)} est. ·{" "}
+        <span className={cur.surprisePct >= 0 ? "text-up" : "text-down"}>
+          {cur.surprisePct >= 0 ? "▲" : "▼"} {Math.abs(cur.surprisePct).toFixed(1)}%
+        </span>
+      </div>
+      <div className="mt-4 flex h-20 items-end gap-3" onMouseLeave={() => setHover(null)}>
+        {items.map((it, i) => {
+          const h = Math.max((Math.abs(it.surprisePct) / max) * 72, 3);
           const up = it.surprisePct >= 0;
+          const dim = hover !== null && hover !== i;
           return (
-            <div key={it.label} className="group relative flex flex-1 flex-col items-center justify-end" title={`${it.label}: $${it.reported.toFixed(2)} vs $${it.estimated.toFixed(2)} (${up ? "+" : ""}${it.surprisePct.toFixed(1)}%)`}>
-              <span className={`text-[10px] font-semibold tabular-nums ${up ? "text-up" : "text-down"}`}>
-                {up ? "+" : ""}
-                {it.surprisePct.toFixed(1)}%
-              </span>
-              <div className={`mt-0.5 w-full max-w-10 rounded-md ${up ? "bg-up" : "bg-down"}`} style={{ height: h }} />
-            </div>
+            <button
+              key={it.label}
+              onMouseEnter={() => setHover(i)}
+              onFocus={() => setHover(i)}
+              onClick={() => setHover(i)}
+              aria-label={`${it.label}: ${up ? "beat" : "missed"} by ${Math.abs(it.surprisePct).toFixed(1)}%`}
+              className="flex h-full flex-1 items-end justify-center"
+            >
+              <span className={`w-full max-w-7 rounded-full transition-opacity ${up ? "bg-up" : "bg-down"} ${dim ? "opacity-30" : ""}`} style={{ height: h }} />
+            </button>
           );
         })}
       </div>
-      <div className="mt-1 flex gap-1.5">
+      <div className="mt-2 flex gap-3">
         {items.map((it) => (
-          <span key={it.label} className="flex-1 text-center text-[10px] text-muted">
-            {it.label.replace(/^FY(\d{2})(\d{2})/, "’$2 ")}
+          <span key={it.label} className="flex-1 text-center text-[11px] text-muted">
+            {it.label.replace(/^FY\d{2}(\d{2})Q(\d)/, "Q$2 ’$1")}
           </span>
         ))}
       </div>
@@ -318,12 +273,11 @@ function BridgeChart({ bridge, lb }: { bridge: Bridge; lb: string }) {
   const fmt = (v: number) =>
     bridge.unit === "per share" ? `$${v.toFixed(2)}` : Math.abs(v) >= 1e9 ? `$${(v / 1e9).toFixed(2)}B` : `$${(v / 1e6).toFixed(0)}M`;
   const fmtD = (v: number) => `${v >= 0 ? "+" : "−"}${fmt(Math.abs(v))}`;
-  // running totals (computed without mutation)
   const cumulative = bridge.steps.map((_, i) => bridge.start + bridge.steps.slice(0, i + 1).reduce((t, x) => t + x.value, 0));
   const rows = [
     { label: bridge.startLabel, from: 0, to: bridge.start, kind: "total" as const, text: fmt(bridge.start) },
     ...bridge.steps.map((s, i) => ({
-      label: s.label + (s.computed ? " (computed)" : ""),
+      label: s.label + (s.computed ? " (calculated)" : ""),
       from: i === 0 ? bridge.start : cumulative[i - 1],
       to: cumulative[i],
       kind: s.value >= 0 ? ("add" as const) : ("sub" as const),
@@ -333,28 +287,29 @@ function BridgeChart({ bridge, lb }: { bridge: Bridge; lb: string }) {
   ];
   const lo = Math.min(0, ...rows.map((r) => Math.min(r.from, r.to)));
   const hi = Math.max(...rows.map((r) => Math.max(r.from, r.to)));
-  // zoom in so small adjustments are visible: start the axis near the smaller total
   const base = Math.max(lo, Math.min(bridge.start, bridge.end) - (hi - Math.min(bridge.start, bridge.end)) * 1.5 - Math.abs(hi) * 0.02);
   const span = hi - base || 1;
   const pos = (v: number) => ((Math.max(v, base) - base) / span) * 100;
   return (
     <div>
-      <div className="mb-1 text-sm font-semibold">From GAAP to adjusted ({bridge.basis.toLowerCase()}, {lb})</div>
-      <p className="mb-3 text-xs text-muted">What the company excludes to get the number the Street uses. Bars start near the smaller total so small items are visible.</p>
-      <div className="space-y-1.5">
+      <div className="font-semibold">GAAP to adjusted</div>
+      <p className="mt-0.5 text-sm text-muted">
+        {bridge.basis}, {lb}. What the company excludes to reach the figure analysts use.
+      </p>
+      <div className="mt-4 divide-y divide-border">
         {rows.map((r, i) => {
           const left = pos(Math.min(r.from, r.to));
           const width = Math.max(pos(Math.max(r.from, r.to)) - left, 0.8);
-          const color = r.kind === "total" ? "bg-foreground/70" : r.kind === "add" ? "bg-up" : "bg-down";
+          const color = r.kind === "total" ? "bg-foreground" : r.kind === "add" ? "bg-up" : "bg-down";
           return (
-            <div key={i} className="grid grid-cols-[minmax(0,10rem)_1fr_auto] items-center gap-3 text-sm sm:grid-cols-[14rem_1fr_auto]">
+            <div key={i} className="grid grid-cols-[minmax(0,9rem)_1fr_5.5rem] items-center gap-4 py-2.5 text-sm sm:grid-cols-[13rem_1fr_6rem]">
               <span className={`truncate ${r.kind === "total" ? "font-semibold" : "text-muted"}`} title={r.label}>
                 {r.label}
               </span>
-              <div className="relative h-5 rounded bg-border/40">
-                <div className={`absolute top-0 h-5 rounded ${color}`} style={{ left: `${left}%`, width: `${width}%` }} />
+              <div className="relative h-1.5">
+                <div className={`absolute top-0 h-1.5 rounded-full ${color}`} style={{ left: `${left}%`, width: `${width}%` }} />
               </div>
-              <span className={`w-20 text-right tabular-nums ${r.kind === "total" ? "font-semibold" : r.kind === "add" ? "text-up" : "text-down"}`}>{r.text}</span>
+              <span className={`text-right tabular-nums ${r.kind === "total" ? "font-semibold" : r.kind === "add" ? "text-up" : "text-down"}`}>{r.text}</span>
             </div>
           );
         })}
@@ -375,71 +330,80 @@ function GuidanceBars({ items, la, lb }: { items: GuidanceChange[]; la: string; 
   const other = items.filter((g) => !numeric.includes(g) && g.change !== "maintained");
   const unitText = (u: string | null | undefined, v: number) => {
     if (!u) return `${v}`;
-    if (u.includes("%") || u.toLowerCase().includes("percent")) return `${v}%`;
-    if (u.toLowerCase().includes("billion")) return `$${v}B`;
-    if (u.toLowerCase().includes("million")) return `$${v}M`;
-    if (u.toLowerCase().includes("usd")) return `$${v}`;
+    const l = u.toLowerCase();
+    if (l.includes("%") || l.includes("percent")) return `${v}%`;
+    if (l.includes("billion")) return `$${v}B`;
+    if (l.includes("million")) return `$${v}M`;
+    if (l.includes("usd")) return `$${v}`;
     return `${v} ${u}`;
   };
-  const rangeText = (r: [number, number], u: string | null | undefined) => (r[0] === r[1] ? unitText(u, r[0]) : `${unitText(u, r[0])}–${unitText(u, r[1])}`);
-  const changeTone: Record<string, Tone> = { raised: "up", lowered: "down", new: "neutral", withdrawn: "down", "not repeated": "warn" };
+  const rangeText = (r: [number, number], u: string | null | undefined) => (r[0] === r[1] ? unitText(u, r[0]) : `${unitText(u, r[0])} – ${unitText(u, r[1])}`);
+  const changeTone: Record<string, Tone> = { raised: "up", lowered: "down", withdrawn: "down", "not repeated": "down" };
+  const changeWord: Record<string, string> = { raised: "Raised", lowered: "Lowered", new: "New", withdrawn: "Withdrawn", "not repeated": "Not repeated", "changed basis": "Changed basis", qualitative: "Qualitative" };
   return (
-    <div className="space-y-5">
+    <div>
       {numeric.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex gap-4 text-xs text-muted">
+        <>
+          <div className="mb-2 flex gap-5 text-xs text-muted">
             <span className="flex items-center gap-1.5">
-              <span className="inline-block h-2 w-5 rounded bg-muted/50" /> {la} call
+              <span className="inline-block h-1.5 w-4 rounded-full bg-muted/40" /> Guided on {la} call
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="inline-block h-2 w-5 rounded bg-accent" /> {lb} call
+              <span className="inline-block h-1.5 w-4 rounded-full bg-foreground" /> Guided on {lb} call
             </span>
           </div>
-          {numeric.map((g, i) => {
-            const a = rangeOf(g.earlier)!;
-            const b = rangeOf(g.later)!;
-            const lo = Math.min(a[0], b[0]);
-            const hi = Math.max(a[1], b[1]);
-            const pad = (hi - lo || Math.abs(hi) || 1) * 0.25;
-            const [min, max] = [lo - pad, hi + pad];
-            const pos = (v: number) => ((v - min) / (max - min)) * 100;
-            const bar = (r: [number, number], cls: string) => (
-              <div className="relative h-3 rounded bg-border/40">
-                <div className={`absolute top-0 h-3 rounded ${cls}`} style={{ left: `${pos(r[0])}%`, width: `${Math.max(pos(r[1]) - pos(r[0]), 1.5)}%` }} />
-              </div>
-            );
-            const tone = changeTone[g.change] ?? "neutral";
-            return (
-              <div key={i}>
-                <div className="mb-1.5 flex items-baseline justify-between gap-2 text-sm">
-                  <span className="font-medium">
-                    {g.metric}
-                    {g.later?.period && <span className="ml-1 text-xs text-muted">({g.later.period})</span>}
-                  </span>
-                  <span className={`text-xs font-semibold uppercase ${TONE_TEXT[tone]}`}>
-                    {ARROW[tone]} {g.change}
-                  </span>
+          <div className="divide-y divide-border">
+            {numeric.map((g, i) => {
+              const a = rangeOf(g.earlier)!;
+              const b = rangeOf(g.later)!;
+              const lo = Math.min(a[0], b[0]);
+              const hi = Math.max(a[1], b[1]);
+              const pad = (hi - lo || Math.abs(hi) || 1) * 0.25;
+              const [min, max] = [lo - pad, hi + pad];
+              const pos = (v: number) => ((v - min) / (max - min)) * 100;
+              const bar = (r: [number, number], cls: string) => (
+                <div className="relative h-1.5">
+                  <div className={`absolute top-0 h-1.5 rounded-full ${cls}`} style={{ left: `${pos(r[0])}%`, width: `${Math.max(pos(r[1]) - pos(r[0]), 1.5)}%` }} />
                 </div>
-                <div className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1 text-xs">
-                  {bar(a, "bg-muted/50")}
-                  <span className="w-28 text-right tabular-nums text-muted">{rangeText(a, g.earlier?.unit)}</span>
-                  {bar(b, "bg-accent")}
-                  <span className="w-28 text-right font-semibold tabular-nums">{rangeText(b, g.later?.unit)}</span>
+              );
+              const tone = changeTone[g.change] ?? "neutral";
+              return (
+                <div key={i} className="py-3.5">
+                  <div className="mb-2 flex items-baseline justify-between gap-3">
+                    <span className="font-medium">
+                      {g.metric}
+                      {g.later?.period && <span className="ml-1.5 text-sm font-normal text-muted">{g.later.period}</span>}
+                    </span>
+                    <span className={`text-sm font-semibold ${TONE_TEXT[tone]}`}>
+                      {ARROW[tone] ? `${ARROW[tone]} ` : ""}
+                      {changeWord[g.change] ?? g.change}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-[1fr_8rem] items-center gap-x-4 gap-y-1.5 text-sm">
+                    {bar(a, "bg-muted/40")}
+                    <span className="text-right tabular-nums text-muted">{rangeText(a, g.earlier?.unit)}</span>
+                    {bar(b, "bg-foreground")}
+                    <span className="text-right font-semibold tabular-nums">{rangeText(b, g.later?.unit)}</span>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </>
       )}
       {other.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className={`divide-y divide-border ${numeric.length ? "border-t border-border" : ""}`}>
           {other.map((g, i) => {
             const tone = changeTone[g.change] ?? "neutral";
             const q = (g.later ?? g.earlier)?.quote;
             return (
-              <span key={i} title={q ? `“${q}”` : undefined} className={`rounded-full border px-3 py-1 text-xs font-medium ${TONE_CHIP[tone]}`}>
-                {g.change === "not repeated" ? "Quietly dropped" : g.change === "new" ? "New" : g.change.charAt(0).toUpperCase() + g.change.slice(1)}: {g.metric}
-              </span>
+              <div key={i} className="flex items-baseline justify-between gap-4 py-3">
+                <span className="min-w-0">
+                  <span className="font-medium">{g.metric}</span>
+                  {q && <span className="mt-0.5 block truncate text-sm text-muted">“{q}”</span>}
+                </span>
+                <span className={`shrink-0 text-sm font-semibold ${TONE_TEXT[tone]}`}>{changeWord[g.change] ?? g.change}</span>
+              </div>
             );
           })}
         </div>
@@ -454,31 +418,54 @@ function Tension({ claim, facts, onOpen }: { claim: Claim; facts: Record<string,
   const snippet = (id: string) => {
     const f = facts[id];
     if (!f) return id;
-    const q = f.quote && f.quote.length < 260 ? `“${f.quote}”` : f.text.length > 200 ? f.text.slice(0, 197) + "…" : f.text;
-    return q;
+    return f.quote && f.quote.length < 260 ? `“${f.quote}”` : f.text.length > 200 ? f.text.slice(0, 197) + "…" : f.text;
   };
+  const col = (title: string, ids: string[]) => (
+    <div>
+      <div className="mb-1.5 text-sm text-muted">{title}</div>
+      {ids.map((id) => (
+        <button key={id} onClick={() => onOpen(id)} className="mb-2 block text-left text-[15px] leading-relaxed hover:text-accent">
+          {snippet(id)}
+        </button>
+      ))}
+    </div>
+  );
   return (
-    <div className="space-y-3">
-      <p className="leading-relaxed">{claim.text}</p>
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="rounded-xl border border-border bg-background p-3.5">
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Said on the call</div>
-          {said.map((id) => (
-            <button key={id} onClick={() => onOpen(id)} className="mb-2 block text-left text-sm leading-relaxed hover:text-accent">
-              {snippet(id)}
-            </button>
-          ))}
-        </div>
-        <div className="rounded-xl border border-border bg-background p-3.5">
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">What the filing &amp; numbers show</div>
-          {shows.map((id) => (
-            <button key={id} onClick={() => onOpen(id)} className="mb-2 block text-left text-sm leading-relaxed hover:text-accent">
-              {snippet(id)}
-            </button>
-          ))}
-        </div>
+    <div className="py-5">
+      <p className="mb-4 font-medium leading-relaxed">{claim.text}</p>
+      <div className="grid gap-5 md:grid-cols-2 md:gap-8">
+        {col("On the call", said)}
+        {col("In the filing and numbers", shows)}
       </div>
     </div>
+  );
+}
+
+function Sources({ order, facts, onOpen }: { order: string[]; facts: Record<string, Fact>; onOpen: (id: string) => void }) {
+  const [all, setAll] = useState(false);
+  const shown = all ? order : order.slice(0, 5);
+  return (
+    <section>
+      <h3 className="mb-3 border-b border-border pb-3 text-xl font-semibold tracking-tight">Sources</h3>
+      <ol className="divide-y divide-border text-sm">
+        {shown.map((id, i) => (
+          <li key={id}>
+            <button onClick={() => onOpen(id)} className="flex w-full gap-3 py-2.5 text-left hover:text-accent">
+              <span className="w-5 shrink-0 font-semibold text-accent tabular-nums">{i + 1}</span>
+              <span className="min-w-0">
+                <span className="text-muted">{SOURCE_KIND[id[0]]} · </span>
+                {facts[id]?.text.length > 160 ? facts[id].text.slice(0, 157) + "…" : facts[id]?.text}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ol>
+      {order.length > 5 && (
+        <button onClick={() => setAll(!all)} className="mt-1 text-sm font-semibold text-accent hover:underline">
+          {all ? "Show less" : `Show all ${order.length}`}
+        </button>
+      )}
+    </section>
   );
 }
 
@@ -511,40 +498,46 @@ function FactDetail({ fact }: { fact: Fact }) {
 }
 
 function Scorecard({ rows, la, lb, onSource }: { rows: StreetRow[]; la: string; lb: string; onSource: (id: string) => void }) {
+  const [all, setAll] = useState(false);
+  const shown = all ? rows : rows.slice(0, 4);
   return (
-    <div className="mt-3 overflow-x-auto">
-      <table className="w-full text-sm">
+    <div>
+      <div className="font-semibold">Scorecard</div>
+      <table className="mt-2 w-full text-sm">
         <thead>
-          <tr className="text-left text-xs text-muted">
-            <th className="py-1.5 pr-3 font-medium">Metric</th>
-            <th className="py-1.5 pr-3 text-right font-medium">{la}</th>
-            <th className="py-1.5 pr-3 text-right font-medium">{lb}</th>
-            <th className="py-1.5 font-medium" />
+          <tr className="text-left text-muted">
+            <th className="py-2 pr-3 font-normal" />
+            <th className="py-2 pr-3 text-right font-normal">{la}</th>
+            <th className="py-2 text-right font-normal">{lb}</th>
           </tr>
         </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i} className="border-t border-border">
-              <td className="py-2 pr-3">
-                {r.label}
-                {r.note && <span className="block text-xs text-muted">{r.note}</span>}
+        <tbody className="divide-y divide-border border-t border-border">
+          {shown.map((r, i) => (
+            <tr key={i}>
+              <td className="py-3 pr-3">
+                {r.ref ? (
+                  <button onClick={() => onSource(r.ref!)} className="text-left hover:text-accent">
+                    {r.label}
+                  </button>
+                ) : (
+                  r.label
+                )}
+                {r.note && <span className="mt-0.5 block text-xs text-muted">{r.note}</span>}
               </td>
-              <td className="py-2 pr-3 text-right tabular-nums">{r.a}</td>
-              <td className={`py-2 pr-3 text-right font-medium tabular-nums ${r.tone === "up" ? "text-up" : r.tone === "down" ? "text-down" : ""}`}>
+              <td className="py-3 pr-3 text-right align-top tabular-nums text-muted">{r.a}</td>
+              <td className={`py-3 text-right align-top font-semibold tabular-nums ${r.tone === "up" ? "text-up" : r.tone === "down" ? "text-down" : ""}`}>
                 {r.tone === "up" ? "▲ " : r.tone === "down" ? "▼ " : ""}
                 {r.b}
-              </td>
-              <td className="py-2 text-right">
-                {r.ref && (
-                  <button onClick={() => onSource(r.ref!)} className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted hover:text-foreground">
-                    source
-                  </button>
-                )}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+      {rows.length > 4 && (
+        <button onClick={() => setAll(!all)} className="mt-1 text-sm font-semibold text-accent hover:underline">
+          {all ? "Show less" : `Show ${rows.length - 4} more`}
+        </button>
+      )}
     </div>
   );
 }
