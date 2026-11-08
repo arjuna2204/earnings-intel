@@ -34,6 +34,9 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("period_a")
     c.add_argument("period_b")
     c.add_argument("--job-id", type=int, default=None)
+    btc = sub.add_parser("backtest-collect")
+    btc.add_argument("--max-annual", type=int, default=40)
+    sub.add_parser("backtest-run")
     pr = sub.add_parser("peers")
     pr.add_argument("ticker")
     pr.add_argument("--job-id", type=int, default=None)
@@ -57,6 +60,14 @@ def main(argv: list[str] | None = None) -> int:
         from ei.calls.run import compare_calls
 
         print(json.dumps(compare_calls(settings, args.ticker, args.period_a, args.period_b, job_id=args.job_id)))
+    elif args.cmd == "backtest-collect":
+        from ei.backtest import collect
+
+        print(json.dumps(collect(settings, max_annual=args.max_annual)))
+    elif args.cmd == "backtest-run":
+        from ei.backtest import run as run_backtest
+
+        print(json.dumps(run_backtest(settings)))
     elif args.cmd == "peers":
         from ei.peers import run_peers
 

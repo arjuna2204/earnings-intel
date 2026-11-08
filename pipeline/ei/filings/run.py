@@ -115,17 +115,23 @@ class Fetcher:
         pick = ex[0] if ex else None
         return f"{base}/{pick}" if pick else None
 
-    def sections(self, filing: dict[str, Any], cik: int) -> dict[str, dict[str, Any]]:
-        """Parsed sections of a periodic report, cached in filing_sections."""
+    def sections(self, filing: dict[str, Any], cik: int, only: set[str] | None = None) -> dict[str, dict[str, Any]]:
+        """Parsed sections of a periodic report, cached in filing_sections. With `only`, just those
+        sections are stored (the backtest keeps risk factors of old 10-Ks without their full text);
+        such partial rows are marked so a later full request re-parses the document."""
         acc = filing["accession"]
+        versions = [PARSER_VERSION] + ([PARSER_VERSION + "-partial"] if only else [])
         rows = self.db.select(
-            "filing_sections", {"accession": f"eq.{acc}", "parser_version": f"eq.{PARSER_VERSION}", "select": "*"}
+            "filing_sections",
+            {"accession": f"eq.{acc}", "parser_version": f"in.({','.join(versions)})", "select": "*"},
         )
-        if rows:
+        if rows and (only is None or only <= {r["section"] for r in rows} or rows[0].get("title") == "__none__"):
             return {r["section"]: r for r in rows}
         secs = extract_sections(filing["form"], self.html(filing["url"]))
         out: dict[str, dict[str, Any]] = {}
         for name, sec in secs.items():
+            if only is not None and name not in only:
+                continue
             row = {
                 "accession": acc,
                 "cik": cik,
@@ -133,9 +139,9 @@ class Fetcher:
                 "form": filing["form"],
                 "report_date": filing.get("report_date"),
                 "title": sec.title,
-                "paragraphs": [b.text for b in sec.blocks],
+                "paragraphs": [] if only else [b.text for b in sec.blocks],
                 "risk_factors": [rf.__dict__ for rf in split_risk_factors(sec)] if name == "risk_factors" else None,
-                "parser_version": PARSER_VERSION,
+                "parser_version": PARSER_VERSION + ("-partial" if only else ""),
             }
             out[name] = row
         if out:

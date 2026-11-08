@@ -1,1 +1,1 @@
-{"command": "peers", "tickers": ["MSFT"], "args": ["--n", "5"], "nonce": 1794120374}
+{"command": "backtest-collect", "args": ["--max-annual", "120"], "nonce": 1794151677}
