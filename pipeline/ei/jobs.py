@@ -8,6 +8,8 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
+import httpx
+
 from ei.config import HISTORY_YEARS, Settings
 from ei.db import Db
 from ei.predecessors import KNOWN as KNOWN_PREDECESSORS
@@ -97,7 +99,12 @@ def load_prices(db: Db, provider: PriceProvider, ticker: str) -> tuple[int, str]
     )
     if start > _today_et():
         return 0, "up to date"
-    bars = provider.daily(ticker, start)
+    try:
+        bars = provider.daily(ticker, start)
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 429:
+            return 0, f"{provider.name} rate limit reached (free tier: 50/hour); queued to retry"
+        raise
     db.rpc("bump_api_usage", {"p_provider": provider.name, "p_day": str(_today_et()), "p_n": 1})
     rows = [
         {

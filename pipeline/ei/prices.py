@@ -58,6 +58,7 @@ class TiingoProvider:
             f"https://api.tiingo.com/tiingo/daily/{self._symbol(ticker)}/prices",
             limiter=self._limiter,
             params=params,
+            attempts=2,  # an hourly-limit 429 won't clear with a short backoff
         )
         if resp.status_code == 404:
             return []

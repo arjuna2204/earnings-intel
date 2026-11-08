@@ -5,8 +5,8 @@ const WORKFLOW = "pipeline.yml";
 
 /** Start the background pipeline in GitHub Actions. */
 export async function dispatchPipeline(inputs: { command: "analyze" | "tickers" | "refresh"; ticker?: string; job_id?: number }) {
-  const token = process.env.GITHUB_DISPATCH_TOKEN;
-  if (!token) throw new Error("GITHUB_DISPATCH_TOKEN is not set in Vercel");
+  const token = process.env.GH_DISPATCH_TOKEN || process.env.GITHUB_DISPATCH_TOKEN;
+  if (!token) throw new Error("The GitHub token (GH_DISPATCH_TOKEN) is not set in Vercel");
   const body = {
     ref: "main",
     inputs: Object.fromEntries(
