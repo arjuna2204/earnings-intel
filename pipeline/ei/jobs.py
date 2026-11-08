@@ -100,7 +100,14 @@ def load_prices(db: Db, provider: PriceProvider, ticker: str) -> tuple[int, str]
     bars = provider.daily(ticker, start)
     db.rpc("bump_api_usage", {"p_provider": provider.name, "p_day": str(_today_et()), "p_n": 1})
     rows = [
-        {"ticker": ticker, "date": str(b.day), "close": b.close, "adj_close": b.adj_close, "volume": b.volume}
+        {
+            "ticker": ticker,
+            "date": str(b.day),
+            "close": b.close,
+            "adj_close": b.adj_close,
+            "volume": b.volume,
+            "split_factor": b.split_factor,
+        }
         for b in bars
     ]
     if rows:
@@ -194,12 +201,25 @@ def analyze(settings: Settings, ticker: str, job_id: int | None = None, primary:
         db.upsert("filings", list({r["accession"]: r for r in rows}.values()), on_conflict="accession")
         job.step("filings", "done", f"{len(rows)} filings since {since_year}")
 
-        # 3. Financials from XBRL
+        # 3. Prices for the company (first: split history is needed for per-share data), its sector ETF and SPY
+        job.step("prices", "running")
+        notes = []
+        for t in dict.fromkeys([ticker, sector.etf, "SPY"]):
+            n, note = load_prices(db, prices, t)
+            notes.append(f"{t}: {n} new" if note in ("ok", "no new prices", "up to date") else f"{t}: {note}")
+        deferred = any("limit" in n for n in notes)
+        job.step("prices", "deferred" if deferred else "done", "; ".join(notes))
+
+        # 4. Financials from XBRL, split-adjusted to today's share basis
         job.step("financials", "running")
         facts = sec.companyfacts(cik)
         if pred_ciks:
             facts = merge_companyfacts(facts, [sec.companyfacts(pc) for pc in pred_ciks])
-        nc = normalize(facts, company["fiscal_year_end"], sector.pack, min_fiscal_year=since_year)
+        split_rows = db.select(
+            "prices", {"ticker": f"eq.{ticker}", "split_factor": "neq.1", "select": "date,split_factor"}
+        )
+        splits = [(date.fromisoformat(r["date"]), float(r["split_factor"])) for r in split_rows]
+        nc = normalize(facts, company["fiscal_year_end"], sector.pack, min_fiscal_year=since_year, splits=splits)
         nc = derive_all(nc, sector.pack)
         db.replace_rows(
             "metric_values",
@@ -216,17 +236,9 @@ def analyze(settings: Settings, ticker: str, job_id: int | None = None, primary:
         job.step(
             "financials",
             "done",
-            f"{len(nc.values)} values · {len(nc.unresolved)} not reported · {nc.currency}",
+            f"{len(nc.values)} values · {len(nc.unresolved)} not reported · {nc.currency}"
+            + (f" · adjusted for {len(splits)} stock split(s)" if splits else ""),
         )
-
-        # 4. Prices for the company, its sector ETF and SPY
-        job.step("prices", "running")
-        notes = []
-        for t in dict.fromkeys([ticker, sector.etf, "SPY"]):
-            n, note = load_prices(db, prices, t)
-            notes.append(f"{t}: {n} new" if note in ("ok", "no new prices", "up to date") else f"{t}: {note}")
-        deferred = any("limit" in n for n in notes)
-        job.step("prices", "deferred" if deferred else "done", "; ".join(notes))
 
         # 5. Valuation snapshot (needs prices)
         price, price_date = latest_price(db, ticker)

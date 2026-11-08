@@ -7,7 +7,9 @@ from __future__ import annotations
 
 import gzip
 import json
+from datetime import date
 from functools import cache
+from itertools import pairwise
 from pathlib import Path
 from typing import Any
 
@@ -126,3 +128,22 @@ def test_no_value_comes_from_proxy_statements() -> None:
     for t in ("AAPL", "MSFT", "JPM", "WMT", "XOM", "O"):
         for pv in company(t)[0].values.values():
             assert pv.accession is None or not pv.accession.endswith("DEF14A")
+
+
+AAPL_SPLITS = [(date(2014, 6, 9), 7.0), (date(2020, 8, 31), 4.0)]
+
+
+def test_split_adjustment_on_apple() -> None:
+    facts_path = FIX / "AAPL.json.gz"
+    with gzip.open(facts_path, "rt") as f:
+        facts = json.load(f)
+    nc = derive_all(normalize(facts, "0926", "general", min_fiscal_year=2011, splits=AAPL_SPLITS), "general")
+    # FY2013 diluted EPS was $39.75 as filed; on today's basis (7:1 then 4:1) that's 39.75 / 28 = $1.42.
+    eps13 = nc.get("eps_diluted", 2013, "FY")
+    assert eps13 is not None and eps13.value == pytest.approx(39.75 / 28, rel=1e-3)
+    assert "split" in (eps13.derivation or "")
+    # No year-over-year jump bigger than 2.5x anywhere in the EPS or share-count history.
+    for metric in ("eps_diluted", "diluted_shares"):
+        series = sorted((fy, pv.value) for (m, fy, fp), pv in nc.values.items() if m == metric and fp == "FY")
+        for (_, a), (fy, b) in pairwise(series):
+            assert 0.4 < b / a < 2.5, f"{metric} jumps in FY{fy}: {a} -> {b}"

@@ -17,6 +17,7 @@ class PriceBar:
     close: float
     adj_close: float
     volume: int | None
+    split_factor: float = 1.0
 
 
 class PriceProvider(Protocol):
@@ -67,6 +68,7 @@ class TiingoProvider:
                 close=float(r["close"]),
                 adj_close=float(r["adjClose"]),
                 volume=int(r["volume"]) if r.get("volume") is not None else None,
+                split_factor=float(r.get("splitFactor") or 1.0),
             )
             for r in resp.json()
         ]

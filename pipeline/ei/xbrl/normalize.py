@@ -44,6 +44,20 @@ class Fact:
     accession: str
     form: str
     filed: date
+    split_adj: float = 1.0  # factor applied to put the value on today's share basis
+
+
+Split = tuple[date, float]  # (split date, ratio e.g. 4.0 for 4-for-1)
+
+
+def split_multiplier(filed: date, splits: list[Split]) -> float:
+    """Cumulative split ratio for splits that happened AFTER the value was filed.
+    Values filed after a split are already on the new basis (filings restate history)."""
+    k = 1.0
+    for day, ratio in splits:
+        if ratio > 0 and ratio != 1.0 and day > filed:
+            k *= ratio
+    return k
 
 
 @dataclass(frozen=True)
@@ -155,7 +169,14 @@ def _pick_unit(units: dict[str, list[Any]], kind: str, currency: str | None) -> 
     return max(money, key=lambda k: len(units[k])) if money else None
 
 
-def extract_facts(companyfacts: dict[str, Any], tag: str, taxonomy: str, kind: str, currency: str | None) -> list[Fact]:
+def extract_facts(
+    companyfacts: dict[str, Any],
+    tag: str,
+    taxonomy: str,
+    kind: str,
+    currency: str | None,
+    splits: list[Split] | None = None,
+) -> list[Fact]:
     node = companyfacts.get("facts", {}).get(taxonomy, {}).get(tag)
     if not node:
         return []
@@ -166,16 +187,22 @@ def extract_facts(companyfacts: dict[str, Any], tag: str, taxonomy: str, kind: s
     for f in node["units"][unit]:
         if "end" not in f or "val" not in f or not _is_financial_form(f.get("form", "")):
             continue
+        filed = _d(f["filed"]) if f.get("filed") else date.min
+        value = float(f["val"])
+        k = split_multiplier(filed, splits) if splits and kind in ("per_share", "shares") else 1.0
+        if k != 1.0:
+            value = value / k if kind == "per_share" else value * k
         out.append(
             Fact(
                 tag=f"{taxonomy}:{tag}",
                 start=_d(f["start"]) if f.get("start") else None,
                 end=_d(f["end"]),
-                value=float(f["val"]),
+                value=value,
                 unit=unit,
                 accession=f.get("accn", ""),
                 form=f.get("form", ""),
-                filed=_d(f["filed"]) if f.get("filed") else date.min,
+                filed=filed,
+                split_adj=k,
             )
         )
     return out
@@ -229,18 +256,28 @@ def _candidates(m: MetricDef) -> list[tuple[str, str]]:
     return [("us-gaap", t) for t in m.us_gaap] + [("ifrs-full", t) for t in m.ifrs]
 
 
-def _collect(companyfacts: dict[str, Any], m: MetricDef, currency: str) -> dict[tuple[date | None, date], Fact]:
+def _collect(
+    companyfacts: dict[str, Any], m: MetricDef, currency: str, splits: list[Split] | None = None
+) -> dict[tuple[date | None, date], Fact]:
     """Per period, the value from the highest-priority candidate tag that reports it."""
     chosen: dict[tuple[date | None, date], Fact] = {}
     for taxonomy, tag in _candidates(m):
-        per_period = _latest_by_period(extract_facts(companyfacts, tag, taxonomy, m.unit, currency))
+        per_period = _latest_by_period(extract_facts(companyfacts, tag, taxonomy, m.unit, currency, splits))
         for key, f in per_period.items():
             chosen.setdefault(key, f)
     return chosen
 
 
+def _split_note(f: Fact) -> str | None:
+    if f.split_adj == 1.0:
+        return None
+    return f"Restated to today's share basis for stock split(s) after this filing (×{f.split_adj:g} shares)"
+
+
 def _pv(m: MetricDef, fy: int, fp: str, f: Fact) -> PeriodValue:
-    return PeriodValue(m.name, fy, fp, f.start, f.end, f.value, f.unit, "reported", f.tag, f.accession, f.filed)
+    return PeriodValue(
+        m.name, fy, fp, f.start, f.end, f.value, f.unit, "reported", f.tag, f.accession, f.filed, _split_note(f)
+    )
 
 
 def normalize(
@@ -248,6 +285,7 @@ def normalize(
     fiscal_year_end: str | None,
     pack: str = "general",
     min_fiscal_year: int | None = None,
+    splits: list[Split] | None = None,
 ) -> NormalizedCompany:
     currency = detect_currency(companyfacts)
     out = NormalizedCompany(currency=currency)
@@ -266,7 +304,7 @@ def normalize(
     for m in REPORTED:
         if pack not in m.packs:
             continue
-        facts = _collect(companyfacts, m, currency)
+        facts = _collect(companyfacts, m, currency, splits)
         if not facts:
             if not m.internal:
                 out.unresolved[m.name] = "No matching XBRL tag found in this company's filings"
@@ -279,7 +317,7 @@ def normalize(
     if min_fiscal_year is not None:
         out.values = {k: v for k, v in out.values.items() if v.fiscal_year >= min_fiscal_year}
 
-    _cover_shares(companyfacts, out)
+    _cover_shares(companyfacts, out, splits or [])
     return out
 
 
@@ -371,7 +409,7 @@ def _derived(m: MetricDef, fy: int, fp: str, src: Fact, value: float, how: str, 
     )
 
 
-def _cover_shares(companyfacts: dict[str, Any], out: NormalizedCompany) -> None:
+def _cover_shares(companyfacts: dict[str, Any], out: NormalizedCompany, splits: list[Split]) -> None:
     """Latest cover-page share count, summed across share classes reported for the same date."""
     node = companyfacts.get("facts", {}).get("dei", {}).get(DEI_SHARES_TAG)
     if not node or "shares" not in node.get("units", {}):
