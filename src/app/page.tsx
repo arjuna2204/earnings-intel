@@ -33,7 +33,15 @@ async function Recent() {
       limit: "12",
     });
   } catch {
-    return <p className="mt-10 text-sm text-muted">The database isn&apos;t connected yet.</p>;
+    return (
+      <p className="mt-10 text-sm text-muted">
+        Can&apos;t reach the database. Open{" "}
+        <a href="/api/health" className="text-accent underline">
+          the setup check
+        </a>{" "}
+        to see which setting needs fixing.
+      </p>
+    );
   }
   if (!rows.length) return <p className="mt-10 text-sm text-muted">No companies loaded yet — search for one to start.</p>;
   return (
