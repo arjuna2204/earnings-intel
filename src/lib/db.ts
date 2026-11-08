@@ -57,6 +57,18 @@ export async function insert<T>(table: string, row: Record<string, unknown>): Pr
   return rows[0];
 }
 
+export async function upsert<T>(table: string, row: Record<string, unknown>, onConflict: string): Promise<T> {
+  const { base, headers } = config();
+  const res = await fetch(`${base}/${table}?on_conflict=${encodeURIComponent(onConflict)}`, {
+    method: "POST",
+    headers: { ...headers, Prefer: "return=representation,resolution=merge-duplicates" },
+    body: JSON.stringify(row),
+    cache: "no-store",
+  });
+  const rows = (await (await check(res, `upsert ${table}`)).json()) as T[];
+  return rows[0];
+}
+
 export async function update(table: string, match: Record<string, string | number>, values: Record<string, unknown>) {
   const { base, headers } = config();
   const params = new URLSearchParams(Object.entries(match).map(([k, v]) => [k, `eq.${v}`]));

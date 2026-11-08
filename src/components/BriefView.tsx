@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import SourcePanel from "@/components/SourcePanel";
 import type { StreetRow } from "@/lib/figures";
-import type { Brief, Claim, Fact } from "@/lib/filings";
+import type { Brief, Claim, Dodge, Fact, Take } from "@/lib/filings";
 import type { Bridge, BriefExtras, StreakItem, Tile, Tone } from "@/lib/brief-extras";
 import type { GuidanceChange, GuidanceItem } from "@/lib/types";
 
@@ -20,12 +20,20 @@ export default function BriefView({
   extras,
   la,
   lb,
+  more,
 }: {
   brief: Brief;
   street: StreetRow[];
   extras: BriefExtras;
   la: string;
   lb: string;
+  more: {
+    cik: number;
+    ticker: string;
+    valuation: { price: number; epsNtm: number; peerMedianPe: number | null } | null;
+    dodges: Dodge[];
+    takes: { current: Take | null; previous: Take | null };
+  };
 }) {
   const [open, setOpen] = useState<string | null>(null);
   const facts = brief.inputs.facts;
@@ -71,6 +79,7 @@ export default function BriefView({
         {extras.streak.length > 1 && <Streak items={extras.streak} />}
         {extras.bridge && <BridgeChart bridge={extras.bridge} lb={lb} />}
         <ClaimRows claims={claims("street")} refs={refs} />
+        {more.valuation && <ValuationSlider {...more.valuation} ticker={more.ticker} />}
         {street.length > 0 && <Scorecard rows={street} la={la} lb={lb} onSource={setOpen} />}
       </Section>
 
@@ -104,6 +113,7 @@ export default function BriefView({
       {claims("call").length > 0 && (
         <Section id="call" title="On the call" more={{ href: `?tab=call&a=${la}&b=${lb}`, label: "Full call comparison" }}>
           <ClaimRows claims={claims("call")} refs={refs} />
+          {more.dodges.length > 0 && <Dodges items={more.dodges} />}
         </Section>
       )}
 
@@ -117,6 +127,8 @@ export default function BriefView({
           <ClaimRows claims={claims("risks")} refs={refs} />
         </Section>
       )}
+
+      <YourTake cik={more.cik} la={la} lb={lb} takes={more.takes} />
 
       <Sources order={order} facts={facts} onOpen={setOpen} />
 
@@ -132,6 +144,152 @@ export default function BriefView({
         </SourcePanel>
       )}
     </div>
+  );
+}
+
+function ValuationSlider({ price, epsNtm, peerMedianPe, ticker }: { price: number; epsNtm: number; peerMedianPe: number | null; ticker: string }) {
+  const [pct, setPct] = useState(0); // % change vs consensus
+  const eps = epsNtm * (1 + pct / 100);
+  const pe = eps > 0 ? price / eps : null;
+  const basePe = price / epsNtm;
+  return (
+    <div>
+      <div className="font-semibold">What if earnings come in different?</div>
+      <p className="mt-0.5 text-sm text-muted">
+        Drag to change next-12-months EPS from the analyst consensus (${epsNtm.toFixed(2)}) and see the forward P/E at today&apos;s price (${price.toFixed(2)}).
+      </p>
+      <div className="mt-4 grid grid-cols-3 gap-4">
+        <div>
+          <div className="text-sm text-muted">Next-12-months EPS</div>
+          <div className="mt-1 text-[26px] font-semibold leading-none tabular-nums">${eps.toFixed(2)}</div>
+          <div className={`mt-2 text-sm font-medium ${pct > 0 ? "text-up" : pct < 0 ? "text-down" : "text-muted"}`}>
+            {pct === 0 ? "Consensus" : `${pct > 0 ? "▲" : "▼"} ${Math.abs(pct)}% vs consensus`}
+          </div>
+        </div>
+        <div>
+          <div className="text-sm text-muted">Forward P/E</div>
+          <div className="mt-1 text-[26px] font-semibold leading-none tabular-nums">{pe ? `${pe.toFixed(1)}x` : "—"}</div>
+          <div className="mt-2 text-sm text-muted">{basePe.toFixed(1)}x at consensus</div>
+        </div>
+        <div>
+          <div className="text-sm text-muted">Peer median</div>
+          <div className="mt-1 text-[26px] font-semibold leading-none tabular-nums">{peerMedianPe ? `${peerMedianPe.toFixed(1)}x` : "—"}</div>
+          <div className="mt-2 text-sm text-muted">{peerMedianPe ? "Forward P/E" : "Run Peers to compare"}</div>
+        </div>
+      </div>
+      <input
+        type="range"
+        min={-30}
+        max={30}
+        step={1}
+        value={pct}
+        onChange={(e) => setPct(Number(e.target.value))}
+        aria-label={`Change ${ticker} next-12-months EPS versus consensus`}
+        className="mt-5 w-full accent-[var(--color-accent,#00c805)]"
+      />
+      <div className="flex justify-between text-xs text-muted">
+        <span>−30%</span>
+        <button onClick={() => setPct(0)} className="hover:text-foreground">
+          Reset
+        </button>
+        <span>+30%</span>
+      </div>
+    </div>
+  );
+}
+
+function Dodges({ items }: { items: Dodge[] }) {
+  const [open, setOpen] = useState<number | null>(null);
+  const cut = (t: string, n: number) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+  return (
+    <div>
+      <div className="font-semibold">Least direct answers</div>
+      <p className="mt-0.5 text-sm text-muted">Analyst questions management answered least directly, scored 0 (direct) to 1 (avoided) by AI. Read the exchange and judge for yourself.</p>
+      <ul className="mt-2 divide-y divide-border">
+        {items.map((d, i) => (
+          <li key={i} className="py-3">
+            <button onClick={() => setOpen(open === i ? null : i)} aria-expanded={open === i} className="flex w-full items-baseline justify-between gap-4 text-left">
+              <span className="min-w-0">
+                <span className="font-medium">{d.analyst}</span>
+                <span className="mt-0.5 block text-sm text-muted">{d.reason}</span>
+              </span>
+              <span className="shrink-0 text-sm font-semibold tabular-nums text-down">{d.score.toFixed(1)}</span>
+            </button>
+            {open === i && (
+              <div className="mt-3 space-y-3 text-[15px] leading-relaxed">
+                <p>
+                  <span className="text-sm text-muted">Question · </span>
+                  {cut(d.question, 900)}
+                </p>
+                <p>
+                  <span className="text-sm text-muted">Answer{d.answerer ? ` (${d.answerer})` : ""} · </span>
+                  {cut(d.answer, 1400)}
+                </p>
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function YourTake({ cik, la, lb, takes }: { cik: number; la: string; lb: string; takes: { current: Take | null; previous: Take | null } }) {
+  const [verdict, setVerdict] = useState<Take["verdict"] | null>(takes.current?.verdict ?? null);
+  const [note, setNote] = useState(takes.current?.note ?? "");
+  const [saved, setSaved] = useState<string | null>(takes.current ? "Saved" : null);
+  const save = async (v: Take["verdict"], n: string) => {
+    setSaved("Saving…");
+    const res = await fetch("/api/takes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cik, period_a: la, period_b: lb, verdict: v, note: n }) });
+    setSaved(res.ok ? "Saved" : "Couldn't save");
+  };
+  const word = { better: "Better", same: "About the same", worse: "Worse" } as const;
+  const prev = takes.previous;
+  return (
+    <section>
+      <h3 className="mb-1 border-b border-border pb-3 text-xl font-semibold tracking-tight">Your take</h3>
+      {prev && (
+        <p className="mt-3 text-[15px] leading-relaxed">
+          <span className="text-muted">Last time ({prev.period_b} vs {prev.period_a}) you said </span>
+          <b className={prev.verdict === "better" ? "text-up" : prev.verdict === "worse" ? "text-down" : ""}>{word[prev.verdict].toLowerCase()}</b>
+          {prev.note && <span className="text-muted">: “{prev.note}”</span>}. Does this quarter confirm it?
+        </p>
+      )}
+      <p className="mt-3 text-sm text-muted">
+        Overall, is {lb} better or worse than {la}? Only you see this. Next quarter&apos;s brief will remind you what you said.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {(["better", "same", "worse"] as const).map((v) => (
+          <button
+            key={v}
+            onClick={() => {
+              setVerdict(v);
+              save(v, note);
+            }}
+            aria-pressed={verdict === v}
+            className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+              verdict === v ? (v === "better" ? "bg-up text-black" : v === "worse" ? "bg-down text-black" : "bg-foreground text-background") : "border border-border text-muted hover:text-foreground"
+            }`}
+          >
+            {v === "better" ? "▲ " : v === "worse" ? "▼ " : ""}
+            {word[v]}
+          </button>
+        ))}
+      </div>
+      {verdict && (
+        <div className="mt-3">
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value.slice(0, 600))}
+            onBlur={() => save(verdict, note)}
+            rows={2}
+            placeholder="Why? (optional — e.g. “guide cut on memory costs; watch margins”)"
+            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-[15px] outline-none focus:border-foreground"
+          />
+          {saved && <p className="mt-1 text-xs text-muted">{saved}</p>}
+        </div>
+      )}
+    </section>
   );
 }
 

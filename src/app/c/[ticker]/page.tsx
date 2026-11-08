@@ -5,7 +5,7 @@ import CompanyTabs, { type TabKey } from "@/components/CompanyTabs";
 import FinancialsView from "@/components/FinancialsView";
 import PriceChart from "@/components/PriceChart";
 import { getCompanyByTicker, getFilings, getFinancials, getLatestJob, getPrices, getTicker } from "@/lib/company";
-import { getAnalysis, getComparison, getEvents, getLatestCallsJob, getToneTrend, parseQ, qLabel } from "@/lib/calls";
+import { CALLS_VERSION, getAnalysis, getComparison, getEvents, getLatestCallsJob, getToneTrend, parseQ, qLabel } from "@/lib/calls";
 import CallsPanel from "@/components/CallsPanel";
 import CallView from "@/components/CallView";
 import { compact, filingIndexFromDocUrl, GENERAL_GROUPS, PACK_GROUPS } from "@/lib/metrics";
@@ -16,7 +16,7 @@ import { getLatestPeersJob, getPeerComparison, getPeerSet } from "@/lib/peers";
 import { buildExtras } from "@/lib/brief-extras";
 import { figureText, releaseFigure, type StreetRow } from "@/lib/figures";
 import FilingsView from "@/components/FilingsView";
-import { getBrief, getLatestBriefJob, getRiskChanges, type Brief } from "@/lib/filings";
+import { getBrief, getDodges, getLatestBriefJob, getRiskChanges, getTakes, type Brief } from "@/lib/filings";
 import { select } from "@/lib/db";
 
 export default function CompanyPage(props: PageProps<"/c/[ticker]">) {
@@ -253,6 +253,13 @@ async function BriefTab({ company, events, a, b, mode = "brief" }: { company: Co
       select: "metric,fiscal_year,fiscal_period,value",
     }),
   ]);
+  const [takes, dodges, peerCmp] = await Promise.all([
+    getTakes(company.cik, la, lb),
+    getDodges(company.cik, eb[0], eb[1], CALLS_VERSION),
+    getPeerComparison(company.cik),
+  ]);
+  const v = company.valuation;
+  const valuation = v?.price && v?.eps_ntm && v.eps_ntm > 0 ? { price: v.price, epsNtm: v.eps_ntm, peerMedianPe: peerCmp?.result.medians.pe_fwd_ntm ?? null } : null;
   const kv = (m: string, q: [number, number]) => kpis.find((r) => r.metric === m && r.fiscal_year === q[0] && r.fiscal_period === `Q${q[1]}`)?.value;
   const extras = buildExtras({
     brief,
@@ -266,7 +273,7 @@ async function BriefTab({ company, events, a, b, mode = "brief" }: { company: Co
   return (
     <div className="space-y-8">
       {panel}
-      <BriefView brief={brief} street={street} extras={extras} la={la} lb={lb} />
+      <BriefView brief={brief} street={street} extras={extras} la={la} lb={lb} more={{ cik: company.cik, ticker: company.ticker, valuation, dodges, takes }} />
     </div>
   );
 }

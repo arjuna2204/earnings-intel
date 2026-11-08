@@ -102,3 +102,51 @@ export async function getLatestBriefJob(ticker: string, a: string, b: string): P
   });
   return rows[0] ?? null;
 }
+
+export type Take = { period_a: string; period_b: string; verdict: "better" | "same" | "worse"; note: string | null; created_at: string };
+
+/** The take for this comparison, and the most recent earlier take (shown as "last time you said"). */
+export async function getTakes(cik: number, a: string, b: string): Promise<{ current: Take | null; previous: Take | null }> {
+  const rows = await select<Take>("takes", { cik: `eq.${cik}`, select: "period_a,period_b,verdict,note,created_at", order: "period_b.desc", limit: "20" });
+  return {
+    current: rows.find((t) => t.period_a === a && t.period_b === b) ?? null,
+    previous: rows.find((t) => t.period_b < b) ?? null,
+  };
+}
+
+export type Dodge = { analyst: string; score: number; reason: string; question: string; answer: string; answerer: string };
+
+/** Q&A exchanges the call analysis scored as least direct (score ≥ 0.5), with the actual words. */
+export async function getDodges(cik: number, fy: number, fq: number, version: string): Promise<Dodge[]> {
+  const [an, tr] = await Promise.all([
+    select<{ evasiveness: { analyst: string; question_turns: number[]; answer_turns: number[]; evasiveness: number; reason: string }[] | null }>("call_analysis", {
+      cik: `eq.${cik}`,
+      fiscal_year: `eq.${fy}`,
+      fiscal_quarter: `eq.${fq}`,
+      analysis_version: `eq.${version}`,
+      select: "evasiveness",
+    }),
+    select<{ turns: { speaker: string; title?: string | null; content: string }[] }>("transcripts", {
+      cik: `eq.${cik}`,
+      fiscal_year: `eq.${fy}`,
+      fiscal_quarter: `eq.${fq}`,
+      select: "turns",
+    }),
+  ]);
+  const ev = an[0]?.evasiveness ?? [];
+  const turns = tr[0]?.turns ?? [];
+  if (!turns.length) return [];
+  const text = (ids: number[]) => ids.map((i) => turns[i]?.content ?? "").join(" ").trim();
+  return ev
+    .filter((e) => e.evasiveness >= 0.5)
+    .sort((x, y) => y.evasiveness - x.evasiveness)
+    .slice(0, 3)
+    .map((e) => ({
+      analyst: e.analyst,
+      score: e.evasiveness,
+      reason: e.reason,
+      question: text(e.question_turns),
+      answer: text(e.answer_turns),
+      answerer: [...new Set(e.answer_turns.map((i) => turns[i]?.speaker).filter(Boolean))].join(", "),
+    }));
+}
