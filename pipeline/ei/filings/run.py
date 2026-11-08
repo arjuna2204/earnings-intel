@@ -468,10 +468,10 @@ def run_brief(
         job.finish("done", None, cik)
         return {"ok": True}
     except BudgetExceeded as e:
-        job.finish("error", str(e))
+        job.finish("failed", str(e))
         return {"ok": False, "error": str(e)}
     except Exception as e:
-        job.finish("error", f"{type(e).__name__}: {e}")
+        job.finish("failed", f"{type(e).__name__}: {e}")
         raise
     finally:
         fetch.close()
