@@ -37,9 +37,11 @@ jobs:
           python pipeline/scripts/dump_calls_fixture.py $ARGS
       - name: Save result
         run: |
+          echo "::warning::files: $(ls -la pipeline/tests/fixtures/golden 2>&1 | tail -n +2 | tr '\n' ' ')"
+          echo "::warning::status: $(git status --porcelain 2>&1 | head -8 | tr '\n' ' ')"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add pipeline/tests/fixtures/golden
+          git add pipeline/tests/fixtures/golden || { echo "::error::git add failed"; exit 1; }
           git commit -m "Save golden call fixture [skip ci]" || echo "No change"
-          git pull --rebase origin main
-          git push origin HEAD:main
+          git pull --rebase --autostash origin main || { echo "::error::pull failed: $(git status --porcelain | head -5 | tr '\n' ' ')"; exit 1; }
+          git push origin HEAD:main || { echo "::error::push failed"; exit 1; }
