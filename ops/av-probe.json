@@ -1,164 +1,170 @@
 {
-  "earnings_keys": [
-    "annualEarnings",
-    "quarterlyEarnings",
+  "estimates_keys": [
+    "estimates",
     "symbol"
   ],
-  "earnings_quarterly_sample": [
+  "estimates_notice": null,
+  "estimates_count": 42,
+  "estimates_sample": [
     {
-      "fiscalDateEnding": "2026-09-30",
-      "reportedDate": "2026-11-02",
-      "reportedEPS": "2.05",
-      "estimatedEPS": "1.98",
-      "surprise": "0.07",
-      "surprisePercentage": "3.5354",
-      "reportTime": "post-market"
+      "date": "2028-09-30",
+      "horizon": "fiscal year",
+      "eps_estimate_average": "10.8295",
+      "eps_estimate_high": "11.8200",
+      "eps_estimate_low": "9.5800",
+      "eps_estimate_analyst_count": "22.0000",
+      "eps_estimate_average_7_days_ago": "10.8436",
+      "eps_estimate_average_30_days_ago": "10.8337",
+      "eps_estimate_average_60_days_ago": "10.7505",
+      "eps_estimate_average_90_days_ago": "10.8366",
+      "eps_estimate_revision_up_trailing_7_days": "1.0000",
+      "eps_estimate_revision_down_trailing_7_days": null,
+      "eps_estimate_revision_up_trailing_30_days": "2.0000",
+      "eps_estimate_revision_down_trailing_30_days": "2.0000",
+      "revenue_estimate_average": "571661993480.00",
+      "revenue_estimate_high": "637905000000.00",
+      "revenue_estimate_low": "540301236000.00",
+      "revenue_estimate_analyst_count": "23.00"
     },
     {
-      "fiscalDateEnding": "2026-06-30",
-      "reportedDate": "2026-07-30",
-      "reportedEPS": "2.02",
-      "estimatedEPS": "1.88",
-      "surprise": "0.14",
-      "surprisePercentage": "7.4468",
-      "reportTime": "post-market"
+      "date": "2027-09-30",
+      "horizon": "fiscal year",
+      "eps_estimate_average": "9.4485",
+      "eps_estimate_high": "9.9434",
+      "eps_estimate_low": "8.8700",
+      "eps_estimate_analyst_count": "38.0000",
+      "eps_estimate_average_7_days_ago": "8.8414",
+      "eps_estimate_average_30_days_ago": "8.8342",
+      "eps_estimate_average_60_days_ago": "8.8245",
+      "eps_estimate_average_90_days_ago": "8.7977",
+      "eps_estimate_revision_up_trailing_7_days": "1.0000",
+      "eps_estimate_revision_down_trailing_7_days": null,
+      "eps_estimate_revision_up_trailing_30_days": "3.0000",
+      "eps_estimate_revision_down_trailing_30_days": "3.0000",
+      "revenue_estimate_average": "477708596770.00",
+      "revenue_estimate_high": "484000000000.00",
+      "revenue_estimate_low": "476002000000.00",
+      "revenue_estimate_analyst_count": "36.00"
     },
     {
-      "fiscalDateEnding": "2026-03-31",
-      "reportedDate": "2026-04-30",
-      "reportedEPS": "2.01",
-      "estimatedEPS": "1.94",
-      "surprise": "0.07",
-      "surprisePercentage": "3.6082",
-      "reportTime": "post-market"
+      "date": "2027-03-31",
+      "horizon": "fiscal quarter",
+      "eps_estimate_average": "2.1524",
+      "eps_estimate_high": "2.4900",
+      "eps_estimate_low": "1.8700",
+      "eps_estimate_analyst_count": "16.0000",
+      "eps_estimate_average_7_days_ago": "2.2263",
+      "eps_estimate_average_30_days_ago": "2.2342",
+      "eps_estimate_average_60_days_ago": "2.2432",
+      "eps_estimate_average_90_days_ago": "2.2053",
+      "eps_estimate_revision_up_trailing_7_days": "0.0000",
+      "eps_estimate_revision_down_trailing_7_days": null,
+      "eps_estimate_revision_up_trailing_30_days": "2.0000",
+      "eps_estimate_revision_down_trailing_30_days": "4.0000",
+      "revenue_estimate_average": "124937339510.00",
+      "revenue_estimate_high": "142811158840.00",
+      "revenue_estimate_low": "110770000000.00",
+      "revenue_estimate_analyst_count": "15.00"
     },
     {
-      "fiscalDateEnding": "2025-12-31",
-      "reportedDate": "2026-01-29",
-      "reportedEPS": "2.84",
-      "estimatedEPS": "2.67",
-      "surprise": "0.17",
-      "surprisePercentage": "6.367",
-      "reportTime": "post-market"
+      "date": "2026-12-31",
+      "horizon": "fiscal quarter",
+      "eps_estimate_average": "2.9121",
+      "eps_estimate_high": "3.4200",
+      "eps_estimate_low": "2.5900",
+      "eps_estimate_analyst_count": "20.0000",
+      "eps_estimate_average_7_days_ago": "2.8954",
+      "eps_estimate_average_30_days_ago": "2.9059",
+      "eps_estimate_average_60_days_ago": "2.8927",
+      "eps_estimate_average_90_days_ago": "2.9050",
+      "eps_estimate_revision_up_trailing_7_days": "1.0000",
+      "eps_estimate_revision_down_trailing_7_days": null,
+      "eps_estimate_revision_up_trailing_30_days": "2.0000",
+      "eps_estimate_revision_down_trailing_30_days": "1.0000",
+      "revenue_estimate_average": "153064137540.00",
+      "revenue_estimate_high": "162524000000.00",
+      "revenue_estimate_low": "135684509400.00",
+      "revenue_estimate_analyst_count": "16.00"
     },
     {
-      "fiscalDateEnding": "2025-09-30",
-      "reportedDate": "2025-10-30",
-      "reportedEPS": "1.85",
-      "estimatedEPS": "1.77",
-      "surprise": "0.08",
-      "surprisePercentage": "4.5198",
-      "reportTime": "post-market"
+      "date": "2026-09-30",
+      "horizon": "fiscal quarter",
+      "eps_estimate_average": "2.9035",
+      "eps_estimate_high": "2.9420",
+      "eps_estimate_low": "2.8700",
+      "eps_estimate_analyst_count": "26.0000",
+      "eps_estimate_average_7_days_ago": "2.8963",
+      "eps_estimate_average_30_days_ago": "2.9059",
+      "eps_estimate_average_60_days_ago": "2.9109",
+      "eps_estimate_average_90_days_ago": "2.9050",
+      "eps_estimate_revision_up_trailing_7_days": "1.0000",
+      "eps_estimate_revision_down_trailing_7_days": null,
+      "eps_estimate_revision_up_trailing_30_days": "2.0000",
+      "eps_estimate_revision_down_trailing_30_days": "3.0000",
+      "revenue_estimate_average": "155568783890.00",
+      "revenue_estimate_high": "159565000000.00",
+      "revenue_estimate_low": "138455000000.00",
+      "revenue_estimate_analyst_count": "15.00"
     },
     {
-      "fiscalDateEnding": "2025-06-30",
-      "reportedDate": "2025-07-31",
-      "reportedEPS": "1.57",
-      "estimatedEPS": "1.43",
-      "surprise": "0.14",
-      "surprisePercentage": "9.7902",
-      "reportTime": "post-market"
+      "date": "2026-06-30",
+      "horizon": "fiscal quarter",
+      "eps_estimate_average": "1.8924",
+      "eps_estimate_high": "1.9900",
+      "eps_estimate_low": "1.8200",
+      "eps_estimate_analyst_count": "30.0000",
+      "eps_estimate_average_7_days_ago": "1.8940",
+      "eps_estimate_average_30_days_ago": "1.8943",
+      "eps_estimate_average_60_days_ago": "1.8943",
+      "eps_estimate_average_90_days_ago": "1.7395",
+      "eps_estimate_revision_up_trailing_7_days": "0.0000",
+      "eps_estimate_revision_down_trailing_7_days": null,
+      "eps_estimate_revision_up_trailing_30_days": "24.0000",
+      "eps_estimate_revision_down_trailing_30_days": "0.0000",
+      "revenue_estimate_average": "108959817930.00",
+      "revenue_estimate_high": "112168000000.00",
+      "revenue_estimate_low": "107516300000.00",
+      "revenue_estimate_analyst_count": "27.00"
+    },
+    {
+      "date": "2026-03-31",
+      "horizon": "fiscal quarter",
+      "eps_estimate_average": "1.9404",
+      "eps_estimate_high": "2.1600",
+      "eps_estimate_low": "1.5600",
+      "eps_estimate_analyst_count": "33.0000",
+      "eps_estimate_average_7_days_ago": "1.9428",
+      "eps_estimate_average_30_days_ago": "1.9514",
+      "eps_estimate_average_60_days_ago": "1.9489",
+      "eps_estimate_average_90_days_ago": "1.9428",
+      "eps_estimate_revision_up_trailing_7_days": "3.0000",
+      "eps_estimate_revision_down_trailing_7_days": null,
+      "eps_estimate_revision_up_trailing_30_days": "4.0000",
+      "eps_estimate_revision_down_trailing_30_days": "1.0000",
+      "revenue_estimate_average": "109578690550.00",
+      "revenue_estimate_high": "115368900000.00",
+      "revenue_estimate_low": "104636000000.00",
+      "revenue_estimate_analyst_count": "32.00"
+    },
+    {
+      "date": "2025-12-31",
+      "horizon": "fiscal quarter",
+      "eps_estimate_average": "2.6708",
+      "eps_estimate_high": "2.8000",
+      "eps_estimate_low": "2.4500",
+      "eps_estimate_analyst_count": "33.0000",
+      "eps_estimate_average_7_days_ago": "2.6731",
+      "eps_estimate_average_30_days_ago": "2.6672",
+      "eps_estimate_average_60_days_ago": "2.6632",
+      "eps_estimate_average_90_days_ago": "2.6509",
+      "eps_estimate_revision_up_trailing_7_days": "3.0000",
+      "eps_estimate_revision_down_trailing_7_days": null,
+      "eps_estimate_revision_up_trailing_30_days": "5.0000",
+      "eps_estimate_revision_down_trailing_30_days": "1.0000",
+      "revenue_estimate_average": "138522147180.00",
+      "revenue_estimate_high": "142460000000.00",
+      "revenue_estimate_low": "136656000000.00",
+      "revenue_estimate_analyst_count": "32.00"
     }
-  ],
-  "earnings_quarterly_count": 123,
-  "earnings_notice": null,
-  "transcript_top_keys": [
-    "quarter",
-    "symbol",
-    "transcript"
-  ],
-  "transcript_meta": {
-    "symbol": "AAPL",
-    "quarter": "2024Q1"
-  },
-  "transcript_turns": 63,
-  "transcript_first_turns": [
-    {
-      "speaker": "Operator",
-      "title": "Operator",
-      "sentiment": "0.0",
-      "content_start": "Good day, and welcome to the Apple Q1 Fiscal Year 2024 Earnings Conference Call. Today's call is being recorded. At this time, for opening remarks and introductions. I would like to turn the call over to Suhasini Chandra"
-    },
-    {
-      "speaker": "Suhasini Chandramouli",
-      "title": "Director of Investor Relations",
-      "sentiment": "0.0",
-      "content_start": "Thank you for joining us. Speaking first today is Apple's CEO, Tim Cook; and he'll be followed by CFO, Luca Maestri. After that, we'll open the call to questions from analysts. Before turning the call over to Tim, I woul"
-    },
-    {
-      "speaker": "Tim Cook",
-      "title": "CEO",
-      "sentiment": "0.7",
-      "content_start": "Thank you, Suhasini. Good afternoon, everyone, and thanks for joining the call. Today, Apple is reporting revenue of $119.6 billion for the December quarter, up 2% from a year ago despite having one less week in the quar"
-    },
-    {
-      "speaker": "Luca Maestri",
-      "title": "CFO",
-      "sentiment": "0.5",
-      "content_start": "Thank you, Tim, and good afternoon, everyone. Revenue for the December quarter was $119.6 billion, up 2% from last year. During the December quarter a year ago, two unique factors affected our results. First, we had an a"
-    },
-    {
-      "speaker": "Suhasini Chandramouli",
-      "title": "Director of Investor Relations",
-      "sentiment": "0.0",
-      "content_start": "Thank you, Luca. We ask that you limit yourself to two questions. Operator, may we have the first question please?"
-    },
-    {
-      "speaker": "Operator",
-      "title": "Operator",
-      "sentiment": "0.0",
-      "content_start": "Certainly. We'll go ahead and take our first question from Erik Woodring with Morgan Stanley. Please go ahead."
-    }
-  ],
-  "speakers": [
-    [
-      "Aaron Rakers",
-      "Analyst"
-    ],
-    [
-      "Amit Daryanani",
-      "Analyst"
-    ],
-    [
-      "Ben Reitzes",
-      "Analyst"
-    ],
-    [
-      "David Vogt",
-      "Analyst"
-    ],
-    [
-      "Erik Woodring",
-      "Analyst"
-    ],
-    [
-      "Krish Sankar",
-      "Analyst"
-    ],
-    [
-      "Luca Maestri",
-      "CFO"
-    ],
-    [
-      "Mike Ng",
-      "Analyst"
-    ],
-    [
-      "Operator",
-      "Operator"
-    ],
-    [
-      "Suhasini Chandramouli",
-      "Director of Investor Relations"
-    ],
-    [
-      "Tim Cook",
-      "CEO"
-    ],
-    [
-      "Wamsi Mohan",
-      "Analyst"
-    ]
-  ],
-  "total_chars": 41958
+  ]
 }
