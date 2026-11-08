@@ -38,9 +38,9 @@ def test_ntm_prefers_four_quarters_then_blends_years() -> None:
         {"horizon": "fiscal quarter", "period_end": "2026-12-31", "eps_avg": 2.9},
     ]
     eps2, how2 = ntm_eps(years, date(2026, 9, 30), date(2026, 11, 7))
-    w1 = (date(2027, 9, 30) - date(2026, 11, 7)).days / 365.25
-    assert eps2 == pytest.approx(w1 * 9.4485 + (1 - w1) * 10.8295)
-    assert "Time-weighted" in how2
+    # Just after fiscal year-end all four FY1 quarters are still ahead, so NTM = FY1 consensus.
+    assert eps2 == pytest.approx(9.4485)
+    assert "4/4 of FY ending 2027-09-30" in how2
 
 
 def test_street_multiples() -> None:
@@ -48,3 +48,21 @@ def test_street_multiples() -> None:
     assert m["pe_adj_ltm"] == pytest.approx(200 / 8.92)
     assert m["pe_adj_run_rate"] == pytest.approx(200 / 8.2)
     assert m["pe_fwd_ntm"] is None
+
+
+def test_ntm_nvda_partial_quarters() -> None:
+    """NVDA Nov 2026: reported through 2026-07-31; two FY2027 quarters left (2.47, 2.75), FY2028 = 15.91."""
+    from datetime import date
+
+    from ei.street import ntm_eps
+
+    est = [
+        {"horizon": "fiscal quarter", "period_end": "2026-10-31", "eps_avg": 2.47},
+        {"horizon": "fiscal quarter", "period_end": "2027-01-31", "eps_avg": 2.75},
+        {"horizon": "fiscal year", "period_end": "2027-01-31", "eps_avg": 9.31},
+        {"horizon": "fiscal year", "period_end": "2028-01-31", "eps_avg": 15.91},
+    ]
+    eps, method = ntm_eps(est, date(2026, 7, 31), date(2026, 11, 7))
+    assert eps is not None
+    assert abs(eps - (2.47 + 2.75 + 15.91 / 2)) < 1e-9
+    assert "remaining quarterly" in method

@@ -7,7 +7,7 @@ All arithmetic here is plain code.
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 
@@ -60,18 +60,28 @@ def ntm_eps(estimates: list[dict[str, Any]], last_reported_end: date | None, tod
             for e in estimates
             if e["horizon"] == "fiscal year"
             and e.get("eps_avg") is not None
-            and date.fromisoformat(str(e["period_end"])) > today
+            and date.fromisoformat(str(e["period_end"])) > after
         ),
         key=lambda e: str(e["period_end"]),
     )
     if len(years) >= 2:
         fy1, fy2 = years[0], years[1]
         end1 = date.fromisoformat(str(fy1["period_end"]))
-        w1 = min(max((end1 - today).days / 365.25, 0.0), 1.0)
-        eps = w1 * float(fy1["eps_avg"]) + (1 - w1) * float(fy2["eps_avg"])
-        return eps, (
-            f"Time-weighted blend of fiscal-year consensus: {w1:.0%} × FY ending {fy1['period_end']} "
-            f"(${float(fy1['eps_avg']):.2f}) + {1 - w1:.0%} × FY ending {fy2['period_end']} (${float(fy2['eps_avg']):.2f})"
+        # Quarters of FY1 that have not been reported yet (≈91 days each, 52/53-week tolerant).
+        remaining = min(max(round((end1 - after).days / 91.3), 0), 4)
+        fy1_quarters = [e for e in quarters if date.fromisoformat(str(e["period_end"])) <= end1 + timedelta(days=10)]
+        fy2_part = float(fy2["eps_avg"]) * (4 - remaining) / 4
+        if remaining and len(fy1_quarters) >= remaining:
+            used = fy1_quarters[:remaining]
+            q_sum = float(sum(e["eps_avg"] for e in used))
+            return q_sum + fy2_part, (
+                f"{remaining} remaining quarterly estimate(s) of the FY ending {fy1['period_end']} "
+                f"(${q_sum:.2f}) + {4 - remaining}/4 of next-year consensus (${float(fy2['eps_avg']):.2f})"
+            )
+        fy1_part = float(fy1["eps_avg"]) * remaining / 4
+        return fy1_part + fy2_part, (
+            f"{remaining}/4 of FY ending {fy1['period_end']} consensus (${float(fy1['eps_avg']):.2f}) + "
+            f"{4 - remaining}/4 of FY ending {fy2['period_end']} consensus (${float(fy2['eps_avg']):.2f})"
         )
     return None, "Not enough consensus estimates"
 
