@@ -65,8 +65,106 @@ export type Job = {
   status: "queued" | "running" | "done" | "failed" | "deferred";
   steps: Record<string, { status: string; detail: string | null; at: string }>;
   message: string | null;
+  params?: Record<string, string>;
   created_at: string;
   finished_at: string | null;
 };
 
 export type TickerHit = { ticker: string; cik: number; name: string; exchange: string | null };
+
+export type EarningsEvent = {
+  fiscal_year: number;
+  fiscal_quarter: number;
+  period_end: string;
+  report_date: string;
+  report_time: string | null;
+  eps_reported: number | null;
+  eps_estimated: number | null;
+};
+
+export type Quoted = { quote: string; turn: number; speaker?: string; role?: string; section?: string };
+export type GuidanceItem = Quoted & {
+  metric: string;
+  period: string;
+  low: number | null;
+  high: number | null;
+  point: number | null;
+  unit: string | null;
+  qualitative: string | null;
+  withdrawn: boolean;
+  numbers_removed?: boolean;
+};
+export type TopicItem = Quoted & { label: string; summary: string; turns: number[] };
+export type RiskItem = Quoted & { label: string; summary: string };
+export type KpiItem = Quoted & { name: string; value: number | null; unit: string | null; period: string | null };
+
+export type ToneRates = {
+  words: number;
+  uncertainty_rate: number;
+  positive_rate: number;
+  negative_rate: number;
+  net_tone: number;
+};
+
+export type PriceReaction = {
+  base_date: string;
+  timing: string;
+  r1: number | null;
+  r5: number | null;
+  bench_r1: number | null;
+  bench_r5: number | null;
+  excess_r1: number | null;
+  excess_r5: number | null;
+} | null;
+
+export type CallAnalysis = {
+  fiscal_year: number;
+  fiscal_quarter: number;
+  status: "done" | "partial";
+  note: string | null;
+  cost_usd: string;
+  parsed: {
+    turns: { i: number; speaker: string; title: string; role: string; section: string; words: number }[];
+    speakers: Record<string, string>;
+    qa_start: number | null;
+    exchanges: { id: number; analyst: string; question_turns: number[]; answer_turns: number[] }[];
+  };
+  tone: {
+    speakers: Record<string, { role: string } & Partial<Record<"prepared" | "qa" | "all", ToneRates>>>;
+    executives: Partial<Record<"prepared" | "qa" | "all", ToneRates>>;
+  };
+  extraction: { guidance: GuidanceItem[]; kpis: KpiItem[]; risks: RiskItem[]; topics: TopicItem[] } | null;
+  evasiveness: { exchange: number; analyst: string; question_turns: number[]; answer_turns: number[]; evasiveness: number; reason: string }[] | null;
+  dropped_claims: unknown[];
+  price_reaction: PriceReaction;
+};
+
+export type GuidanceChange = {
+  metric: string;
+  earlier: GuidanceItem | null;
+  later: GuidanceItem | null;
+  change: "raised" | "lowered" | "maintained" | "new" | "withdrawn" | "not repeated" | "changed basis" | "qualitative";
+  delta?: number;
+  delta_pct?: number | null;
+  note?: string;
+};
+
+export type TopicChange = {
+  label: string;
+  earlier: TopicItem | null;
+  later: TopicItem | null;
+  share_a: number;
+  share_b: number;
+  change: "new" | "dropped" | "expanded" | "reduced" | "steady";
+};
+
+export type CallComparison = {
+  period_a: string;
+  period_b: string;
+  embedder: string;
+  guidance: GuidanceChange[];
+  topics: TopicChange[];
+  tone: Partial<Record<"prepared" | "qa" | "all", Record<keyof Omit<ToneRates, "words">, { a: number; b: number; delta: number }>>>;
+  price_reaction: Record<string, PriceReaction>;
+  partial: boolean;
+};

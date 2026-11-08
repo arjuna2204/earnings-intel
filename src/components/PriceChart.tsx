@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import EChart from "@/components/EChart";
 import { useThemeColors } from "@/components/useThemeColors";
 import type { PricePoint } from "@/lib/types";
@@ -13,20 +14,23 @@ const RANGES = [
   { key: "15Y", days: 15 * 366 },
 ] as const;
 
-type Marker = { date: string; label: string };
+type Marker = { date: string; label: string; href?: string };
 
 export default function PriceChart({
   prices,
   markers,
   currencySymbol = "$",
   emptyNote,
+  markerNote = "○ = earnings report · tap to open that call",
 }: {
   prices: PricePoint[];
   markers: Marker[];
   currencySymbol?: string;
   emptyNote?: string;
+  markerNote?: string;
 }) {
   const colors = useThemeColors();
+  const router = useRouter();
   const [range, setRange] = useState<(typeof RANGES)[number]["key"]>("1Y");
   const [hover, setHover] = useState<number | null>(null);
 
@@ -57,12 +61,13 @@ export default function PriceChart({
   const color = up ? colors.up : colors.down;
   const inRange = markers.filter((m) => m.date >= first.date && m.date <= latest.date);
   const dateIndex = new Map(series.map((p, i) => [p.date, i]));
-  const markerPoints = inRange
+  const placed = inRange
     .map((m) => {
       const i = dateIndex.get(m.date) ?? series.findIndex((p) => p.date >= m.date);
-      return i >= 0 ? { coord: [i, series[i].adj_close], name: m.label, value: m.label } : null;
+      return i >= 0 ? { m, point: { coord: [i, series[i].adj_close], name: m.label, value: m.label } } : null;
     })
-    .filter(Boolean);
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+  const markerPoints = placed.map((x) => x.point);
 
   const option = {
     animationDuration: 300,
@@ -115,6 +120,12 @@ export default function PriceChart({
       <div>
         <EChart
           onHoverIndex={setHover}
+          onClick={(p) => {
+            if (p.componentType === "markPoint") {
+              const href = placed[p.dataIndex]?.m.href;
+              if (href) router.push(href, { scroll: false });
+            }
+          }}
           option={option}
           className="h-64 w-full sm:h-80"
           ariaLabel={`Price over ${range}: ${up ? "up" : "down"} ${Math.abs(pct * 100).toFixed(1)} percent`}
@@ -140,7 +151,7 @@ export default function PriceChart({
             </button>
           ))}
         </div>
-        <span className="hidden text-xs text-muted sm:inline">○ = 10-K / 10-Q filed</span>
+        <span className="hidden text-xs text-muted sm:inline">{markerNote}</span>
       </div>
     </section>
   );

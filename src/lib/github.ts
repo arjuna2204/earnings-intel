@@ -4,7 +4,13 @@ const REPO = "arjuna2204/earnings-intel";
 const WORKFLOW = "pipeline.yml";
 
 /** Start the background pipeline in GitHub Actions. */
-export async function dispatchPipeline(inputs: { command: "analyze" | "tickers" | "refresh"; ticker?: string; job_id?: number }) {
+export async function dispatchPipeline(inputs: {
+  command: "analyze" | "calls" | "tickers" | "refresh";
+  ticker?: string;
+  job_id?: number;
+  period_a?: string;
+  period_b?: string;
+}) {
   const token = process.env.GH_DISPATCH_TOKEN || process.env.GITHUB_DISPATCH_TOKEN;
   if (!token) throw new Error("The GitHub token (GH_DISPATCH_TOKEN) is not set in Vercel");
   const body = {

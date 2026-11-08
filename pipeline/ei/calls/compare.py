@@ -155,7 +155,8 @@ def compare_topics(
     """new / dropped / expanded / reduced / steady, by share of the call's words ("airtime")."""
     emb = embedder or OverlapEmbedder()
     sim = emb.similarity_matrix([_topic_text(t) for t in earlier], [_topic_text(t) for t in later])
-    matches = greedy_match(sim, threshold=0.62 if emb.name != "word-overlap" else 0.25)
+    # Calibrated on real Apple calls with bge-small: 0.64 paired unrelated topics, >=0.70 held up.
+    matches = greedy_match(sim, threshold=0.70 if emb.name != "word-overlap" else 0.25)
     sa, sb = airtime(earlier, words_a), airtime(later, words_b)
     rows: list[dict[str, Any]] = []
     ma, mb = {i for i, _, _ in matches}, {j for _, j, _ in matches}

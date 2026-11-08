@@ -27,7 +27,7 @@ echarts.use([
 type Props = {
   option: echarts.EChartsCoreOption;
   className?: string;
-  onClick?: (params: { dataIndex: number; seriesIndex?: number; componentType?: string }) => void;
+  onClick?: (params: { dataIndex: number; seriesIndex?: number; componentType?: string; name?: string }) => void;
   ariaLabel: string;
   /** Called with the category index under the pointer (axis tooltip charts), or null when it leaves. */
   onHoverIndex?: (index: number | null) => void;

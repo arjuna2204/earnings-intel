@@ -17,7 +17,7 @@ from ei.transcripts import Turn
 from ei.verify import locate
 
 PROMPT_FILE = "call_extraction.v2.md"
-ANALYSIS_VERSION = "calls-v3"  # bump when prompts or parsing change: cached analyses then re-run
+ANALYSIS_VERSION = "calls-v4"  # bump when prompts or parsing change: cached analyses then re-run
 
 
 class Quoted(BaseModel):
@@ -148,6 +148,25 @@ def check_guidance_numbers(item: dict[str, Any]) -> dict[str, Any]:
     return item
 
 
+def _sentences(text: str) -> list[str]:
+    return [x.strip() for x in re.split(r"(?<=[.!?])\s+", text) if len(x.split()) >= 6]
+
+
+def pick_topic_quote(label: str, turn_ids: list[int], sources: list[str]) -> tuple[int, str] | None:
+    """A verbatim sentence from the topic's own turns, preferring one that shares words with the label."""
+    words = {w for w in re.findall(r"[a-z]+", label.lower()) if len(w) > 3}
+    best: tuple[int, int, str] | None = None
+    for t in turn_ids:
+        for sent in _sentences(sources[t]):
+            score = sum(w in sent.lower() for w in words)
+            cand = (score, t, " ".join(sent.split()[:40]))
+            if best is None or cand[0] > best[0]:
+                best = cand
+    if best is None:
+        return None
+    return best[1], best[2]
+
+
 def verify_extraction(
     ex: Extraction, turns: list[Turn], parsed: ParsedCall
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
@@ -158,10 +177,20 @@ def verify_extraction(
     for kind in ("guidance", "kpis", "risks", "topics"):
         for item in getattr(ex, kind):
             where = locate(item.quote, sources, item.turn)
+            d = item.model_dump()
+            if where is None and kind == "topics":
+                # The topic itself is grounded in the turns where it was discussed; if the model's
+                # sample quote was paraphrased, pick a real sentence from those turns instead.
+                picked = pick_topic_quote(item.label, [t for t in item.turns if 0 <= t < len(turns)], sources)
+                if picked:
+                    where, d["quote"] = picked
+                    d["quote_selected_by_code"] = True
+                    dropped.append(
+                        {"kind": kind, "item": item.model_dump(), "reason": "quote replaced: model paraphrased"}
+                    )
             if where is None:
                 dropped.append({"kind": kind, "item": item.model_dump(), "reason": "quote not found verbatim"})
                 continue
-            d = item.model_dump()
             if kind == "guidance":
                 d = check_guidance_numbers(d)
             d["turn"] = where
@@ -196,8 +225,8 @@ def evasiveness_rows(ex: Extraction, parsed: ParsedCall) -> list[dict[str, Any]]
 
 def extract_call(
     ai: AiClient, company: str, period: str, turns: list[Turn], parsed: ParsedCall, cik: int
-) -> tuple[dict[str, Any], list[dict[str, Any]], list[dict[str, Any]], float]:
-    """Returns (verified extraction, evasiveness rows, dropped claims, cost in USD)."""
+) -> tuple[dict[str, Any], list[dict[str, Any]], list[dict[str, Any]], float, dict[str, Any]]:
+    """Returns (verified extraction, evasiveness rows, dropped claims, cost in USD, raw model output)."""
     result = ai.json_call(
         model=HAIKU,
         purpose=f"call extraction {period}",
@@ -213,4 +242,4 @@ def extract_call(
     except ValidationError as exc:
         raise RuntimeError(f"Extraction failed validation: {exc.errors()[:3]}") from exc
     kept, dropped = verify_extraction(ex, turns, parsed)
-    return kept, evasiveness_rows(ex, parsed), dropped, float(result.cost)
+    return kept, evasiveness_rows(ex, parsed), dropped, float(result.cost), result.data

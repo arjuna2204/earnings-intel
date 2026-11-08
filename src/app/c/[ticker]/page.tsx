@@ -5,6 +5,9 @@ import CompanyTabs, { type TabKey } from "@/components/CompanyTabs";
 import FinancialsView from "@/components/FinancialsView";
 import PriceChart from "@/components/PriceChart";
 import { getCompanyByTicker, getFilings, getFinancials, getLatestJob, getPrices, getTicker } from "@/lib/company";
+import { getAnalysis, getComparison, getEvents, getLatestCallsJob, getToneTrend, parseQ, qLabel } from "@/lib/calls";
+import CallsPanel from "@/components/CallsPanel";
+import CallView from "@/components/CallView";
 import { compact, filingIndexFromDocUrl, GENERAL_GROUPS, PACK_GROUPS } from "@/lib/metrics";
 import type { Company, Filing } from "@/lib/types";
 
@@ -58,10 +61,21 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
     );
   }
 
-  const [prices, filings, job] = await Promise.all([getPrices(company.ticker), getFilings(company.cik), getLatestJob(company.ticker)]);
-  const markers = filings
-    .filter((f) => ["10-K", "10-Q", "20-F", "40-F"].includes(f.form))
-    .map((f) => ({ date: f.filed_date, label: f.form }));
+  const [prices, filings, job, events] = await Promise.all([
+    getPrices(company.ticker),
+    getFilings(company.cik),
+    getLatestJob(company.ticker),
+    getEvents(company.cik),
+  ]);
+  // Earnings-report dots (tap → that quarter's call vs. the same quarter a year earlier).
+  // Until report dates are loaded (first call comparison), fall back to filing dates.
+  const markers = events.length
+    ? events.map((e) => ({
+        date: e.report_date,
+        label: `Earnings ${qLabel(e.fiscal_year, e.fiscal_quarter)}`,
+        href: `/c/${company.ticker}?tab=call&a=${qLabel(e.fiscal_year - 1, e.fiscal_quarter)}&b=${qLabel(e.fiscal_year, e.fiscal_quarter)}`,
+      }))
+    : filings.filter((f) => ["10-K", "10-Q", "20-F", "40-F"].includes(f.form)).map((f) => ({ date: f.filed_date, label: f.form }));
 
   return (
     <>
@@ -86,6 +100,7 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
           prices={prices}
           markers={markers}
           currencySymbol="$"
+          markerNote={events.length ? "○ = earnings report · tap to open that call" : "○ = 10-K / 10-Q filed"}
           emptyNote={
             job?.status === "deferred"
               ? "The price download was paused by the free price source's hourly limit (50 requests/hour). It retries automatically within 3 hours; per-share history is split-adjusted once prices arrive."
@@ -103,12 +118,82 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
         {tab === "financials" && <FinancialsTab company={company} filings={filings} />}
         {tab === "sources" && <SourcesTab company={company} filings={filings} />}
         {tab === "brief" && <ComingSoon phase="3" what="The “what changed” brief compares any two periods across calls and filings, with every claim linked to its source." />}
-        {tab === "call" && <ComingSoon phase="2" what="Guidance changes, new and dropped topics, tone by executive, and Q&A evasiveness." />}
+        {tab === "call" && <CallTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />}
         {tab === "filings" && <ComingSoon phase="3" what="Risk-factor redlines, MD&A drivers, and call-vs-filing consistency flags." />}
         {tab === "peers" && <ComingSoon phase="4" what="Editable peer set, ranking table, scatter plot, and a how-it-stacks-up summary." />}
       </div>
     </>
   );
+}
+
+async function CallTab({
+  company,
+  events,
+  a,
+  b,
+}: {
+  company: Company;
+  events: Awaited<ReturnType<typeof getEvents>>;
+  a?: string;
+  b?: string;
+}) {
+  // Quarter choices: reported quarters (once report dates are loaded), else the last 12 fiscal quarters.
+  const quarters: [number, number][] = events.length
+    ? events.slice(0, 24).map((e) => [e.fiscal_year, e.fiscal_quarter])
+    : fallbackQuarters();
+  const latest = quarters[0];
+  const pb = parseQ(b) ?? latest;
+  const pa = parseQ(a) ?? [pb[0] - 1, pb[1]];
+  const [ea, eb] = [pa, pb].sort((x, y) => x[0] - y[0] || x[1] - y[1]);
+  const la = qLabel(ea[0], ea[1]);
+  const lb = qLabel(eb[0], eb[1]);
+  const options = [...new Set([...quarters.map(([y, q]) => qLabel(y, q)), la, lb])]
+    .sort()
+    .reverse()
+    .map((v) => {
+      const ev = events.find((e) => qLabel(e.fiscal_year, e.fiscal_quarter) === v);
+      return { value: v, label: `${v.replace("FY", "FY ").replace("Q", " · Q")}${ev ? ` (reported ${ev.report_date})` : ""}` };
+    });
+
+  const [comparison, job, trend] = await Promise.all([
+    getComparison(company.cik, la, lb),
+    getLatestCallsJob(company.ticker, la, lb),
+    getToneTrend(company.cik),
+  ]);
+  const [anA, anB] = comparison
+    ? await Promise.all([getAnalysis(company.cik, ea[0], ea[1]), getAnalysis(company.cik, eb[0], eb[1])])
+    : [null, null];
+  const activeJob = job && ["queued", "running", "failed", "deferred"].includes(job.status) ? job : null;
+
+  return (
+    <div className="space-y-8">
+      <CallsPanel ticker={company.ticker} options={options} a={la} b={lb} initialJob={activeJob} hasResult={Boolean(comparison)} />
+      {comparison && anA && anB ? (
+        <CallView cik={company.cik} comparison={comparison} a={anA} b={anB} trend={trend} />
+      ) : (
+        <div className="rounded-2xl border border-dashed border-border p-8 text-center text-muted">
+          Pick two quarters and press <b className="text-foreground">Analyze calls</b>. Transcripts are fetched once and stored; each new
+          quarter costs about half a cent of AI budget.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function fallbackQuarters(): [number, number][] {
+  const now = new Date();
+  let y = now.getFullYear();
+  let q = Math.floor(now.getMonth() / 3) + 1;
+  const out: [number, number][] = [];
+  for (let i = 0; i < 12; i++) {
+    q -= 1;
+    if (q === 0) {
+      q = 4;
+      y -= 1;
+    }
+    out.push([y, q]);
+  }
+  return out;
 }
 
 async function FinancialsTab({ company, filings }: { company: Company; filings: Filing[] }) {

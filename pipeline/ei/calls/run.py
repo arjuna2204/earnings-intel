@@ -188,8 +188,8 @@ def analyze_call(
         )
     else:
         try:
-            kept, evas, dropped, cost = extract_call(ai, company["name"], label(fy, fq), turns, parsed, cik)
-            row.update(extraction=kept, evasiveness=evas, dropped_claims=dropped, cost_usd=cost)
+            kept, evas, dropped, cost, raw = extract_call(ai, company["name"], label(fy, fq), turns, parsed, cik)
+            row.update(extraction=kept, evasiveness=evas, dropped_claims=dropped, cost_usd=cost, raw_extraction=raw)
         except (BudgetExceeded, PricingUnverified) as exc:
             row.update(status="partial", note=str(exc))
     db.upsert("call_analysis", [row], on_conflict="cik,fiscal_year,fiscal_quarter,analysis_version")

@@ -116,3 +116,29 @@ def test_guidance_numbers_must_be_in_the_quote() -> None:
         {"low": None, "high": None, "point": 1250, "quote": "about 1,250 stores", "qualitative": None}
     )
     assert commas["point"] == 1250
+
+
+def test_paraphrased_topic_quote_is_replaced_from_its_turns() -> None:
+    parsed = parse_call(CALL)
+    ex = Extraction.model_validate(
+        {
+            "guidance": [],
+            "kpis": [],
+            "risks": [],
+            "qa_scores": [],
+            "topics": [
+                {
+                    "label": "Gross margin outlook",
+                    "summary": "Margins.",
+                    "quote": "Margins will be about 46 to 47 percent.",
+                    "turn": 6,
+                    "turns": [5, 6],
+                }
+            ],
+        }
+    )
+    kept, dropped = verify_extraction(ex, CALL, parsed)
+    assert len(kept["topics"]) == 1
+    t = kept["topics"][0]
+    assert t["quote_selected_by_code"] and t["quote"] in CALL[t["turn"]].content
+    assert dropped[0]["reason"].startswith("quote replaced")

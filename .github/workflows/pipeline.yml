@@ -31,6 +31,9 @@ on:
     # Every 3 hours: resume loads paused by a free-tier limit (exits in seconds if none).
     - cron: "41 */3 * * *"
 
+permissions:
+  contents: write # only used to save golden fixtures when a request file asks for it
+
 concurrency:
   group: pipeline-${{ inputs.ticker || github.event_name }}
   cancel-in-progress: false
@@ -73,6 +76,16 @@ jobs:
           if [ "$CMD" = "calls" ]; then
             ARGS=$(python -c "import json;d=json.load(open('../ops/run.json'));print(d['ticker'], *d['periods'])")
             FASTEMBED_CACHE_PATH=$HOME/.cache/fastembed python -m ei.cli calls $ARGS
+            if python -c "import json,sys;sys.exit(0 if json.load(open('../ops/run.json')).get('save_golden') else 1)"; then
+              python scripts/dump_calls_fixture.py $ARGS
+              cd ..
+              git config user.name "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git add pipeline/tests/fixtures/golden
+              git commit -m "Save golden call fixture [skip ci]" || echo "No change"
+              git pull --rebase origin main
+              git push origin HEAD:main
+            fi
           elif [ "$CMD" = "analyze" ]; then
             for T in $(python -c "import json;d=json.load(open('../ops/run.json'));print(' '.join(d.get('tickers') or [d['ticker']]))"); do
               python -m ei.cli analyze "$T" || echo "::warning::analyze $T failed"
