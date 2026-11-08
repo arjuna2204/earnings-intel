@@ -11,6 +11,8 @@ import CallView from "@/components/CallView";
 import { compact, filingIndexFromDocUrl, GENERAL_GROUPS, PACK_GROUPS } from "@/lib/metrics";
 import type { Company, Filing } from "@/lib/types";
 import BriefView from "@/components/BriefView";
+import PeersView from "@/components/PeersView";
+import { getLatestPeersJob, getPeerComparison, getPeerSet } from "@/lib/peers";
 import { buildExtras } from "@/lib/brief-extras";
 import { figureText, releaseFigure, type StreetRow } from "@/lib/figures";
 import FilingsView from "@/components/FilingsView";
@@ -126,7 +128,7 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
         {tab === "brief" && <BriefTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />}
         {tab === "call" && <CallTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />}
         {tab === "filings" && <BriefTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} mode="filings" />}
-        {tab === "peers" && <ComingSoon phase="4" what="Editable peer set, ranking table, scatter plot, and a how-it-stacks-up summary." />}
+        {tab === "peers" && <PeersTab company={company} />}
       </div>
     </>
   );
@@ -335,6 +337,11 @@ async function streetRows(company: Company, events: Events, brief: Brief, ea: [n
   return rows;
 }
 
+async function PeersTab({ company }: { company: Company }) {
+  const [peerSet, comparison, job] = await Promise.all([getPeerSet(company.cik), getPeerComparison(company.cik), getLatestPeersJob(company.ticker)]);
+  return <PeersView ticker={company.ticker} peerSet={peerSet} comparison={comparison} initialJob={job} />;
+}
+
 function fallbackQuarters(): [number, number][] {
   const now = new Date();
   let y = now.getFullYear();
@@ -456,14 +463,6 @@ function SourcesTab({ company, filings }: { company: Company; filings: Filing[] 
   );
 }
 
-function ComingSoon({ phase, what }: { phase: string; what: string }) {
-  return (
-    <div className="rounded-2xl border border-dashed border-border p-8 text-center">
-      <p className="text-sm font-semibold text-accent">Arrives in Phase {phase}</p>
-      <p className="mx-auto mt-2 max-w-md text-muted">{what}</p>
-    </div>
-  );
-}
 
 function CompanySkeleton() {
   return (
