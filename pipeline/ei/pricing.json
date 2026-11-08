@@ -1,9 +1,17 @@
 {
-  "verified": false,
-  "note": "USD per million tokens. Must be checked against https://platform.claude.com/docs/en/about-claude/pricing and 'verified' set to true before any AI call is allowed (Phase 2).",
+  "verified": true,
+  "verified_on": "2026-11-07",
+  "source": "https://platform.claude.com/docs/en/models/haiku-5-5/overview and https://platform.claude.com/docs/en/models/sonnet-5-5/overview",
+  "note": "USD per million tokens. Haiku 5.5 is tiered by prompt length (input + cache reads + cache writes); a prompt over the threshold pays the higher tier for the whole request.",
   "batch_multiplier": 0.5,
   "models": {
-    "claude-haiku-5-5": { "input": 0, "output": 0, "cache_write_5m": 0, "cache_read": 0 },
-    "claude-sonnet-5-5": { "input": 0, "output": 0, "cache_write_5m": 0, "cache_read": 0 }
+    "claude-haiku-5-5": {
+      "long_prompt_threshold": 100000,
+      "standard": { "input": 0.10, "output": 0.50, "cache_write_5m": 0.125, "cache_write_1h": 0.20, "cache_read": 0.01 },
+      "long": { "input": 0.50, "output": 2.50, "cache_write_5m": 0.625, "cache_write_1h": 1.00, "cache_read": 0.05 }
+    },
+    "claude-sonnet-5-5": {
+      "standard": { "input": 2.00, "output": 10.00, "cache_write_5m": 2.50, "cache_write_1h": 4.00, "cache_read": 0.10 }
+    }
   }
 }

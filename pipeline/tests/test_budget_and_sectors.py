@@ -40,10 +40,18 @@ def test_guard_refuses_when_pricing_unverified() -> None:
         check_call(state, "m", Usage(input_tokens=1), pricing={**PRICING, "verified": False})
 
 
-def test_shipped_pricing_is_unverified_until_checked() -> None:
+def test_shipped_pricing_matches_published_rates() -> None:
+    # Haiku 5.5, prompt <= 100K tokens: $0.10 in / $0.50 out per million.
+    assert cost_usd("claude-haiku-5-5", Usage(input_tokens=1_000_000 // 20, output_tokens=2_000)) == Decimal("0.006000")
+    # Over 100K prompt tokens the whole request pays the long tier ($0.50 / $2.50).
+    assert cost_usd("claude-haiku-5-5", Usage(input_tokens=200_000, output_tokens=1_000)) == Decimal("0.102500")
+    # Sonnet 5.5: $2 in / $10 out; batch halves it.
+    assert cost_usd("claude-sonnet-5-5", Usage(input_tokens=20_000, output_tokens=3_000)) == Decimal("0.070000")
+    assert cost_usd("claude-sonnet-5-5", Usage(input_tokens=20_000, output_tokens=3_000), batch=True) == Decimal(
+        "0.035000"
+    )
     state = BudgetState(Decimal("0"), Decimal("10"), Decimal("8"))
-    with pytest.raises(PricingUnverified):
-        check_call(state, "claude-haiku-5-5", Usage(input_tokens=1))
+    assert check_call(state, "claude-haiku-5-5", Usage(input_tokens=10_000)) == Decimal("0.001000")
 
 
 @pytest.mark.parametrize(

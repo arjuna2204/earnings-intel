@@ -30,6 +30,7 @@ class Usage:
     output_tokens: int = 0
     cache_write_tokens: int = 0
     cache_read_tokens: int = 0
+    cache_ttl_1h: bool = False
 
 
 def load_pricing(path: Path = PRICING_PATH) -> dict[str, Any]:
@@ -37,16 +38,29 @@ def load_pricing(path: Path = PRICING_PATH) -> dict[str, Any]:
     return data
 
 
+def _rates(model: str, usage: Usage, pricing: dict[str, Any]) -> dict[str, Any]:
+    m = pricing["models"][model]
+    if "standard" not in m:  # simple flat table (used in tests)
+        return dict(m)
+    threshold = m.get("long_prompt_threshold")
+    prompt = usage.input_tokens + usage.cache_read_tokens + usage.cache_write_tokens
+    if threshold and prompt > threshold and "long" in m:
+        return dict(m["long"])
+    return dict(m["standard"])
+
+
 def cost_usd(model: str, usage: Usage, *, batch: bool = False, pricing: dict[str, Any] | None = None) -> Decimal:
-    p = (pricing or load_pricing())["models"][model]
+    pr = pricing or load_pricing()
+    p = _rates(model, usage, pr)
+    write_rate = p.get("cache_write_1h", p["cache_write_5m"]) if usage.cache_ttl_1h else p["cache_write_5m"]
     c = (
         Decimal(usage.input_tokens) * Decimal(str(p["input"]))
         + Decimal(usage.output_tokens) * Decimal(str(p["output"]))
-        + Decimal(usage.cache_write_tokens) * Decimal(str(p["cache_write_5m"]))
+        + Decimal(usage.cache_write_tokens) * Decimal(str(write_rate))
         + Decimal(usage.cache_read_tokens) * Decimal(str(p["cache_read"]))
     ) / MILLION
     if batch:
-        c *= Decimal(str((pricing or load_pricing())["batch_multiplier"]))
+        c *= Decimal(str(pr["batch_multiplier"]))
     return c.quantize(Decimal("0.000001"))
 
 
