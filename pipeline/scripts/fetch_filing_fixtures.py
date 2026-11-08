@@ -17,7 +17,12 @@ from ei.http import get_with_retries
 from ei.sec import SEC_LIMITER, SecClient, archive_url
 
 OUT = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "filings"
-WANT = {"AAPL": (320193, 2, 1), "MSFT": (789019, 2, 1), "NVDA": (1045810, 0, 1)}  # (cik, 10-Ks, earnings 8-Ks)
+WANT = {
+    "AAPL": (320193, 2, 1, 0),
+    "MSFT": (789019, 2, 1, 1),
+    "NVDA": (1045810, 0, 1, 0),
+    "JPM": (19617, 0, 0, 1),
+}  # (cik, 10-Ks, 8-Ks, 10-Qs)
 
 
 def main() -> None:
@@ -26,7 +31,7 @@ def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     index = []
     try:
-        for ticker, (cik, n_10k, n_8k) in WANT.items():
+        for ticker, (cik, n_10k, n_8k, n_10q) in WANT.items():
             r = sec.submissions(cik)["filings"]["recent"]
             rows = [
                 {
@@ -35,14 +40,14 @@ def main() -> None:
                 }
                 for i in range(len(r["form"]))
             ]
-            tenks = [x for x in rows if x["form"] == "10-K"][:n_10k]
+            tenks = [x for x in rows if x["form"] == "10-K"][:n_10k] + [x for x in rows if x["form"] == "10-Q"][:n_10q]
             eights = [x for x in rows if x["form"] == "8-K" and "2.02" in (x.get("items") or "")][:n_8k]
             for x in tenks:
                 url = archive_url(cik, x["accessionNumber"], x["primaryDocument"])
                 html = get_with_retries(client, url, limiter=SEC_LIMITER).text
-                name = f"{ticker}_10-K_{x['reportDate']}.htm.gz"
+                name = f"{ticker}_{x['form']}_{x['reportDate']}.htm.gz"
                 (OUT / name).write_bytes(gzip.compress(html.encode("utf-8")))
-                index.append({"ticker": ticker, "cik": cik, "form": "10-K", "file": name, "url": url, **x})
+                index.append({"ticker": ticker, "cik": cik, "file": name, "url": url, **x})
             for x in eights:
                 acc = x["accessionNumber"]
                 base = f"https://www.sec.gov/Archives/edgar/data/{cik}/{acc.replace('-', '')}"

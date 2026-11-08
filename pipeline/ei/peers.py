@@ -212,6 +212,7 @@ def extract_competitors(
 
 TIER_PENALTY = {0: 0.0, 1: 0.8, 2: 1.6}
 MAX_SIZE_GAP = math.log(20)
+RELAXED_SIZE_GAP = math.log(50)
 
 
 def choose_peers(
@@ -237,9 +238,9 @@ def choose_peers(
             return None
         return abs(math.log(v / target))
 
-    def dist(cik: int) -> float:
+    def dist(cik: int, limit: float = MAX_SIZE_GAP) -> float:
         gaps = [g for g in (gap(revenues, target_rev, cik), gap(assets, target_assets, cik)) if g is not None]
-        if not gaps or max(gaps) > MAX_SIZE_GAP:
+        if not gaps or max(gaps) > limit:
             return 99.0
         return sum(gaps) / len(gaps)
 
@@ -269,6 +270,13 @@ def choose_peers(
         (cik for cik in tiers if cik in listed and cik not in used and dist(cik) < 99),
         key=lambda c: dist(c) + TIER_PENALTY[tiers[c]],
     )
+    if len(pool) + len(picked) < n:
+        # Very large or very small companies: allow up to 50x size difference rather than return too few peers.
+        loose = sorted(
+            (c for c in tiers if c in listed and c not in used and c not in pool and dist(c, RELAXED_SIZE_GAP) < 99),
+            key=lambda c: dist(c, RELAXED_SIZE_GAP) + TIER_PENALTY[tiers[c]],
+        )
+        pool += loose[: n - len(pool) - len(picked)]
     ranked = [
         {
             "cik": cik,

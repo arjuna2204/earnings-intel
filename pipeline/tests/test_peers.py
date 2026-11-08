@@ -86,3 +86,9 @@ def test_related_industry_ranks_after_exact_match() -> None:
     peers, _ = choose_peers(1, REV[1], tiers, LISTED, REV, [], n=2)
     assert [p["ticker"] for p in peers] == ["EEE", "CCC"]
     assert peers[1]["reason"].startswith("Closely related")
+
+
+def test_size_limit_relaxes_when_too_few_peers() -> None:
+    rev = {1: 100e9, 3: 3e9, 5: 1e9}  # 33x and 100x smaller
+    peers, _ = choose_peers(1, rev[1], [3, 5], LISTED, rev, [], n=2)
+    assert [p["ticker"] for p in peers] == ["CCC"]  # 33x allowed when short; 100x never
