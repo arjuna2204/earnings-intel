@@ -227,7 +227,7 @@ function Cases({ cases, refs }: { cases: StockCases; refs: (c: Claim) => React.R
           <div>
             <div className="text-sm text-muted">P/E applied</div>
             <div className="mt-1 text-[26px] font-semibold leading-none tabular-nums">{sel.pe.toFixed(1)}x</div>
-            <div className="mt-2 text-sm text-muted">{pick === "bear" ? "20th pct" : pick === "bull" ? "80th pct" : "Median"} of its 5-yr range</div>
+            <div className="mt-2 text-sm text-muted">{pick === "bear" ? "20th pct" : pick === "bull" ? "80th pct" : "Median"} of its 3-yr forward P/E</div>
           </div>
         </div>
       ) : (
@@ -258,7 +258,7 @@ function Cases({ cases, refs }: { cases: StockCases; refs: (c: Claim) => React.R
       )}
       <p className="mt-4 text-xs leading-relaxed text-muted">
         Scenario values are arithmetic, not forecasts: analysts&apos; low / consensus / high estimates for the next 12 months × the stock&apos;s own
-        trailing P/E range over 5 years ({n.pe_samples} monthly readings). The reasoning is written by AI from the verified sources only.
+        forward P/E range over the past 3 years (price ÷ next-12-months consensus, {n.pe_samples} monthly readings). The reasoning is written by AI from the verified sources only.
       </p>
     </section>
   );

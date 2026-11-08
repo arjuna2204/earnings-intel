@@ -66,18 +66,32 @@ def test_stats_helpers() -> None:
 
 
 def test_cases_math() -> None:
-    from ei.filings.cases import pe_history, percentile, split_adjusted_closes, value_facts
+    from ei.filings.cases import forward_pe_history, percentile, split_adjusted_closes, value_facts
 
-    rows = [{"date": "2026-01-02", "close": 400.0, "split_factor": 1.0}, {"date": "2026-01-05", "close": 100.0, "split_factor": 4.0}]
-    d, p = split_adjusted_closes(rows)
+    rows = [
+        {"date": "2026-01-02", "close": 400.0, "split_factor": 1.0},
+        {"date": "2026-01-05", "close": 100.0, "split_factor": 4.0},
+    ]
+    _d, p = split_adjusted_closes(rows)
     assert p == [100.0, 100.0]  # pre-split price restated on today's share count
     assert percentile([1, 2, 3, 4, 5], 0.5) == 3 and abs(percentile([0, 10], 0.2) - 2) < 1e-12
-    eps = [{"period_end": "2020-12-31", "value": 2.0}]
-    dates = [date(2021, 1, 1) + timedelta(days=i) for i in range(2000)]
-    pes = pe_history(eps, (dates, [50.0] * len(dates)), date(2026, 1, 15))
-    assert pes and all(abs(x - 25.0) < 1e-9 for x in pes)
-    n = {"price": 100.0, "price_date": "2026-11-06", "eps": {"eps_low": 4.0, "eps_avg": 5.0, "eps_high": 6.0}, "analysts": 30, "pe": {"p20": 15.0, "p50": 20.0, "p80": 25.0}, "pe_samples": 60,
-         "scenarios": {"bear": {"eps": 4.0, "pe": 15.0, "value": 60.0, "vs_price": -0.4}, "base": {"eps": 5.0, "pe": 20.0, "value": 100.0, "vs_price": 0.0}, "bull": {"eps": 6.0, "pe": 25.0, "value": 150.0, "vs_price": 0.5}}}
+    q = {date(2022, 3, 31) + timedelta(days=91 * i): 0.5 for i in range(24)}  # $2.00 per 4 quarters
+    dates = [date(2022, 1, 1) + timedelta(days=i) for i in range(1600)]
+    pes = forward_pe_history(q, (dates, [50.0] * len(dates)), date(2026, 1, 15))
+    assert len(pes) >= 30 and all(abs(x - 25.0) < 1e-9 for x in pes)
+    n = {
+        "price": 100.0,
+        "price_date": "2026-11-06",
+        "eps": {"eps_low": 4.0, "eps_avg": 5.0, "eps_high": 6.0},
+        "analysts": 30,
+        "pe": {"p20": 15.0, "p50": 20.0, "p80": 25.0},
+        "pe_samples": 60,
+        "scenarios": {
+            "bear": {"eps": 4.0, "pe": 15.0, "value": 60.0, "vs_price": -0.4},
+            "base": {"eps": 5.0, "pe": 20.0, "value": 100.0, "vs_price": 0.0},
+            "bull": {"eps": 6.0, "pe": 25.0, "value": 150.0, "vs_price": 0.5},
+        },
+    }
     texts = [f["text"] for f in value_facts(n, "XYZ")]
     assert "Bear scenario value: low EPS $4.00 × 20th-percentile P/E 15.0x = $60.00 (−40.0% vs. today's price)" in texts
     assert any("+50.0%" in t for t in texts)

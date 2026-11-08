@@ -1,8 +1,8 @@
 """Bull / base / bear cases per stock.
 
 Scenario values are computed here: next-12-months EPS (analysts' low / consensus / high, from
-Alpha Vantage) × the stock's own trailing P/E range over the past 5 years (20th percentile / median /
-80th percentile of monthly readings). Sonnet then writes what each case requires, citing only verified
+Alpha Vantage) × the stock's own forward P/E range over the past 3 years (20th percentile / median /
+80th percentile of monthly readings, each = price ÷ the consensus for the following four quarters). Sonnet then writes what each case requires, citing only verified
 facts; code checks every citation and number.
 """
 
@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import bisect
 import statistics
-from datetime import date, timedelta
+from datetime import date
 from typing import Any
 
 from ei.ai import AiClient, load_prompt
@@ -18,9 +18,9 @@ from ei.db import Db
 from ei.filings.brief import verify_claims
 from ei.street import ntm_eps
 
-VERSION = "cases-v1"
+VERSION = "cases-v2"
 MODEL = "claude-sonnet-5-5"
-YEARS = 5
+YEARS = 3
 SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
@@ -69,24 +69,25 @@ def split_adjusted_closes(rows: list[dict[str, Any]]) -> tuple[list[date], list[
     return out_d, out_p
 
 
-def pe_history(eps_rows: list[dict[str, Any]], prices: tuple[list[date], list[float]], today: date) -> list[float]:
-    """Monthly trailing P/E: price at each month-end ÷ the last TTM EPS reported by then
-    (period end + 45 days, so only numbers the market already had)."""
+def forward_pe_history(
+    quarter_eps: dict[date, float], prices: tuple[list[date], list[float]], today: date
+) -> list[float]:
+    """Monthly forward P/E over the past YEARS: price at each month-end ÷ the consensus EPS for the
+    next four quarters as it stood then (each quarter's pre-report consensus, from Street data)."""
     pd_, pp = prices
-    if not pd_:
-        return []
-    known = sorted(
-        (date.fromisoformat(str(r["period_end"])[:10]) + timedelta(days=45), float(r["value"])) for r in eps_rows
-    )
+    ends = sorted(quarter_eps)
     out: list[float] = []
     d = date(today.year - YEARS, today.month, 1)
     while d <= today:
         i = bisect.bisect_right(pd_, d) - 1
-        k = bisect.bisect_right([x[0] for x in known], d) - 1
-        if i >= 0 and k >= 0 and known[k][1] > 0:
-            pe = pp[i] / known[k][1]
-            if 0 < pe < 200:
-                out.append(pe)
+        k = bisect.bisect_right(ends, d)
+        nxt = ends[k : k + 4]
+        if i >= 0 and len(nxt) == 4 and (nxt[-1] - d).days < 400:
+            ntm = sum(quarter_eps[e] for e in nxt)
+            if ntm > 0:
+                pe = pp[i] / ntm
+                if 0 < pe < 200:
+                    out.append(pe)
         d = date(d.year + (d.month // 12), d.month % 12 + 1, 1)
     return out
 
@@ -122,26 +123,27 @@ def scenario_numbers(db: Db, company: dict[str, Any], today: date) -> dict[str, 
         ),
         default=0,
     )
-    eps_rows = db.select(
-        "metric_values",
-        {
-            "cik": f"eq.{cik}",
-            "metric": "eq.eps_diluted_ttm",
-            "select": "period_end,value",
-            "period_end": f"gte.{date(today.year - YEARS - 1, 1, 1)}",
-        },
-    )
+    # pre-report consensus for reported quarters + current estimates for upcoming ones
+    q_eps: dict[date, float] = {}
+    for e in est:
+        if e["horizon"] == "fiscal quarter" and e.get("eps_avg") is not None:
+            q_eps[date.fromisoformat(str(e["period_end"])[:10])] = float(e["eps_avg"])
+    for e in db.select(
+        "earnings_events",
+        {"cik": f"eq.{cik}", "eps_estimated": "not.is.null", "select": "period_end,eps_estimated", "limit": "400"},
+    ):
+        q_eps[date.fromisoformat(str(e["period_end"])[:10])] = float(e["eps_estimated"])
     px = db.select(
         "prices",
         {
             "ticker": f"eq.{company['ticker']}",
-            "date": f"gte.{date(today.year - YEARS, 1, 1)}",
+            "date": f"gte.{date(today.year - YEARS - 1, 1, 1)}",
             "select": "date,close,split_factor",
             "order": "date",
             "limit": "2000",
         },
     )
-    pes = pe_history(eps_rows, split_adjusted_closes(px), today)
+    pes = forward_pe_history(q_eps, split_adjusted_closes(px), today)
     out: dict[str, Any] = {
         "price": price,
         "price_date": v.get("price_date"),
@@ -150,7 +152,7 @@ def scenario_numbers(db: Db, company: dict[str, Any], today: date) -> dict[str, 
         "analysts": analysts,
         "pe_samples": len(pes),
     }
-    if len(pes) < 24 or not eps.get("eps_avg"):
+    if len(pes) < 18 or not eps.get("eps_avg"):
         out["scenarios"] = None
         return out
     pct = {"p20": percentile(pes, 0.2), "p50": statistics.median(pes), "p80": percentile(pes, 0.8)}
@@ -191,7 +193,7 @@ def value_facts(n: dict[str, Any], ticker: str) -> list[dict[str, Any]]:
         facts.append(
             {
                 "type": "pe_range",
-                "text": f"{ticker} trailing P/E over the past {YEARS} years: 20th percentile {p['p20']:.1f}x, median {p['p50']:.1f}x, 80th percentile {p['p80']:.1f}x ({n['pe_samples']} monthly readings)",
+                "text": f"{ticker} forward P/E (price ÷ next-12-months consensus EPS) over the past {YEARS} years: 20th percentile {p['p20']:.1f}x, median {p['p50']:.1f}x, 80th percentile {p['p80']:.1f}x ({n['pe_samples']} monthly readings)",
             }
         )
     words = {
@@ -244,7 +246,7 @@ def write_cases(ai: AiClient, facts: dict[str, dict[str, Any]], company: str, ci
     res = ai.json_call(
         model=MODEL,
         purpose="cases",
-        system=load_prompt("cases.v1.md"),
+        system=load_prompt("cases.v2.md"),
         user=f"Company: {company}\n\nFACTS\n{body}",
         schema=SCHEMA,
         max_tokens=4000,
