@@ -103,7 +103,9 @@ jobs:
               python -m ei.cli analyze "$T" || echo "::warning::analyze $T failed"
             done
           else
-            for T in $(python -c "import json;d=json.load(open('../ops/run.json'));print(' '.join(d.get('tickers') or [d.get('ticker','')]))"); do
+            TICKERS=$(python -c "import json;d=json.load(open('../ops/run.json'));print(' '.join(d.get('tickers') or [d.get('ticker') or '-']))")
+            for T in $TICKERS; do
+              [ "$T" = "-" ] && T=""
               EXTRA=$(python -c "import json;print(' '.join(json.load(open('../ops/run.json')).get('args', [])))")
               FASTEMBED_CACHE_PATH=$HOME/.cache/fastembed python -m ei.cli "$CMD" $T $EXTRA || echo "::warning::$CMD $T failed"
             done
