@@ -12,6 +12,8 @@ import { compact, filingIndexFromDocUrl, GENERAL_GROUPS, PACK_GROUPS } from "@/l
 import type { Company, Filing } from "@/lib/types";
 import BriefView from "@/components/BriefView";
 import PeersView from "@/components/PeersView";
+import DcfView from "@/components/DcfView";
+import { getDcf } from "@/lib/dcf";
 import { getLatestPeersJob, getPeerComparison, getPeerSet } from "@/lib/peers";
 import { buildExtras } from "@/lib/brief-extras";
 import { figureText, releaseFigure, type StreetRow } from "@/lib/figures";
@@ -369,9 +371,14 @@ function fallbackQuarters(): [number, number][] {
 }
 
 async function FinancialsTab({ company, filings }: { company: Company; filings: Filing[] }) {
-  const data = await getFinancials(company, filings);
+  const [data, dcf] = await Promise.all([getFinancials(company, filings), getDcf(company.cik)]);
   const groups = [...GENERAL_GROUPS, ...(company.sector_pack !== "general" ? [PACK_GROUPS[company.sector_pack]] : [])];
-  return <FinancialsView data={data} groups={groups} />;
+  return (
+    <div className="space-y-12">
+      {dcf && <DcfView ticker={company.ticker} dcf={dcf} />}
+      <FinancialsView data={data} groups={groups} />
+    </div>
+  );
 }
 
 function ValuationStrip({ company }: { company: Company }) {

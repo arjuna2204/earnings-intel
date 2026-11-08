@@ -15,7 +15,7 @@ from typing import Any
 
 from ei.db import Db
 
-VERSION = "dcf-v1"
+VERSION = "dcf-v2"
 YEARS = 5
 RISK_FREE = 0.0425  # 10-year US Treasury yield assumption (editable in the Excel model)
 EQUITY_RISK_PREMIUM = 0.05
@@ -89,7 +89,7 @@ def build(history: list[dict[str, Any]], a: dict[str, float]) -> dict[str, Any]:
         ebit = new_rev * a[f"margin_{t}"]
         nopat = ebit * (1 - a["tax_rate"])
         da = new_rev * a["da_pct"]
-        capex = new_rev * a["capex_pct"]
+        capex = new_rev * a.get(f"capex_{t}", a.get("capex_pct", 0.0))
         d_nwc = (new_rev - rev) * a["nwc_pct"]
         fcf = nopat + da - capex - d_nwc
         rows.append(
@@ -171,6 +171,13 @@ def defaults(
         )
         y[r["metric"]] = float(r["value"])
     hist = [by_year[y] for y in sorted(by_year) if by_year[y].get("revenue")][-6:]
+    ebit_note = None
+    if hist and not hist[-1].get("operating_income") and hist[-1].get("pretax_income") is not None:
+        # Some filers (e.g. oil majors, IBM, REITs) report no operating income line: EBIT ≈ pre-tax income + interest expense.
+        for y in hist:
+            if y.get("operating_income") is None and y.get("pretax_income") is not None:
+                y["operating_income"] = y["pretax_income"] + (y.get("interest_expense") or 0.0)
+        ebit_note = "pre-tax income + interest expense (the company reports no operating income line)"
     if len(hist) < 3 or not hist[-1].get("operating_income"):
         return "insufficient", "Not enough annual SEC data (revenue and operating income) for a DCF.", hist, {}
     last = hist[-1]
@@ -190,7 +197,8 @@ def defaults(
             "order": "period_end",
         },
     )
-    future = [e for e in est if str(e["period_end"]) > str(last["period_end"])]
+    last_end = date.fromisoformat(str(last["period_end"])[:10])
+    future = [e for e in est if date.fromisoformat(str(e["period_end"])[:10]) > last_end + timedelta(days=60)]
     hist_cagr = (
         (last["revenue"] / hist[-4]["revenue"]) ** (1 / 3) - 1 if len(hist) >= 4 and hist[-4]["revenue"] > 0 else None
     )
@@ -235,7 +243,12 @@ def defaults(
         },
     )
     tv = {r["metric"]: float(r["value"]) for r in ttm}
-    if tv.get("revenue_ttm") and "operating_income_ttm" in tv and len({r["period_end"] for r in ttm}) == 1:
+    if ebit_note:
+        m, msrc = (
+            last["operating_income"] / last["revenue"],
+            f"EBIT margin FY{last['fiscal_year']}, EBIT = {ebit_note} (SEC)",
+        )
+    elif tv.get("revenue_ttm") and "operating_income_ttm" in tv and len({r["period_end"] for r in ttm}) == 1:
         m, msrc = (
             tv["operating_income_ttm"] / tv["revenue_ttm"],
             f"Operating margin, last 12 months to {ttm[0]['period_end']} (SEC)",
@@ -264,12 +277,18 @@ def defaults(
         "D&A, % of revenue",
         "3-year average (SEC)",
     )
-    put(
-        "capex_pct",
-        avg([y["capex"] / y["revenue"] for y in recent if y.get("capex") is not None]) or 0.04,
-        "Capital expenditures, % of revenue",
-        "3-year average (SEC)",
-    )
+    capex0 = avg([y["capex"] / y["revenue"] for y in recent[-2:] if y.get("capex") is not None]) or 0.04
+    target = a["da_pct"]["value"] * 1.2
+    for t in range(1, YEARS + 1):
+        if capex0 > target:
+            put(
+                f"capex_{t}",
+                capex0 + (target - capex0) * (t - 1) / (YEARS - 1),
+                f"Capex, % of revenue, year {t}",
+                "Latest 2-year average (SEC), fading by year 5 to 1.2× D&A as the build-out matures",
+            )
+        else:
+            put(f"capex_{t}", capex0, f"Capex, % of revenue, year {t}", "Latest 2-year average (SEC), held flat")
     nw = [(nwc(y), y["revenue"]) for y in hist[-4:]]
     ratios = [
         (b[0] - a_[0]) / (b[1] - a_[1])

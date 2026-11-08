@@ -7,7 +7,17 @@ from ei.dcf import build, nwc, sensitivity
 
 def assumptions(**kw: float) -> dict[str, float]:
     a = {f"growth_{t}": 0.10 for t in range(1, 6)} | {f"margin_{t}": 0.20 for t in range(1, 6)}
-    a |= {"tax_rate": 0.25, "da_pct": 0.05, "capex_pct": 0.05, "nwc_pct": 0.0, "wacc": 0.10, "terminal_growth": 0.02, "net_debt": 100.0, "shares": 10.0, "price": 50.0}
+    a |= {
+        "tax_rate": 0.25,
+        "da_pct": 0.05,
+        "capex_pct": 0.05,
+        "nwc_pct": 0.0,
+        "wacc": 0.10,
+        "terminal_growth": 0.02,
+        "net_debt": 100.0,
+        "shares": 10.0,
+        "price": 50.0,
+    }
     return a | kw
 
 
@@ -38,3 +48,11 @@ def test_sensitivity_moves_the_right_way() -> None:
     assert grid[0][2] > grid[4][2]  # lower WACC -> higher value
     assert grid[2][4] > grid[2][0]  # higher terminal growth -> higher value
     assert abs(grid[2][2] - build([{"revenue": 1000.0}], assumptions())["per_share"]) < 1e-9
+
+
+def test_per_year_capex_overrides_flat() -> None:
+    hist = [{"revenue": 1000.0}]
+    a = assumptions(**{f"capex_{t}": 0.05 for t in range(1, 6)})
+    a2 = assumptions(**{f"capex_{t}": c for t, c in zip(range(1, 6), [0.20, 0.15, 0.10, 0.07, 0.05], strict=True)})
+    assert build(hist, a2)["rows"][0]["fcf"] < build(hist, a)["rows"][0]["fcf"]
+    assert abs(build(hist, a2)["rows"][4]["fcf"] - build(hist, a)["rows"][4]["fcf"]) < 1e-9
