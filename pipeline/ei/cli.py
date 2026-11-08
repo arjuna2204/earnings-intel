@@ -34,6 +34,11 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("period_a")
     c.add_argument("period_b")
     c.add_argument("--job-id", type=int, default=None)
+    pr = sub.add_parser("peers")
+    pr.add_argument("ticker")
+    pr.add_argument("--job-id", type=int, default=None)
+    pr.add_argument("--set", default=None, help="comma-separated peer tickers (edited list)")
+    pr.add_argument("--n", type=int, default=None, help="re-pick automatically with this many peers")
     br = sub.add_parser("brief")
     br.add_argument("ticker")
     br.add_argument("period_a")
@@ -52,6 +57,11 @@ def main(argv: list[str] | None = None) -> int:
         from ei.calls.run import compare_calls
 
         print(json.dumps(compare_calls(settings, args.ticker, args.period_a, args.period_b, job_id=args.job_id)))
+    elif args.cmd == "peers":
+        from ei.peers import run_peers
+
+        override = [t for t in args.set.split(",") if t.strip()] if args.set else None
+        print(json.dumps(run_peers(settings, args.ticker, job_id=args.job_id, override=override, n=args.n)))
     elif args.cmd == "brief":
         from ei.filings.run import run_brief
 

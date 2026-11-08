@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       command:
-        description: "analyze | calls | brief | tickers | refresh | retry-deferred"
+        description: "analyze | calls | brief | peers | tickers | refresh | retry-deferred"
         required: true
         default: analyze
       ticker:
@@ -19,6 +19,9 @@ on:
         required: false
       period_b:
         description: "Second quarter for calls, e.g. FY2026Q4"
+        required: false
+      peer_set:
+        description: "Peers: comma-separated tickers (edited list) or auto:N to re-pick N peers"
         required: false
   # Lets Claude queue a run by committing ops/run.json, e.g. {"command": "analyze", "ticker": "AAPL"}.
   push:
@@ -65,6 +68,22 @@ jobs:
         env:
           FASTEMBED_CACHE_PATH: /home/runner/.cache/fastembed
         run: python -m ei.cli calls "${{ inputs.ticker }}" "${{ inputs.period_a }}" "${{ inputs.period_b }}" ${{ inputs.job_id && format('--job-id {0}', inputs.job_id) || '' }}
+      - name: Compare with peers
+        if: github.event_name == 'workflow_dispatch' && inputs.command == 'peers'
+        working-directory: pipeline
+        env:
+          PEER_SET: ${{ inputs.peer_set }}
+          TICKER: ${{ inputs.ticker }}
+          JOB_ID: ${{ inputs.job_id }}
+        run: |
+          ARGS=()
+          [ -n "$JOB_ID" ] && ARGS+=(--job-id "$JOB_ID")
+          case "$PEER_SET" in
+            auto:*) ARGS+=(--n "${PEER_SET#auto:}") ;;
+            "") ;;
+            *) ARGS+=(--set "$PEER_SET") ;;
+          esac
+          python -m ei.cli peers "$TICKER" "${ARGS[@]}"
       - name: Write brief
         if: github.event_name == 'workflow_dispatch' && inputs.command == 'brief'
         working-directory: pipeline
