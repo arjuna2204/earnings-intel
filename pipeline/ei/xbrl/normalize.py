@@ -25,6 +25,14 @@ HALF_DAYS = (170, 195)
 NINE_MONTH_DAYS = (260, 285)
 YEAR_DAYS = (340, 380)
 
+# Only financial reports. Proxy statements (DEF 14A) and others carry rounded figures
+# (e.g. pay-versus-performance tables) that must never override the statements.
+FINANCIAL_FORMS = {"10-K", "10-Q", "20-F", "40-F", "6-K", "10-KT", "10-QT", "8-K"}
+
+
+def _is_financial_form(form: str) -> bool:
+    return form.removesuffix("/A") in FINANCIAL_FORMS
+
 
 @dataclass(frozen=True)
 class Fact:
@@ -156,7 +164,7 @@ def extract_facts(companyfacts: dict[str, Any], tag: str, taxonomy: str, kind: s
         return []
     out = []
     for f in node["units"][unit]:
-        if "end" not in f or "val" not in f:
+        if "end" not in f or "val" not in f or not _is_financial_form(f.get("form", "")):
             continue
         out.append(
             Fact(
