@@ -82,7 +82,16 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
       )}
 
       <div className="mt-6">
-        <PriceChart prices={prices} markers={markers} currencySymbol="$" />
+        <PriceChart
+          prices={prices}
+          markers={markers}
+          currencySymbol="$"
+          emptyNote={
+            job?.status === "deferred"
+              ? "The price download was paused by the free price source's hourly limit (50 requests/hour). It retries automatically within 3 hours; per-share history is split-adjusted once prices arrive."
+              : undefined
+          }
+        />
       </div>
 
       <ValuationStrip company={company} />

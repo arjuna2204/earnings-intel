@@ -1,1 +1,1 @@
-{"command": "analyze", "tickers": ["O", "XOM"]}
+{"command": "retry-deferred"}

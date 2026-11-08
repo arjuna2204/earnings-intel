@@ -270,7 +270,7 @@ def analyze(settings: Settings, ticker: str, job_id: int | None = None, primary:
         )
         job.finish(
             "deferred" if deferred else "done",
-            "Price download will resume tomorrow" if deferred else None,
+            "Price download paused by the free-tier limit; retries automatically within 3 hours" if deferred else None,
             cik,
         )
         return {"ok": True, "cik": cik, "values": len(nc.values), "unresolved": sorted(nc.unresolved)}
@@ -302,3 +302,28 @@ def refresh_all(settings: Settings) -> list[str]:
 
 
 __all__ = ["analyze", "asdict", "refresh_all", "refresh_tickers"]
+
+
+def retry_deferred(settings: Settings) -> list[str]:
+    """Re-run companies whose most recent load was paused by a free-tier limit (every few hours)."""
+    db = Db(settings.supabase_url, settings.supabase_secret_key)
+    try:
+        recent = db.select(
+            "jobs",
+            {"kind": "eq.analyze", "select": "ticker,status,id", "order": "id.desc", "limit": "200"},
+        )
+    finally:
+        db.close()
+    latest: dict[str, str] = {}
+    for row in recent:
+        if row["ticker"]:
+            latest.setdefault(row["ticker"], row["status"])
+    tickers = [t for t, status in latest.items() if status == "deferred"]
+    done = []
+    for t in tickers:
+        try:
+            result = analyze(settings, t, primary=False)
+            done.append(t if result.get("ok") else f"{t} (failed)")
+        except Exception:
+            log.exception("retry failed for %s", t)
+    return done

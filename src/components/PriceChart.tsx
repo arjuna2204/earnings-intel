@@ -19,10 +19,12 @@ export default function PriceChart({
   prices,
   markers,
   currencySymbol = "$",
+  emptyNote,
 }: {
   prices: PricePoint[];
   markers: Marker[];
   currencySymbol?: string;
+  emptyNote?: string;
 }) {
   const colors = useThemeColors();
   const [range, setRange] = useState<(typeof RANGES)[number]["key"]>("1Y");
@@ -37,7 +39,12 @@ export default function PriceChart({
   }, [prices, range]);
 
   if (!prices.length) {
-    return <div className="flex h-64 items-center justify-center rounded-2xl bg-card text-muted">No price history yet</div>;
+    return (
+      <div className="flex h-64 flex-col items-center justify-center gap-2 rounded-2xl bg-card px-6 text-center text-muted">
+        <span>No price history yet</span>
+        {emptyNote && <span className="max-w-md text-sm">{emptyNote}</span>}
+      </div>
+    );
   }
 
   // Adjusted close keeps long ranges continuous across splits/dividends; the headline shows the actual close.

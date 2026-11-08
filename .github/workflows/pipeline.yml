@@ -22,6 +22,8 @@ on:
   # Daily at 6:17am Eastern (11:17 UTC): refresh ticker list, filings, financials and prices. No AI.
   schedule:
     - cron: "17 11 * * *"
+    # Every 3 hours: resume loads paused by a free-tier limit (exits in seconds if none).
+    - cron: "41 */3 * * *"
 
 concurrency:
   group: pipeline-${{ inputs.ticker || github.event_name }}
@@ -63,10 +65,14 @@ jobs:
         working-directory: pipeline
         run: python -m ei.cli analyze "${{ inputs.ticker }}" ${{ inputs.job_id && format('--job-id {0}', inputs.job_id) || '' }}
       - name: Refresh ticker list
-        if: github.event_name == 'schedule' || inputs.command == 'tickers'
+        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'tickers'
         working-directory: pipeline
         run: python -m ei.cli tickers
       - name: Refresh tracked companies
-        if: github.event_name == 'schedule' || inputs.command == 'refresh'
+        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'refresh'
         working-directory: pipeline
         run: python -m ei.cli refresh
+      - name: Retry paused loads
+        if: (github.event_name == 'schedule' && github.event.schedule == '41 */3 * * *') || inputs.command == 'retry-deferred'
+        working-directory: pipeline
+        run: python -m ei.cli retry-deferred

@@ -13,7 +13,7 @@ import logging
 import sys
 
 from ei.config import Settings
-from ei.jobs import analyze, refresh_all, refresh_tickers
+from ei.jobs import analyze, refresh_all, refresh_tickers, retry_deferred
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -25,6 +25,7 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("ticker")
     a.add_argument("--job-id", type=int, default=None)
     sub.add_parser("refresh")
+    sub.add_parser("retry-deferred")
     args = p.parse_args(argv)
 
     settings = Settings.from_env()
@@ -34,6 +35,8 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(analyze(settings, args.ticker, job_id=args.job_id)))
     elif args.cmd == "refresh":
         print(json.dumps({"refreshed": refresh_all(settings)}))
+    elif args.cmd == "retry-deferred":
+        print(json.dumps({"retried": retry_deferred(settings)}))
     return 0
 
 
