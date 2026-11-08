@@ -34,6 +34,11 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("period_a")
     c.add_argument("period_b")
     c.add_argument("--job-id", type=int, default=None)
+    br = sub.add_parser("brief")
+    br.add_argument("ticker")
+    br.add_argument("period_a")
+    br.add_argument("period_b")
+    br.add_argument("--job-id", type=int, default=None)
     args = p.parse_args(argv)
 
     settings = Settings.from_env()
@@ -47,6 +52,10 @@ def main(argv: list[str] | None = None) -> int:
         from ei.calls.run import compare_calls
 
         print(json.dumps(compare_calls(settings, args.ticker, args.period_a, args.period_b, job_id=args.job_id)))
+    elif args.cmd == "brief":
+        from ei.filings.run import run_brief
+
+        print(json.dumps(run_brief(settings, args.ticker, args.period_a, args.period_b, job_id=args.job_id)))
     elif args.cmd == "reverify":
         from ei.calls.run import reverify
 

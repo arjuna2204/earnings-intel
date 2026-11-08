@@ -32,6 +32,10 @@ TTM_FLOWS = (
     "capex",
     "ebitda",
     "free_cash_flow",
+    "sbc",
+    "adj_ebitda_std",
+    "adj_net_income_std",
+    "adj_eps_std",
     "net_interest_income",
     "noninterest_income",
     "noninterest_expense",
@@ -155,6 +159,7 @@ def derive_all(nc: NormalizedCompany, pack: str) -> NormalizedCompany:
             cur,
             "Operating income + depreciation & amortization",
         )
+        _standard_adjusted(c, fy, fp, cur)
         c.put(
             "free_cash_flow",
             fy,
@@ -351,6 +356,68 @@ def _tax_rate(c: Ctx, fy: int, fp: str) -> tuple[float, str]:
     if tax is not None and pre and pre > 0:
         return min(max(tax / pre, 0.0), 0.35), "effective"
     return DEFAULT_TAX_RATE, "default 21%; effective rate unavailable"
+
+
+def _standard_adjusted(c: Ctx, fy: int, fp: str, cur: str) -> None:
+    """The app's own 'standardized adjusted' figures, for when a company doesn't publish non-GAAP numbers
+    (or to compare companies on one definition). Labeled "computed by this app" everywhere.
+
+    Adjusted EBITDA = operating income + D&A + stock-based comp + restructuring + impairments.
+    Adjusted net income = net income + (stock-based comp + amortization of acquired intangibles
+    + restructuring + impairments) × (1 − tax rate). Adjusted EPS = that / diluted shares.
+    Add-backs a company doesn't tag count as zero and are listed as such in the derivation note."""
+    oi, da = c.v("operating_income", fy, fp), c.v("da", fy, fp)
+    if oi is None or da is None:
+        return
+    parts = {
+        "stock-based comp": c.v("sbc", fy, fp),
+        "restructuring": c.v("restructuring", fy, fp),
+        "impairments": c.v("impairments", fy, fp),
+    }
+    if parts["stock-based comp"] is None:
+        return  # without SBC the result would just be EBITDA; don't pretend it's adjusted
+    used = [k for k, v in parts.items() if v]
+    missing = [k for k, v in parts.items() if v is None]
+    note = " (none tagged: " + ", ".join(missing) + ")" if missing else ""
+    c.put(
+        "adj_ebitda_std",
+        fy,
+        fp,
+        oi + da + sum(v or 0.0 for v in parts.values()),
+        cur,
+        "Computed by this app: operating income + D&A + " + " + ".join(used or ["stock-based comp"]) + note,
+    )
+    ni = c.v("net_income", fy, fp)
+    if ni is None:
+        return
+    amort = c.v("amortization_intangibles", fy, fp)
+    addbacks = sum(v or 0.0 for v in parts.values()) + (amort or 0.0)
+    tax = c.v("income_tax", fy, fp)
+    pre = c.v("pretax_income", fy, fp)
+    if tax is not None and pre and pre > 0:
+        rate, rate_note = min(max(tax / pre, 0.0), 0.35), f"{min(max(tax / pre, 0.0), 0.35):.1%} effective tax rate"
+    else:
+        rate, rate_note = DEFAULT_TAX_RATE, "21% assumed tax rate"
+    adj_ni = ni + addbacks * (1 - rate)
+    items = used + (["amortization of acquired intangibles"] if amort else [])
+    c.put(
+        "adj_net_income_std",
+        fy,
+        fp,
+        adj_ni,
+        cur,
+        "Computed by this app: net income + (" + " + ".join(items or ["stock-based comp"]) + f") × (1 − {rate_note})",
+    )
+    sh = c.v("diluted_shares", fy, fp)
+    if sh and sh > 0:
+        c.put(
+            "adj_eps_std",
+            fy,
+            fp,
+            adj_ni / sh,
+            f"{cur}/shares",
+            "Computed by this app: adjusted net income ÷ diluted shares",
+        )
 
 
 def _total_debt(c: Ctx, fy: int, fp: str) -> tuple[float | None, str]:

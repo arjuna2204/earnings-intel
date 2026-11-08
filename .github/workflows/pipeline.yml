@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       command:
-        description: "analyze | calls | tickers | refresh | retry-deferred"
+        description: "analyze | calls | brief | tickers | refresh | retry-deferred"
         required: true
         default: analyze
       ticker:
@@ -65,14 +65,20 @@ jobs:
         env:
           FASTEMBED_CACHE_PATH: /home/runner/.cache/fastembed
         run: python -m ei.cli calls "${{ inputs.ticker }}" "${{ inputs.period_a }}" "${{ inputs.period_b }}" ${{ inputs.job_id && format('--job-id {0}', inputs.job_id) || '' }}
+      - name: Write brief
+        if: github.event_name == 'workflow_dispatch' && inputs.command == 'brief'
+        working-directory: pipeline
+        env:
+          FASTEMBED_CACHE_PATH: /home/runner/.cache/fastembed
+        run: python -m ei.cli brief "${{ inputs.ticker }}" "${{ inputs.period_a }}" "${{ inputs.period_b }}" ${{ inputs.job_id && format('--job-id {0}', inputs.job_id) || '' }}
       - name: Run request file
         if: github.event_name == 'push'
         working-directory: pipeline
         run: |
           CMD=$(python -c "import json;print(json.load(open('../ops/run.json'))['command'])")
-          if [ "$CMD" = "calls" ]; then
+          if [ "$CMD" = "calls" ] || [ "$CMD" = "brief" ]; then
             ARGS=$(python -c "import json;d=json.load(open('../ops/run.json'));print(d['ticker'], *d['periods'])")
-            FASTEMBED_CACHE_PATH=$HOME/.cache/fastembed python -m ei.cli calls $ARGS
+            FASTEMBED_CACHE_PATH=$HOME/.cache/fastembed python -m ei.cli $CMD $ARGS
           elif [ "$CMD" = "analyze" ]; then
             for T in $(python -c "import json;d=json.load(open('../ops/run.json'));print(' '.join(d.get('tickers') or [d['ticker']]))"); do
               python -m ei.cli analyze "$T" || echo "::warning::analyze $T failed"

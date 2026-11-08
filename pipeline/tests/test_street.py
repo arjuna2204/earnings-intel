@@ -40,7 +40,7 @@ def test_ntm_prefers_four_quarters_then_blends_years() -> None:
     eps2, how2 = ntm_eps(years, date(2026, 9, 30), date(2026, 11, 7))
     # Just after fiscal year-end all four FY1 quarters are still ahead, so NTM = FY1 consensus.
     assert eps2 == pytest.approx(9.4485)
-    assert "4/4 of FY ending 2027-09-30" in how2
+    assert "fiscal year ending 2027-09-30" in how2
 
 
 def test_street_multiples() -> None:

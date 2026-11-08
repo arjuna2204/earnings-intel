@@ -1,1 +1,1 @@
-{"command": "analyze", "tickers": ["NVDA", "AAPL", "MSFT"], "nonce": 1794104815}
+{"command": "brief", "ticker": "AAPL", "periods": ["FY2025Q4", "FY2026Q4"], "nonce": 1794105442}

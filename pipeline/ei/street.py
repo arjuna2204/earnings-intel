@@ -79,6 +79,8 @@ def ntm_eps(estimates: list[dict[str, Any]], last_reported_end: date | None, tod
                 f"(${q_sum:.2f}) + {4 - remaining}/4 of next-year consensus (${float(fy2['eps_avg']):.2f})"
             )
         fy1_part = float(fy1["eps_avg"]) * remaining / 4
+        if remaining == 4:
+            return fy1_part, f"Consensus for the fiscal year ending {fy1['period_end']} (${float(fy1['eps_avg']):.2f})"
         return fy1_part + fy2_part, (
             f"{remaining}/4 of FY ending {fy1['period_end']} consensus (${float(fy1['eps_avg']):.2f}) + "
             f"{4 - remaining}/4 of FY ending {fy2['period_end']} consensus (${float(fy2['eps_avg']):.2f})"

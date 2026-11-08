@@ -100,6 +100,7 @@ def recent_filings(cik: int, submissions: dict[str, Any], since_year: int) -> li
                 "report_date": recent["reportDate"][i] or None,
                 "primary_doc": doc,
                 "url": archive_url(cik, acc, doc),
+                "items": (recent.get("items") or [None] * (i + 1))[i] or None,
             }
         )
     return out

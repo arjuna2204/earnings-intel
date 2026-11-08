@@ -269,6 +269,39 @@ REPORTED: tuple[MetricDef, ...] = (
         ("AmortizationOfIntangibleAssets",),
         ("AmortisationExpense",),
     ),
+    # --- Add-backs for the app's standardized adjusted figures ---
+    M(
+        "sbc",
+        "Stock-based compensation",
+        "duration",
+        "money",
+        ("ShareBasedCompensation", "AllocatedShareBasedCompensationExpense"),
+        ("AdjustmentsForSharebasedPayments", "ExpenseFromSharebasedPaymentTransactionsWithEmployees"),
+    ),
+    M(
+        "restructuring",
+        "Restructuring charges",
+        "duration",
+        "money",
+        (
+            "RestructuringCharges",
+            "RestructuringCostsAndAssetImpairmentCharges",
+            "RestructuringSettlementAndImpairmentProvisions",
+        ),
+    ),
+    M(
+        "impairments",
+        "Impairment charges",
+        "duration",
+        "money",
+        (
+            "GoodwillImpairmentLoss",
+            "AssetImpairmentCharges",
+            "GoodwillAndIntangibleAssetImpairment",
+            "ImpairmentOfIntangibleAssetsExcludingGoodwill",
+        ),
+        ("ImpairmentLossRecognisedInProfitOrLoss",),
+    ),
     # --- Bank pack ---
     M(
         "net_interest_income",
@@ -397,6 +430,8 @@ _INTERNAL = {
     "debt_line_of_credit",
     "depreciation_only",
     "amortization_intangibles",
+    "restructuring",
+    "impairments",
     "dac_amortization",
     "other_underwriting_expense",
     "loans_net",
