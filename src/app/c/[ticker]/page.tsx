@@ -123,12 +123,14 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
         <CompanyTabs defaultTab="financials" />
       </div>
       <div className="mt-6">
+        <Suspense key={`${tab}-${sp.a ?? ""}-${sp.b ?? ""}`} fallback={<TabSkeleton />}>
         {tab === "financials" && <FinancialsTab company={company} filings={filings} />}
         {tab === "sources" && <SourcesTab company={company} filings={filings} />}
         {tab === "brief" && <BriefTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />}
         {tab === "call" && <CallTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />}
         {tab === "filings" && <BriefTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} mode="filings" />}
         {tab === "peers" && <PeersTab company={company} />}
+        </Suspense>
       </div>
     </>
   );
@@ -470,6 +472,25 @@ function SourcesTab({ company, filings }: { company: Company; filings: Filing[] 
   );
 }
 
+
+function TabSkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Loading" className="space-y-6">
+      <div className="skeleton h-7 w-2/3" />
+      <div className="skeleton h-4 w-full" />
+      <div className="skeleton h-4 w-5/6" />
+      <div className="grid grid-cols-2 gap-6 border-y border-border py-5 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="space-y-2">
+            <div className="skeleton h-3 w-20" />
+            <div className="skeleton h-7 w-24" />
+          </div>
+        ))}
+      </div>
+      <div className="skeleton h-40 w-full" />
+    </div>
+  );
+}
 
 function CompanySkeleton() {
   return (
