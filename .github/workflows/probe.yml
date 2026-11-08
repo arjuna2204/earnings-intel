@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "pipeline/scripts/probe_alpha_vantage.py"
+      - "pipeline/scripts/probe_sec_peers.py"
 
 permissions:
   contents: write
@@ -25,12 +26,15 @@ jobs:
       - name: Probe
         env:
           ALPHA_VANTAGE_API_KEY: ${{ secrets.ALPHA_VANTAGE_API_KEY }}
-        run: python pipeline/scripts/probe_alpha_vantage.py
+          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+        run: |
+          pip install -q httpx
+          python pipeline/scripts/probe_sec_peers.py
       - name: Save result
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add ops/av-probe.json
+          git add ops/
           git commit -m "Alpha Vantage probe result [skip ci]" || echo "No change"
           git pull --rebase --autostash origin main
           git push origin HEAD:main
