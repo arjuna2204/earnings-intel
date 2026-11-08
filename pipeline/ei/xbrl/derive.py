@@ -134,6 +134,19 @@ def derive_all(nc: NormalizedCompany, pack: str) -> NormalizedCompany:
                 cur,
                 "Revenue − cost of revenue",
             )
+        if c.v("da", fy, fp) is None:
+            dep, amort = c.v("depreciation_only", fy, fp), c.v("amortization_intangibles", fy, fp)
+            if dep is not None:
+                c.put(
+                    "da",
+                    fy,
+                    fp,
+                    dep + (amort or 0.0),
+                    cur,
+                    "Depreciation + amortization of intangibles"
+                    if amort is not None
+                    else "Depreciation only (no separate amortization tag)",
+                )
         c.put(
             "ebitda",
             fy,
@@ -311,6 +324,10 @@ def derive_all(nc: NormalizedCompany, pack: str) -> NormalizedCompany:
 
     for metric, reason in NOT_IN_XBRL.get(pack, {}).items():
         nc.unresolved.setdefault(metric, reason)
+    # A metric that couldn't be read directly but was derived from its parts isn't "not reported".
+    derived_names = {m for (m, _, _) in nc.values}
+    for metric in [m for m in nc.unresolved if m in derived_names]:
+        del nc.unresolved[metric]
     return nc
 
 
@@ -505,12 +522,29 @@ def valuation_snapshot(
     debt, cash = lv("total_debt"), lv("cash")
     ev = mcap + (debt or 0) - (cash or 0) if mcap is not None else None
     snap["enterprise_value"] = ev
+
+    fy_fallback: list[str] = []
+
+    def ttm_or_fy(metric: str) -> float | None:
+        """TTM if four quarters exist; otherwise the latest fiscal year (noted in the snapshot)."""
+        t = lv(f"{metric}_ttm")
+        if t is not None:
+            return t
+        fy_rows = [pv for (m, _, fp), pv in nc.values.items() if m == metric and fp == "FY"]
+        if not fy_rows:
+            return None
+        latest = max(fy_rows, key=lambda pv: pv.period_end)
+        fy_fallback.append(f"{metric} (FY{latest.fiscal_year})")
+        return latest.value
+
     ebitda, rev, fcf, eps = (
-        lv("ebitda_ttm"),
-        lv("revenue_ttm"),
-        lv("free_cash_flow_ttm"),
-        lv("eps_diluted_ttm"),
+        ttm_or_fy("ebitda"),
+        ttm_or_fy("revenue"),
+        ttm_or_fy("free_cash_flow"),
+        ttm_or_fy("eps_diluted"),
     )
+    if fy_fallback:
+        snap["fy_fallback"] = fy_fallback
     snap["pe"] = price / eps if eps and eps > 0 else None
     snap["fcf_yield"] = _div(fcf, mcap)
     if pack == "bank":

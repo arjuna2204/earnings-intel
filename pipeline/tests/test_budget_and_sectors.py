@@ -97,3 +97,18 @@ def test_predecessor_merge_successor_wins_overlap() -> None:
     assert nc.get("revenue", 2023, "FY").value == 190  # type: ignore[union-attr]  # only in predecessor
     assert nc.get("revenue", 2024, "FY").value == 205  # type: ignore[union-attr]  # successor's newer filing wins
     assert nc.get("revenue", 2025, "FY").value == 300  # type: ignore[union-attr]
+
+
+def test_real_splits_filter() -> None:
+    from datetime import date as d
+
+    from ei.xbrl.normalize import real_splits
+
+    raw = [
+        (d(2014, 6, 9), 7.000007),
+        (d(2020, 8, 31), 4.0),
+        (d(2021, 11, 15), 1.032),
+        (d(2022, 1, 3), 1.5),
+        (d(2023, 5, 1), 0.1),
+    ]
+    assert real_splits(raw) == [(d(2014, 6, 9), 7.0), (d(2020, 8, 31), 4.0), (d(2022, 1, 3), 1.5), (d(2023, 5, 1), 0.1)]

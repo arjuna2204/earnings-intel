@@ -143,6 +143,7 @@ function ValuationStrip({ company }: { company: Company }) {
             Price {cur}
             {v.price?.toFixed(2)} on {v.price_date} · shares: {v.shares_source?.toLowerCase()} · computed in code from the
             latest filings
+            {v.fy_fallback?.length ? ` · uses latest fiscal year (no quarterly data) for: ${v.fy_fallback.join(", ")}` : ""}
           </p>
         </>
       )}

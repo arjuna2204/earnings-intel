@@ -1,1 +1,1 @@
-{"command": "analyze", "tickers": ["AAPL", "MSFT", "JPM", "WMT", "XOM", "O", "TSM"]}
+{"command": "analyze", "tickers": ["MSFT", "O", "XOM", "AAPL", "WMT"]}

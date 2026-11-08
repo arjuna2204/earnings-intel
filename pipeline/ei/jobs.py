@@ -16,7 +16,7 @@ from ei.prices import PriceProvider, TiingoProvider
 from ei.sec import SecClient, filer_type, recent_filings
 from ei.sectors import classify
 from ei.xbrl.derive import derive_all, valuation_snapshot
-from ei.xbrl.normalize import NormalizedCompany, normalize
+from ei.xbrl.normalize import NormalizedCompany, normalize, real_splits
 
 log = logging.getLogger("ei.jobs")
 ET = ZoneInfo("America/New_York")
@@ -218,7 +218,8 @@ def analyze(settings: Settings, ticker: str, job_id: int | None = None, primary:
         split_rows = db.select(
             "prices", {"ticker": f"eq.{ticker}", "split_factor": "neq.1", "select": "date,split_factor"}
         )
-        splits = [(date.fromisoformat(r["date"]), float(r["split_factor"])) for r in split_rows]
+        raw_splits = [(date.fromisoformat(r["date"]), float(r["split_factor"])) for r in split_rows]
+        splits = real_splits(raw_splits)  # ignore spin-off adjustments the price feed encodes as "splits"
         nc = normalize(facts, company["fiscal_year_end"], sector.pack, min_fiscal_year=since_year, splits=splits)
         nc = derive_all(nc, sector.pack)
         db.replace_rows(
@@ -251,6 +252,13 @@ def analyze(settings: Settings, ticker: str, job_id: int | None = None, primary:
                 "currency": nc.currency,
                 "fiscal_year_end": nc.fiscal_year_end,
                 "last_ingested_at": _now(),
+                "history_note": (
+                    "Earlier history comes from predecessor entity "
+                    + ", ".join(pred_names)
+                    + "; the company reorganized under a new SEC registrant."
+                )
+                if pred_names
+                else None,
             },
         )
         job.finish(

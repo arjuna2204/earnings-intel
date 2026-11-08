@@ -30,6 +30,7 @@ export type Valuation = {
   ev_revenue?: number | null;
   p_tbv?: number | null;
   p_b?: number | null;
+  fy_fallback?: string[];
 };
 
 export type MetricValue = {

@@ -15,6 +15,7 @@ import calendar
 from collections import Counter
 from dataclasses import dataclass, field, replace
 from datetime import date, timedelta
+from fractions import Fraction
 from typing import Any
 
 from ei.xbrl.mapping import BY_NAME, DEI_SHARES_TAG, REPORTED, MetricDef
@@ -48,6 +49,21 @@ class Fact:
 
 
 Split = tuple[date, float]  # (split date, ratio e.g. 4.0 for 4-for-1)
+
+
+def real_splits(splits: list[Split]) -> list[Split]:
+    """Keep only genuine stock splits (simple ratios like 2:1, 3:2, 7:1, 1:10).
+
+    Price feeds also encode spin-offs and special distributions as small "split factors"
+    (e.g. Realty Income 1.032 for the Orion spin-off); those must not rescale per-share history."""
+    out = []
+    for day, r in splits:
+        if r <= 0 or 0.85 < r < 1.18:
+            continue
+        frac = Fraction(r).limit_denominator(20)
+        if abs(float(frac) - r) <= 0.001 * r:
+            out.append((day, float(frac)))
+    return out
 
 
 def split_multiplier(filed: date, splits: list[Split]) -> float:
