@@ -1,1 +1,1 @@
-{"command": "brief", "ticker": "JPM", "periods": ["FY2025Q3", "FY2026Q3"], "nonce": 1794120366}
+{"command": "peers", "tickers": ["MSFT"], "args": ["--n", "5"], "nonce": 1794120374}
