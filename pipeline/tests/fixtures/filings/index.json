@@ -1,0 +1,74 @@
+[
+ {
+  "ticker": "AAPL",
+  "cik": 320193,
+  "form": "10-K",
+  "file": "AAPL_10-K_2026-09-26.htm.gz",
+  "url": "https://www.sec.gov/Archives/edgar/data/320193/000032019326000026/aapl-20260926.htm",
+  "accessionNumber": "0000320193-26-000026",
+  "primaryDocument": "aapl-20260926.htm",
+  "reportDate": "2026-09-26",
+  "filingDate": "2026-11-03",
+  "items": ""
+ },
+ {
+  "ticker": "AAPL",
+  "cik": 320193,
+  "form": "10-K",
+  "file": "AAPL_10-K_2025-09-27.htm.gz",
+  "url": "https://www.sec.gov/Archives/edgar/data/320193/000032019325000079/aapl-20250927.htm",
+  "accessionNumber": "0000320193-25-000079",
+  "primaryDocument": "aapl-20250927.htm",
+  "reportDate": "2025-09-27",
+  "filingDate": "2025-10-31",
+  "items": ""
+ },
+ {
+  "ticker": "AAPL",
+  "cik": 320193,
+  "form": "8-K",
+  "file": "AAPL_8-K-EX99_2026-11-02.htm.gz",
+  "url": "https://www.sec.gov/Archives/edgar/data/320193/000032019326000024/a8-kex991q4202609262026.htm",
+  "accessionNumber": "0000320193-26-000024",
+  "primaryDocument": "aapl-20261102.htm",
+  "reportDate": "2026-11-02",
+  "filingDate": "2026-11-02",
+  "items": "2.02,9.01"
+ },
+ {
+  "ticker": "MSFT",
+  "cik": 789019,
+  "form": "10-K",
+  "file": "MSFT_10-K_2026-06-30.htm.gz",
+  "url": "https://www.sec.gov/Archives/edgar/data/789019/000119312526323660/msft-20260630.htm",
+  "accessionNumber": "0001193125-26-323660",
+  "primaryDocument": "msft-20260630.htm",
+  "reportDate": "2026-06-30",
+  "filingDate": "2026-07-29",
+  "items": ""
+ },
+ {
+  "ticker": "MSFT",
+  "cik": 789019,
+  "form": "10-K",
+  "file": "MSFT_10-K_2025-06-30.htm.gz",
+  "url": "https://www.sec.gov/Archives/edgar/data/789019/000095017025100235/msft-20250630.htm",
+  "accessionNumber": "0000950170-25-100235",
+  "primaryDocument": "msft-20250630.htm",
+  "reportDate": "2025-06-30",
+  "filingDate": "2025-07-30",
+  "items": ""
+ },
+ {
+  "ticker": "MSFT",
+  "cik": 789019,
+  "form": "8-K",
+  "file": "MSFT_8-K-EX99_2026-10-28.htm.gz",
+  "url": "https://www.sec.gov/Archives/edgar/data/789019/000119312526436122/msft-ex99_1.htm",
+  "accessionNumber": "0001193125-26-436122",
+  "primaryDocument": "msft-20261028.htm",
+  "reportDate": "2026-10-28",
+  "filingDate": "2026-10-28",
+  "items": "2.02,9.01"
+ }
+]
