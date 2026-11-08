@@ -92,6 +92,12 @@ jobs:
         if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'refresh'
         working-directory: pipeline
         run: python -m ei.cli refresh
+      - name: Continue call-history backfill (free, no AI)
+        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'backfill-calls'
+        working-directory: pipeline
+        env:
+          FASTEMBED_CACHE_PATH: /home/runner/.cache/fastembed
+        run: python -m ei.cli backfill-calls
       - name: Retry paused loads
         if: (github.event_name == 'schedule' && github.event.schedule == '41 */3 * * *') || inputs.command == 'retry-deferred'
         working-directory: pipeline

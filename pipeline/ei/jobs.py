@@ -312,6 +312,16 @@ def retry_deferred(settings: Settings) -> list[str]:
             "jobs",
             {"kind": "eq.analyze", "select": "ticker,status,id", "order": "id.desc", "limit": "200"},
         )
+        calls = db.select(
+            "jobs",
+            {
+                "kind": "eq.calls",
+                "status": "eq.deferred",
+                "select": "id,ticker,params",
+                "order": "id.desc",
+                "limit": "20",
+            },
+        )
     finally:
         db.close()
     latest: dict[str, str] = {}
@@ -326,4 +336,15 @@ def retry_deferred(settings: Settings) -> list[str]:
             done.append(t if result.get("ok") else f"{t} (failed)")
         except Exception:
             log.exception("retry failed for %s", t)
+    # Call comparisons paused by the transcript provider's daily quota: resume them (same job row).
+    from ei.calls.run import compare_calls
+
+    for j in calls:
+        p = j.get("params") or {}
+        if p.get("period_a") and p.get("period_b"):
+            try:
+                compare_calls(settings, j["ticker"], p["period_a"], p["period_b"], job_id=int(j["id"]))
+                done.append(f"{j['ticker']} calls {p['period_a']}→{p['period_b']}")
+            except Exception:
+                log.exception("calls retry failed for %s", j["ticker"])
     return done

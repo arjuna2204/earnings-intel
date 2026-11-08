@@ -87,3 +87,32 @@ def test_schema_is_strict() -> None:
     assert SCHEMA["additionalProperties"] is False
     g = SCHEMA["properties"]["guidance"]["items"]
     assert set(g["required"]) == set(g["properties"])
+
+
+def test_guidance_numbers_must_be_in_the_quote() -> None:
+    from ei.calls.extract import check_guidance_numbers
+
+    ok = check_guidance_numbers(
+        {
+            "low": 18.1,
+            "high": 18.5,
+            "point": None,
+            "quote": "between $18.1 billion and $18.5 billion",
+            "qualitative": None,
+        }
+    )
+    assert ok["low"] == 18.1 and "numbers_removed" not in ok
+    inferred = check_guidance_numbers(
+        {
+            "low": None,
+            "high": None,
+            "point": 14,
+            "quote": "mirroring the same year-over-year rate we reported",
+            "qualitative": None,
+        }
+    )
+    assert inferred["point"] is None and inferred["numbers_removed"] and inferred["qualitative"].startswith("mirroring")
+    commas = check_guidance_numbers(
+        {"low": None, "high": None, "point": 1250, "quote": "about 1,250 stores", "qualitative": None}
+    )
+    assert commas["point"] == 1250

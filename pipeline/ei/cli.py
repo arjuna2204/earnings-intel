@@ -26,6 +26,7 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--job-id", type=int, default=None)
     sub.add_parser("refresh")
     sub.add_parser("retry-deferred")
+    sub.add_parser("backfill-calls")
     c = sub.add_parser("calls")
     c.add_argument("ticker")
     c.add_argument("period_a")
@@ -44,6 +45,10 @@ def main(argv: list[str] | None = None) -> int:
         from ei.calls.run import compare_calls
 
         print(json.dumps(compare_calls(settings, args.ticker, args.period_a, args.period_b, job_id=args.job_id)))
+    elif args.cmd == "backfill-calls":
+        from ei.calls.run import backfill_all
+
+        print(json.dumps(backfill_all(settings)))
     elif args.cmd == "retry-deferred":
         print(json.dumps({"retried": retry_deferred(settings)}))
     return 0

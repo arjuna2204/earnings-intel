@@ -40,8 +40,9 @@ def label(fy: int, fq: int) -> str:
 class AvQuota:
     """Counts Alpha Vantage requests per US-Eastern day in api_usage; raises when 25 are used."""
 
-    def __init__(self, db: Db, limit: int) -> None:
-        self.db, self.limit = db, limit
+    def __init__(self, db: Db, limit: int, reserve: int = 0) -> None:
+        """`reserve`: requests left untouched for on-demand comparisons (used by background backfill)."""
+        self.db, self.limit = db, limit - reserve
 
     def __call__(self) -> None:
         rows = self.db.select(
@@ -137,8 +138,12 @@ def analyze_call(
     fy: int,
     fq: int,
     event: dict[str, Any] | None,
+    free_only: bool = False,
 ) -> dict[str, Any]:
-    """Cached per (company, quarter, analysis version). Re-runs only missing AI parts."""
+    """Cached per (company, quarter, analysis version). Re-runs only missing AI parts.
+
+    free_only=True (background backfill): transcript, structure, word-list tone and price reaction
+    only; AI extraction runs later if and when this quarter is compared."""
     cik = company["cik"]
     key = {
         "cik": f"eq.{cik}",
@@ -147,8 +152,10 @@ def analyze_call(
         "analysis_version": f"eq.{ANALYSIS_VERSION}",
     }
     cached = db.select("call_analysis", {**key, "select": "*"})
-    if cached and cached[0]["status"] == "done":
+    if cached and (cached[0]["status"] == "done" or free_only):
         return cached[0]
+    if free_only:
+        ai = None
 
     turns = get_transcript(db, av, company, fy, fq)
     if not turns:
@@ -173,7 +180,12 @@ def analyze_call(
             _series(db, company["sector_etf"] or "SPY"),
         )
     if ai is None:
-        row.update(status="partial", note="AI analysis not run (no API key)")
+        row.update(
+            status="partial",
+            note="Tone only (background history); AI analysis runs when this quarter is compared"
+            if free_only
+            else "AI analysis not run (no API key)",
+        )
     else:
         try:
             kept, evas, dropped, cost = extract_call(ai, company["name"], label(fy, fq), turns, parsed, cik)
@@ -248,6 +260,14 @@ def compare_calls(
             on_conflict="cik,period_a,period_b,analysis_version",
         )
         job.step("compare", "done", f"{len(result['guidance'])} guidance items · {len(result['topics'])} topics")
+        job.step("history", "running", "Loading up to 8 recent quarters for tone trends (free, no AI)")
+        bf = backfill_history(settings, ticker)
+        job.step(
+            "history",
+            "done" if not bf.get("paused") else "deferred",
+            f"{len(bf.get('loaded', []))} quarters ready"
+            + (" · continues tomorrow (daily transcript limit)" if bf.get("paused") else ""),
+        )
         job.finish("done", None, cik)
         return {"ok": True, "cik": cik}
     except QuotaReached as exc:
@@ -263,3 +283,62 @@ def compare_calls(
     finally:
         av.close()
         db.close()
+
+
+BACKFILL_QUARTERS = 8
+BACKFILL_RESERVE = 5  # of the 25 daily transcript requests, keep 5 free for comparisons you start
+
+
+def backfill_history(settings: Settings, ticker: str) -> dict[str, Any]:
+    """Option A: after a comparison, load the last 8 reported quarters' transcripts and score their
+    tone (free; no AI). Stops when today's background allowance is used and resumes on the next run."""
+    db = Db(settings.supabase_url, settings.supabase_secret_key)
+    av = AlphaVantageProvider(
+        settings.alpha_vantage_api_key,
+        quota_check=AvQuota(db, AlphaVantageProvider.daily_limit, reserve=BACKFILL_RESERVE),
+    )
+    loaded, missing = [], []
+    try:
+        comp = db.select("companies", {"ticker": f"eq.{ticker.upper()}", "select": "*"})
+        if not comp:
+            return {"ok": False, "reason": "company not loaded"}
+        company = comp[0]
+        events = db.select(
+            "earnings_events",
+            {
+                "cik": f"eq.{company['cik']}",
+                "select": "*",
+                "order": "report_date.desc",
+                "limit": str(BACKFILL_QUARTERS),
+            },
+        )
+        for e in events:
+            fy, fq = int(e["fiscal_year"]), int(e["fiscal_quarter"])
+            try:
+                analyze_call(db, av, None, company, fy, fq, e, free_only=True)
+                loaded.append(label(fy, fq))
+            except LookupError:
+                missing.append(label(fy, fq))  # provider has no transcript for that quarter
+        return {"ok": True, "loaded": loaded, "no_transcript": missing}
+    except QuotaReached:
+        return {"ok": True, "loaded": loaded, "paused": "background transcript allowance used for today"}
+    finally:
+        av.close()
+        db.close()
+
+
+def backfill_all(settings: Settings) -> list[dict[str, Any]]:
+    """Daily: continue history backfill for every company that has at least one analyzed call."""
+    db = Db(settings.supabase_url, settings.supabase_secret_key)
+    try:
+        ciks = {r["cik"] for r in db.select("call_analysis", {"select": "cik"})}
+        tickers = [r["ticker"] for r in db.select("companies", {"select": "cik,ticker"}) if r["cik"] in ciks]
+    finally:
+        db.close()
+    out = []
+    for t in tickers:
+        res = backfill_history(settings, t)
+        out.append({"ticker": t, **res})
+        if res.get("paused"):
+            break
+    return out

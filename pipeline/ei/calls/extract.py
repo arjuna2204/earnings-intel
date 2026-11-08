@@ -6,6 +6,7 @@ turn — then the turn number is corrected). Anything that fails verification is
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from pydantic import BaseModel, Field, ValidationError
@@ -16,7 +17,7 @@ from ei.transcripts import Turn
 from ei.verify import locate
 
 PROMPT_FILE = "call_extraction.v2.md"
-ANALYSIS_VERSION = "calls-v2"  # bump when prompts or parsing change: cached analyses then re-run
+ANALYSIS_VERSION = "calls-v3"  # bump when prompts or parsing change: cached analyses then re-run
 
 
 class Quoted(BaseModel):
@@ -130,6 +131,23 @@ def build_user_message(company: str, period: str, turns: list[Turn], parsed: Par
     )
 
 
+def _number_in_text(x: float, text: str) -> bool:
+    """True if the number appears in the text as written (14 / 14.0 / 1,234 / 18.1)."""
+    nums = {float(m.replace(",", "")) for m in re.findall(r"\d[\d,]*(?:\.\d+)?", text)}
+    return any(abs(n - x) < 1e-9 for n in nums)
+
+
+def check_guidance_numbers(item: dict[str, Any]) -> dict[str, Any]:
+    """Guidance numbers must be stated in the quote itself. Numbers the model inferred from context
+    are removed (the item stays, as qualitative, with its exact quote)."""
+    fields = [f for f in ("low", "high", "point") if item.get(f) is not None]
+    if fields and not all(_number_in_text(float(item[f]), item["quote"]) for f in fields):
+        item = {**item, "qualitative": item.get("qualitative") or item["quote"], "numbers_removed": True}
+        for f in fields:
+            item[f] = None
+    return item
+
+
 def verify_extraction(
     ex: Extraction, turns: list[Turn], parsed: ParsedCall
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
@@ -144,6 +162,8 @@ def verify_extraction(
                 dropped.append({"kind": kind, "item": item.model_dump(), "reason": "quote not found verbatim"})
                 continue
             d = item.model_dump()
+            if kind == "guidance":
+                d = check_guidance_numbers(d)
             d["turn"] = where
             d["speaker"] = turns[where].speaker
             d["role"] = parsed.turns[where]["role"]
