@@ -23,6 +23,24 @@ def _mid(g: dict[str, Any]) -> float | None:
     return float(lo) if lo is not None else (float(hi) if hi is not None else None)
 
 
+_SCALE = [("trillion", 1e12), ("billion", 1e9), ("million", 1e6), ("thousand", 1e3)]
+
+
+def unit_family(unit: str | None) -> tuple[str, float]:
+    """(family, scale): 'USD billions' -> ('money', 1e9); '% growth y/y' -> ('% growth', 1); 'bps' -> ('bps', 1)."""
+    u = (unit or "").lower()
+    if "%" in u or "percent" in u:
+        return ("% growth" if "growth" in u or "y/y" in u or "yoy" in u else "%", 1.0)
+    if "bps" in u or "basis point" in u:
+        return ("bps", 1.0)
+    for word, scale in _SCALE:
+        if word in u:
+            return ("money", scale)
+    if any(c in u for c in ("usd", "$", "dollar", "eur", "€")):
+        return ("money", 1.0)
+    return (_norm(unit), 1.0)
+
+
 def _norm(s: str | None) -> str:
     return re.sub(r"[^a-z0-9%]+", " ", (s or "").lower()).strip()
 
@@ -45,11 +63,15 @@ def compare_guidance(
     # Only pair items with the same horizon (next-quarter guide vs. next-quarter guide, etc.).
     for i, a in enumerate(earlier):
         for j, b in enumerate(later):
+            fam_a, fam_b = unit_family(a.get("unit"))[0], unit_family(b.get("unit"))[0]
             if _horizon(a["period"]) != _horizon(b["period"]):
                 sim[i][j] = 0.0
             elif _norm(a["metric"]) == _norm(b["metric"]):
                 sim[i][j] = 1.0
-    matches = greedy_match(sim, threshold=0.6 if emb.name != "word-overlap" else 0.5)
+            elif a.get("unit") and b.get("unit") and fam_a != fam_b:
+                sim[i][j] = 0.0  # e.g. a revenue guide in % growth vs. an expense guide in dollars
+    # Short metric names embed close together, so require a strong match with a real model.
+    matches = greedy_match(sim, threshold=0.85 if emb.name != "word-overlap" else 0.5)
     rows: list[dict[str, Any]] = []
     matched_a = {i for i, _, _ in matches}
     matched_b = {j for _, j, _ in matches}
@@ -68,19 +90,31 @@ def compare_guidance(
             )
     for i, a in enumerate(earlier):
         if i not in matched_a:
-            rows.append({"metric": a["metric"], "earlier": a, "later": None, "change": "withdrawn"})
-    order = {"raised": 0, "lowered": 1, "new": 2, "withdrawn": 3, "maintained": 4, "changed basis": 5, "qualitative": 6}
+            # Not given again. Only labeled "withdrawn" when management explicitly said so.
+            rows.append({"metric": a["metric"], "earlier": a, "later": None, "change": "not repeated"})
+    order = {
+        "raised": 0,
+        "lowered": 1,
+        "new": 2,
+        "withdrawn": 3,
+        "not repeated": 4,
+        "maintained": 5,
+        "changed basis": 6,
+        "qualitative": 7,
+    }
     return sorted(rows, key=lambda r: order.get(r["change"], 9))
 
 
 def _label(a: dict[str, Any], b: dict[str, Any]) -> dict[str, Any]:
     if b.get("withdrawn"):
-        return {"change": "withdrawn"}
+        return {"change": "withdrawn", "explicit": True}
     ma, mb = _mid(a), _mid(b)
     if ma is None or mb is None:
         return {"change": "qualitative"}
-    if _norm(a.get("unit")) != _norm(b.get("unit")):
+    (fa, sa), (fb, sb) = unit_family(a.get("unit")), unit_family(b.get("unit"))
+    if fa != fb:
         return {"change": "changed basis", "note": f"units differ ({a.get('unit')} vs {b.get('unit')})"}
+    ma, mb = ma * sa, mb * sb  # compare on a common scale ($150 million vs $0.3 billion)
     delta = mb - ma
     rel = delta / abs(ma) if ma else None
     if abs(delta) <= MAINTAINED_TOLERANCE * max(abs(ma), 1e-9):
@@ -88,7 +122,12 @@ def _label(a: dict[str, Any], b: dict[str, Any]) -> dict[str, Any]:
     else:
         change = "raised" if delta > 0 else "lowered"
     same_target = _norm(a["period"]) == _norm(b["period"])
-    out: dict[str, Any] = {"change": change, "delta": delta, "delta_pct": rel, "same_target_period": same_target}
+    out: dict[str, Any] = {
+        "change": change,
+        "delta": delta / sb if fb == "money" else delta,  # expressed in the later item's unit
+        "delta_pct": rel,
+        "same_target_period": same_target,
+    }
     if not same_target:
         out["note"] = f"compares guidance for different target periods ({a['period']} → {b['period']})"
     return out

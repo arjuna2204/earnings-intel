@@ -15,8 +15,8 @@ from ei.calls.parse import ParsedCall, format_for_model
 from ei.transcripts import Turn
 from ei.verify import locate
 
-PROMPT_FILE = "call_extraction.v1.md"
-ANALYSIS_VERSION = "calls-v1"  # bump when prompts or parsing change: cached analyses then re-run
+PROMPT_FILE = "call_extraction.v2.md"
+ANALYSIS_VERSION = "calls-v2"  # bump when prompts or parsing change: cached analyses then re-run
 
 
 class Quoted(BaseModel):
@@ -186,6 +186,7 @@ def extract_call(
         schema=SCHEMA,
         max_tokens=12000,
         cik=cik,
+        effort="medium",
     )
     try:
         ex = Extraction.model_validate(result.data)

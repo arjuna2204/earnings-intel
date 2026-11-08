@@ -53,7 +53,7 @@ def test_guidance_labels() -> None:
     assert rows["Operating expenses"]["change"] == "maintained"
     assert rows["Tax rate"]["change"] == "changed basis"
     assert rows["Capex"]["change"] == "new"
-    assert rows["Buybacks"]["change"] == "withdrawn"
+    assert rows["Buybacks"]["change"] == "not repeated"  # silently dropped, not explicitly withdrawn
 
 
 def test_guidance_explicitly_withdrawn_and_horizon_mismatch() -> None:
@@ -110,3 +110,18 @@ def test_price_reaction_after_close_and_before_open() -> None:
     # Reported Thu before the open: base = Wed close too.
     r2 = price_reaction(date(2026, 1, 29), "pre-market", px, etf)
     assert r2 is not None and r2["base_date"] == "2026-01-28"
+
+
+def test_units_on_a_common_scale() -> None:
+    earlier = [g("Other income", "next quarter", point=150, unit="USD millions")]
+    later = [g("Other income", "next quarter", point=0.3, unit="USD billions")]
+    row = compare_guidance(earlier, later)[0]
+    assert row["change"] == "raised"
+    assert row["delta"] == pytest.approx(0.15)  # in the later item's unit (USD billions)
+
+
+def test_metrics_with_incompatible_units_are_not_paired() -> None:
+    earlier = [g("iPhone revenue growth", "next quarter", point=10, unit="% growth y/y")]
+    later = [g("Operating expenses", "next quarter", 20.4, 20.8, unit="USD billions")]
+    changes = sorted(r["change"] for r in compare_guidance(earlier, later))
+    assert changes == ["new", "not repeated"]

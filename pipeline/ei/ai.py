@@ -10,7 +10,7 @@ import json
 from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from ei.budget import BudgetState, Usage, check_call, cost_usd, estimate_tokens
 from ei.db import Db
@@ -57,6 +57,7 @@ class AiClient:
         schema: dict[str, Any],
         max_tokens: int,
         cik: int | None = None,
+        effort: Literal["low", "medium", "high"] = "low",
     ) -> AiResult:
         # 1) Estimate the worst case (full max_tokens of output) and refuse if it would break the cap.
         est = Usage(input_tokens=estimate_tokens(system) + estimate_tokens(user) + 200, output_tokens=max_tokens)
@@ -69,7 +70,7 @@ class AiClient:
             system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
             messages=[{"role": "user", "content": user}],
             thinking={"type": "disabled"},
-            output_config={"effort": "low", "format": {"type": "json_schema", "schema": schema}},
+            output_config={"effort": effort, "format": {"type": "json_schema", "schema": schema}},
         )
 
         # 3) Log actual usage and cost, whatever happens next.
