@@ -221,6 +221,14 @@ function ValuationStrip({ company }: { company: Company }) {
     items.push(["EV/Revenue (TTM)", v.ev_revenue != null ? `${v.ev_revenue.toFixed(2)}×` : null]);
   }
   items.push(["FCF yield (TTM)", v.fcf_yield != null ? `${(v.fcf_yield * 100).toFixed(1)}%` : null]);
+  const x = (n: number | null | undefined) => (n != null ? `${n.toFixed(1)}×` : null);
+  const street: [string, string | null, string][] = v.street_source
+    ? [
+        ["Adj. P/E (LTM)", x(v.pe_adj_ltm), v.adj_eps_ltm != null ? `EPS $${v.adj_eps_ltm.toFixed(2)}, last 4 quarters` : "needs 4 reported quarters"],
+        ["Adj. P/E (run-rate)", x(v.pe_adj_run_rate), v.adj_eps_run_rate != null ? `${v.adj_eps_run_rate_quarter} EPS × 4 = $${v.adj_eps_run_rate.toFixed(2)}` : ""],
+        ["Fwd P/E (next 12 mo.)", x(v.pe_fwd_ntm), v.eps_ntm != null ? `consensus EPS $${v.eps_ntm.toFixed(2)}` : "no consensus available"],
+      ]
+    : [];
 
   return (
     <section className="mt-6" aria-label="Valuation">
@@ -236,12 +244,30 @@ function ValuationStrip({ company }: { company: Company }) {
               </div>
             ))}
           </dl>
+          {street.length > 0 && (
+            <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-border pt-4 sm:grid-cols-3">
+              {street.map(([label, val, sub]) => (
+                <div key={label}>
+                  <dt className="text-xs text-muted">{label}</dt>
+                  <dd className={`mt-0.5 text-lg font-semibold ${val ? "" : "text-muted"}`}>{val ?? "Not available"}</dd>
+                  <dd className="text-xs text-muted">{sub}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
           <p className="mt-2 text-xs text-muted">
             Price {cur}
             {v.price?.toFixed(2)} on {v.price_date} · shares: {v.shares_source?.toLowerCase()} · computed in code from the
             latest filings
             {v.fy_fallback?.length ? ` · uses latest fiscal year (no quarterly data) for: ${v.fy_fallback.join(", ")}` : ""}
           </p>
+          {v.street_source && (
+            <p className="mt-1 text-xs text-muted">
+              Adjusted and forward P/E use Street EPS (the adjusted basis companies report to analysts) and analyst consensus from{" "}
+              {v.street_source.split(" (")[0]} — not SEC filings. Run-rate annualizes one quarter, so it overstates seasonal businesses
+              after their peak quarter. {v.eps_ntm_method ? `Forward EPS: ${v.eps_ntm_method}.` : ""}
+            </p>
+          )}
         </>
       )}
     </section>

@@ -433,3 +433,40 @@ def compare_only(settings: Settings, company: dict[str, Any], la: str, lb: str) 
         )
     finally:
         db.close()
+
+
+def ensure_estimates(db: Db, av: AlphaVantageProvider, company: dict[str, Any]) -> list[dict[str, Any]]:
+    """Consensus EPS estimates, refreshed at most weekly (1 request)."""
+    cik = company["cik"]
+    rows = db.select("eps_estimates", {"cik": f"eq.{cik}", "select": "*", "order": "fetched_at.desc"})
+    if rows and (_today_et() - date.fromisoformat(str(rows[0]["fetched_at"])[:10])).days < 7:
+        return rows
+    est = av.earnings_estimates(company["ticker"])
+    if est:
+        db.delete("eps_estimates", {"cik": cik})
+        db.upsert("eps_estimates", [{"cik": cik, **e} for e in est], on_conflict="cik,period_end,horizon")
+    return db.select("eps_estimates", {"cik": f"eq.{cik}", "select": "*"})
+
+
+def street_snapshot(settings: Settings, db: Db, company: dict[str, Any], price: float | None) -> dict[str, Any]:
+    """Adjusted (Street) and forward P/E inputs; quietly skipped if the free quota is used up."""
+    from ei.street import street_multiples
+
+    if not settings.alpha_vantage_api_key or price is None:
+        return {}
+    av = AlphaVantageProvider(
+        settings.alpha_vantage_api_key,
+        quota_check=AvQuota(db, AlphaVantageProvider.daily_limit, reserve=BACKFILL_RESERVE),
+    )
+    try:
+        try:
+            events = ensure_events(db, av, company)
+        except QuotaReached:
+            events = db.select("earnings_events", {"cik": f"eq.{company['cik']}", "select": "*"})
+        try:
+            estimates = ensure_estimates(db, av, company)
+        except QuotaReached:
+            estimates = db.select("eps_estimates", {"cik": f"eq.{company['cik']}", "select": "*"})
+        return street_multiples(price, events, estimates, _today_et())
+    finally:
+        av.close()

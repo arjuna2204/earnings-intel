@@ -41,6 +41,8 @@ class TranscriptProvider(Protocol):
 
     def transcript(self, ticker: str, fiscal_year: int, fiscal_quarter: int) -> list[Turn] | None: ...
 
+    def earnings_estimates(self, ticker: str) -> list[dict[str, Any]]: ...
+
     def earnings_events(self, ticker: str) -> list[EarningsEvent]: ...
 
 
@@ -75,7 +77,7 @@ class AlphaVantageProvider:
         resp.raise_for_status()
         data: dict[str, Any] = resp.json()
         notice = data.get("Information") or data.get("Note")
-        if notice and not any(k in data for k in ("transcript", "quarterlyEarnings")):
+        if notice and not any(k in data for k in ("transcript", "quarterlyEarnings", "estimates")):
             if "25 requests" in notice or "rate limit" in notice.lower() or "sparingly" in notice:
                 raise QuotaReached(f"Alpha Vantage limit: {notice[:160]}")
             raise RuntimeError(f"Alpha Vantage: {notice[:200]}")
@@ -98,6 +100,28 @@ class AlphaVantageProvider:
             if (t.get("content") or "").strip()
         ]
         return out or None
+
+    def earnings_estimates(self, ticker: str) -> list[dict[str, Any]]:
+        data = self._get({"function": "EARNINGS_ESTIMATES", "symbol": ticker})
+        out = []
+        for e in data.get("estimates", []):
+            horizon = e.get("horizon")
+            if horizon not in ("fiscal quarter", "fiscal year") or not e.get("date"):
+                continue
+            out.append(
+                {
+                    "period_end": e["date"],
+                    "horizon": horizon,
+                    "eps_avg": _num(e.get("eps_estimate_average")),
+                    "eps_high": _num(e.get("eps_estimate_high")),
+                    "eps_low": _num(e.get("eps_estimate_low")),
+                    "analysts": int(float(e["eps_estimate_analyst_count"]))
+                    if e.get("eps_estimate_analyst_count")
+                    else None,
+                    "revenue_avg": _num(e.get("revenue_estimate_average")),
+                }
+            )
+        return out
 
     def earnings_events(self, ticker: str) -> list[EarningsEvent]:
         data = self._get({"function": "EARNINGS", "symbol": ticker})

@@ -31,6 +31,16 @@ export type Valuation = {
   p_tbv?: number | null;
   p_b?: number | null;
   fy_fallback?: string[];
+  street_source?: string;
+  adj_eps_ltm?: number | null;
+  adj_eps_ltm_quarters?: string[];
+  pe_adj_ltm?: number | null;
+  adj_eps_run_rate?: number | null;
+  adj_eps_run_rate_quarter?: string | null;
+  pe_adj_run_rate?: number | null;
+  eps_ntm?: number | null;
+  eps_ntm_method?: string;
+  pe_fwd_ntm?: number | null;
 };
 
 export type MetricValue = {

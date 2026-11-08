@@ -251,6 +251,13 @@ def analyze(settings: Settings, ticker: str, job_id: int | None = None, primary:
         # 5. Valuation snapshot (needs prices)
         price, price_date = latest_price(db, ticker)
         snap = valuation_snapshot(nc, sector.pack, price, price_date)
+        try:
+            from ei.calls.run import street_snapshot
+
+            company_row = db.select("companies", {"cik": f"eq.{cik}", "select": "*"})[0]
+            snap.update(street_snapshot(settings, db, company_row, price))
+        except Exception as exc:  # never fail a company load over Street data
+            log.warning("street data skipped: %s", exc)
         db.update(
             "companies",
             {"cik": cik},
