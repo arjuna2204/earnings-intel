@@ -13,7 +13,7 @@ permissions:
   contents: write # to save ops/key-check.json (pass/fail only, no keys)
 
 concurrency:
-  group: check-keys
+  group: repo-writes
   cancel-in-progress: false
 
 jobs:

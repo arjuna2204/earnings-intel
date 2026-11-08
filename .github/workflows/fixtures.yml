@@ -1,0 +1,41 @@
+name: Refresh test fixtures
+
+# Downloads saved SEC data for the test companies. Runs when the fetch script changes, or manually.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "pipeline/scripts/fetch_fixtures.py"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: repo-writes
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pipeline/pyproject.toml
+      - run: pip install -e "pipeline[dev]"
+      - name: Fetch fixtures
+        env:
+          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+        run: python pipeline/scripts/fetch_fixtures.py
+      - name: Save fixtures
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pipeline/tests/fixtures
+          git commit -m "Refresh SEC test fixtures [skip ci]" || echo "No change"
+          git pull --rebase origin main
+          git push origin HEAD:main

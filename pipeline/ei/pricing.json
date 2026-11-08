@@ -1,0 +1,9 @@
+{
+  "verified": false,
+  "note": "USD per million tokens. Must be checked against https://platform.claude.com/docs/en/about-claude/pricing and 'verified' set to true before any AI call is allowed (Phase 2).",
+  "batch_multiplier": 0.5,
+  "models": {
+    "claude-haiku-5-5": { "input": 0, "output": 0, "cache_write_5m": 0, "cache_read": 0 },
+    "claude-sonnet-5-5": { "input": 0, "output": 0, "cache_write_5m": 0, "cache_read": 0 }
+  }
+}

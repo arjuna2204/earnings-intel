@@ -14,7 +14,7 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 TIMEOUT = 30
@@ -123,10 +123,10 @@ def main() -> int:
             continue
         try:
             results[name] = fn(value)
-        except Exception as e:  # noqa: BLE001 - report any failure without crashing other checks
+        except Exception as e:
             results[name] = {"ok": False, "error": f"{type(e).__name__}: {e}"}
 
-    out = {"checked_at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "results": results}
+    out = {"checked_at": datetime.now(UTC).isoformat(timespec="seconds"), "results": results}
     text = _scrub(json.dumps(out, indent=2), secrets)
     os.makedirs("ops", exist_ok=True)
     with open("ops/key-check.json", "w") as f:
