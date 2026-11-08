@@ -11,6 +11,7 @@ import CallView from "@/components/CallView";
 import { compact, filingIndexFromDocUrl, GENERAL_GROUPS, PACK_GROUPS } from "@/lib/metrics";
 import type { Company, Filing } from "@/lib/types";
 import BriefView from "@/components/BriefView";
+import { buildExtras } from "@/lib/brief-extras";
 import { figureText, releaseFigure, type StreetRow } from "@/lib/figures";
 import FilingsView from "@/components/FilingsView";
 import { getBrief, getLatestBriefJob, getRiskChanges, type Brief } from "@/lib/filings";
@@ -239,11 +240,31 @@ async function BriefTab({ company, events, a, b, mode = "brief" }: { company: Co
       </div>
     );
   }
-  const street = await streetRows(company, events, brief, ea, eb, la, lb);
+  const [street, comparison, kpis] = await Promise.all([
+    streetRows(company, events, brief, ea, eb, la, lb),
+    getComparison(company.cik, la, lb),
+    select<{ metric: string; fiscal_year: number; fiscal_period: string; value: number }>("metric_values", {
+      cik: `eq.${company.cik}`,
+      metric: "in.(revenue,operating_margin)",
+      fiscal_period: `in.(Q${ea[1]},Q${eb[1]})`,
+      fiscal_year: `in.(${ea[0]},${eb[0]})`,
+      select: "metric,fiscal_year,fiscal_period,value",
+    }),
+  ]);
+  const kv = (m: string, q: [number, number]) => kpis.find((r) => r.metric === m && r.fiscal_year === q[0] && r.fiscal_period === `Q${q[1]}`)?.value;
+  const extras = buildExtras({
+    brief,
+    events,
+    comparison,
+    la,
+    lb,
+    revenue: { a: kv("revenue", ea), b: kv("revenue", eb) },
+    margin: { a: kv("operating_margin", ea), b: kv("operating_margin", eb) },
+  });
   return (
     <div className="space-y-8">
       {panel}
-      <BriefView brief={brief} street={street} la={la} lb={lb} />
+      <BriefView brief={brief} street={street} extras={extras} la={la} lb={lb} />
     </div>
   );
 }
