@@ -23,25 +23,12 @@ def get(params: dict[str, str]) -> dict:
 
 def main() -> None:
     out: dict = {}
-    earn = get({"function": "EARNINGS", "symbol": "AAPL"})
-    q = earn.get("quarterlyEarnings", [])
-    out["earnings_keys"] = sorted(earn.keys())
-    out["earnings_quarterly_sample"] = q[:6]
-    out["earnings_quarterly_count"] = len(q)
-    out["earnings_notice"] = earn.get("Information") or earn.get("Note")
-
-    time.sleep(3)  # free tier: max 1 request/second
-    tr = get({"function": "EARNINGS_CALL_TRANSCRIPT", "symbol": "AAPL", "quarter": "2024Q1"})
-    turns = tr.get("transcript") or []
-    out["transcript_top_keys"] = sorted(tr.keys())
-    out["transcript_meta"] = {k: v for k, v in tr.items() if k != "transcript"}
-    out["transcript_turns"] = len(turns)
-    out["transcript_first_turns"] = [
-        {**{k: v for k, v in t.items() if k != "content"}, "content_start": (t.get("content") or "")[:220]}
-        for t in turns[:6]
-    ]
-    out["speakers"] = sorted({(t.get("speaker"), t.get("title")) for t in turns}, key=str)
-    out["total_chars"] = sum(len(t.get("content") or "") for t in turns)
+    est = get({"function": "EARNINGS_ESTIMATES", "symbol": "AAPL"})
+    rows = est.get("estimates") or []
+    out["estimates_keys"] = sorted(est.keys())
+    out["estimates_notice"] = est.get("Information") or est.get("Note")
+    out["estimates_count"] = len(rows)
+    out["estimates_sample"] = rows[:8]
     Path("ops").mkdir(exist_ok=True)
     Path("ops/av-probe.json").write_text(json.dumps(out, indent=2, default=str) + "\n")
     print(json.dumps(out, indent=2, default=str)[:3000])
