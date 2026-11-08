@@ -471,6 +471,22 @@ def run_brief(
                 "done",
                 f"{len(b['claims'])} verified claims · {len(b['dropped'])} dropped · ${b['cost_usd']:.4f}",
             )
+        job.step("cases", "running", "Bull, base and bear cases")
+        try:
+            from ei.filings.cases import run_cases
+
+            rc = run_cases(settings, ticker)
+            job.step(
+                "cases",
+                "done" if rc.get("ok") else "partial",
+                "Unchanged (no cost)"
+                if rc.get("cached")
+                else f"{rc.get('claims', 0)} verified sentences · ${rc.get('cost_usd', 0):.4f}"
+                if rc.get("ok")
+                else str(rc.get("reason")),
+            )
+        except Exception as e:  # the brief itself is already saved
+            job.step("cases", "partial", f"Couldn't write cases: {type(e).__name__}")
         job.finish("done", None, cik)
         return {"ok": True}
     except BudgetExceeded as e:

@@ -150,3 +150,25 @@ export async function getDodges(cik: number, fy: number, fq: number, version: st
       answerer: [...new Set(e.answer_turns.map((i) => turns[i]?.speaker).filter(Boolean))].join(", "),
     }));
 }
+
+export type Scenario = { eps: number; pe: number; value: number; vs_price: number } | null;
+export type StockCases = {
+  numbers: {
+    price: number;
+    price_date: string | null;
+    eps: { eps_low: number | null; eps_avg: number | null; eps_high: number | null };
+    eps_method: string;
+    analysts: number;
+    pe?: { p20: number; p50: number; p80: number };
+    pe_samples: number;
+    scenarios: { bear: Scenario; base: Scenario; bull: Scenario } | null;
+  };
+  facts: Record<string, Fact>;
+  claims: Claim[];
+  created_at: string;
+};
+
+export async function getCases(cik: number): Promise<StockCases | null> {
+  const rows = await select<StockCases>("stock_cases", { cik: `eq.${cik}`, select: "numbers,facts,claims,created_at" });
+  return rows[0] ?? null;
+}

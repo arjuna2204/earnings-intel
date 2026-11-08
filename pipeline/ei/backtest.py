@@ -29,7 +29,7 @@ from ei.db import Db
 log = logging.getLogger(__name__)
 HISTORY_FROM = 2014  # 10-Ks and transcripts from this fiscal year on
 TRANSCRIPT_QUARTERS = 12
-USER_RESERVE = 8  # Alpha Vantage calls left untouched each day for your own briefs
+USER_RESERVE = 0  # use the whole free transcript allowance (25/day) for history
 
 
 @dataclass(frozen=True)

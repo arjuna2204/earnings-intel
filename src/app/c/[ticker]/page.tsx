@@ -16,7 +16,7 @@ import { getLatestPeersJob, getPeerComparison, getPeerSet } from "@/lib/peers";
 import { buildExtras } from "@/lib/brief-extras";
 import { figureText, releaseFigure, type StreetRow } from "@/lib/figures";
 import FilingsView from "@/components/FilingsView";
-import { getBrief, getDodges, getLatestBriefJob, getRiskChanges, getTakes, type Brief } from "@/lib/filings";
+import { getBrief, getCases, getDodges, getLatestBriefJob, getRiskChanges, getTakes, type Brief } from "@/lib/filings";
 import { select } from "@/lib/db";
 
 export default function CompanyPage(props: PageProps<"/c/[ticker]">) {
@@ -255,10 +255,11 @@ async function BriefTab({ company, events, a, b, mode = "brief" }: { company: Co
       select: "metric,fiscal_year,fiscal_period,value",
     }),
   ]);
-  const [takes, dodges, peerCmp] = await Promise.all([
+  const [takes, dodges, peerCmp, cases] = await Promise.all([
     getTakes(company.cik, la, lb),
     getDodges(company.cik, eb[0], eb[1], CALLS_VERSION),
     getPeerComparison(company.cik),
+    getCases(company.cik),
   ]);
   const v = company.valuation;
   const valuation = v?.price && v?.eps_ntm && v.eps_ntm > 0 ? { price: v.price, epsNtm: v.eps_ntm, peerMedianPe: peerCmp?.result.medians.pe_fwd_ntm ?? null } : null;
@@ -275,7 +276,7 @@ async function BriefTab({ company, events, a, b, mode = "brief" }: { company: Co
   return (
     <div className="space-y-8">
       {panel}
-      <BriefView brief={brief} street={street} extras={extras} la={la} lb={lb} more={{ cik: company.cik, ticker: company.ticker, valuation, dodges, takes }} />
+      <BriefView brief={brief} street={street} extras={extras} la={la} lb={lb} more={{ cik: company.cik, ticker: company.ticker, valuation, dodges, takes, cases }} />
     </div>
   );
 }

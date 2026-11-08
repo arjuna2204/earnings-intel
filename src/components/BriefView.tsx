@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import SourcePanel from "@/components/SourcePanel";
 import type { StreetRow } from "@/lib/figures";
-import type { Brief, Claim, Dodge, Fact, Take } from "@/lib/filings";
+import type { Brief, Claim, Dodge, Fact, StockCases, Take } from "@/lib/filings";
 import type { Bridge, BriefExtras, StreakItem, Tile, Tone } from "@/lib/brief-extras";
 import type { GuidanceChange, GuidanceItem } from "@/lib/types";
 
@@ -33,14 +33,16 @@ export default function BriefView({
     valuation: { price: number; epsNtm: number; peerMedianPe: number | null } | null;
     dodges: Dodge[];
     takes: { current: Take | null; previous: Take | null };
+    cases: StockCases | null;
   };
 }) {
   const [open, setOpen] = useState<string | null>(null);
-  const facts = brief.inputs.facts;
+  const facts = { ...(more.cases?.facts ?? {}), ...brief.inputs.facts };
   const claims = (s: string) => brief.claims.filter((c) => c.section === s);
   // Number each cited fact once, in order of first appearance, like footnotes.
   const order: string[] = [];
-  for (const c of brief.claims) for (const r of c.refs) if (!order.includes(r)) order.push(r);
+  for (const c of [...brief.claims.filter((x) => x.section === "headline"), ...(more.cases?.claims ?? []), ...brief.claims])
+    for (const r of c.refs) if (!order.includes(r)) order.push(r);
   const note = (r: string) => order.indexOf(r) + 1;
   const refs = (c: Claim) => <Refs refs={c.refs} note={note} onOpen={setOpen} />;
   const c = extras.counts;
@@ -67,6 +69,8 @@ export default function BriefView({
           </div>
         )}
       </section>
+
+      {more.cases && <Cases cases={more.cases} refs={refs} />}
 
       <Section id="street" title="The Street view">
         {extras.tiles.length > 0 && (
@@ -144,6 +148,119 @@ export default function BriefView({
         </SourcePanel>
       )}
     </div>
+  );
+}
+
+const CASE_LABEL = { bear: "Bear", base: "Base", bull: "Bull" } as const;
+
+function Cases({ cases, refs }: { cases: StockCases; refs: (c: Claim) => React.ReactNode }) {
+  const [pick, setPick] = useState<"bear" | "base" | "bull">("base");
+  const n = cases.numbers;
+  const sc = n.scenarios;
+  const vals = sc ? (["bear", "base", "bull"] as const).map((k) => sc[k]?.value).filter((v): v is number => v != null) : [];
+  const lo = Math.min(n.price, ...vals);
+  const hi = Math.max(n.price, ...vals);
+  const pad = (hi - lo || n.price) * 0.08;
+  const pos = (v: number) => ((v - (lo - pad)) / (hi + pad - (lo - pad))) * 100;
+  const sel = sc?.[pick] ?? null;
+  const caseClaims = cases.claims.filter((c) => c.section === pick);
+  const watch = cases.claims.filter((c) => c.section === "watch");
+  const color = (v: number) => (v >= 0 ? "text-up" : "text-down");
+  return (
+    <section id="brief-cases" className="scroll-mt-20">
+      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3 border-b border-border pb-3">
+        <h3 className="text-xl font-semibold tracking-tight">Bull, base &amp; bear</h3>
+        <div className="flex gap-1 text-sm" role="tablist">
+          {(["bear", "base", "bull"] as const).map((k) => (
+            <button
+              key={k}
+              role="tab"
+              aria-selected={pick === k}
+              onClick={() => setPick(k)}
+              className={`rounded-full px-3.5 py-1.5 font-semibold ${pick === k ? "bg-foreground text-background" : "text-muted hover:text-foreground"}`}
+            >
+              {CASE_LABEL[k]}
+            </button>
+          ))}
+        </div>
+      </div>
+      {sc && vals.length > 0 && (
+        <div className="mb-6">
+          <div className="relative mx-2 h-16">
+            <div className="absolute left-0 right-0 top-7 h-px bg-border" />
+            {(["bear", "base", "bull"] as const).map((k) =>
+              sc[k] ? (
+                <button
+                  key={k}
+                  onClick={() => setPick(k)}
+                  className="absolute top-0 -translate-x-1/2 text-center"
+                  style={{ left: `${pos(sc[k]!.value)}%` }}
+                  aria-label={`${CASE_LABEL[k]} case $${sc[k]!.value.toFixed(2)}`}
+                >
+                  <span className={`block text-xs font-semibold ${pick === k ? "text-foreground" : "text-muted"}`}>{CASE_LABEL[k]}</span>
+                  <span className={`mx-auto mt-1.5 block h-3 w-3 rounded-full ${pick === k ? (sc[k]!.vs_price >= 0 ? "bg-up" : "bg-down") : "bg-muted/60"}`} />
+                  <span className="mt-1 block text-xs tabular-nums text-muted">${sc[k]!.value.toFixed(0)}</span>
+                </button>
+              ) : null,
+            )}
+            <div className="absolute top-[22px] -translate-x-1/2" style={{ left: `${pos(n.price)}%` }}>
+              <span className="block h-4 w-0.5 bg-foreground" />
+            </div>
+          </div>
+          <p className="mt-1 text-center text-xs text-muted">│ today ${n.price.toFixed(2)}</p>
+        </div>
+      )}
+      {sel ? (
+        <div className="grid grid-cols-3 gap-6 border-y border-border py-4">
+          <div>
+            <div className="text-sm text-muted">{CASE_LABEL[pick]} value</div>
+            <div className="mt-1 text-[26px] font-semibold leading-none tabular-nums">${sel.value.toFixed(2)}</div>
+            <div className={`mt-2 text-sm font-medium tabular-nums ${color(sel.vs_price)}`}>
+              {sel.vs_price >= 0 ? "▲" : "▼"} {Math.abs(sel.vs_price * 100).toFixed(1)}% vs. today
+            </div>
+          </div>
+          <div>
+            <div className="text-sm text-muted">{pick === "bear" ? "Low" : pick === "bull" ? "High" : "Consensus"} EPS (next 12 mo.)</div>
+            <div className="mt-1 text-[26px] font-semibold leading-none tabular-nums">${sel.eps.toFixed(2)}</div>
+            <div className="mt-2 text-sm text-muted">{n.analysts ? `${n.analysts} analysts` : "Analyst estimates"}</div>
+          </div>
+          <div>
+            <div className="text-sm text-muted">P/E applied</div>
+            <div className="mt-1 text-[26px] font-semibold leading-none tabular-nums">{sel.pe.toFixed(1)}x</div>
+            <div className="mt-2 text-sm text-muted">{pick === "bear" ? "20th pct" : pick === "bull" ? "80th pct" : "Median"} of its 5-yr range</div>
+          </div>
+        </div>
+      ) : (
+        <p className="text-sm text-muted">Scenario values need analyst estimates and 2+ years of price history.</p>
+      )}
+      {caseClaims.length > 0 && (
+        <ul className="mt-4 divide-y divide-border">
+          {caseClaims.map((c, i) => (
+            <li key={i} className={`py-3 leading-relaxed first:pt-0 ${i === 0 ? "text-[17px] font-medium" : "text-[15px]"}`}>
+              {c.text}
+              {refs(c)}
+            </li>
+          ))}
+        </ul>
+      )}
+      {watch.length > 0 && (
+        <div className="mt-6">
+          <div className="font-semibold">What to watch next quarter</div>
+          <ul className="mt-2 divide-y divide-border">
+            {watch.map((c, i) => (
+              <li key={i} className="py-2.5 text-[15px] leading-relaxed">
+                {c.text}
+                {refs(c)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <p className="mt-4 text-xs leading-relaxed text-muted">
+        Scenario values are arithmetic, not forecasts: analysts&apos; low / consensus / high estimates for the next 12 months × the stock&apos;s own
+        trailing P/E range over 5 years ({n.pe_samples} monthly readings). The reasoning is written by AI from the verified sources only.
+      </p>
+    </section>
   );
 }
 
