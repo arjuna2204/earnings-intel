@@ -18,6 +18,7 @@ from ei.db import Db
 HAIKU = "claude-haiku-5-5"
 SONNET = "claude-sonnet-5-5"
 PROMPTS = Path(__file__).resolve().parents[2] / "prompts"
+_THINKING_OFF: dict[str, str] = {SONNET: "between_tools"}
 
 
 def load_prompt(name: str) -> str:
@@ -64,14 +65,24 @@ class AiClient:
         check_call(budget_state(self._db), model, est)
 
         # 2) Call with enforced JSON schema; long fixed instructions are marked for prompt caching.
-        resp = self._client.messages.create(
-            model=model,
-            max_tokens=max_tokens,
-            system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
-            messages=[{"role": "user", "content": user}],
-            thinking={"type": "disabled"},
-            output_config={"effort": effort, "format": {"type": "json_schema", "schema": schema}},
-        )
+        kwargs: dict[str, Any] = {
+            "model": model,
+            "max_tokens": max_tokens,
+            "system": [{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
+            "messages": [{"role": "user", "content": user}],
+            "output_config": {"effort": effort, "format": {"type": "json_schema", "schema": schema}},
+        }
+        # Thinking off. Some models express "off" as {"type": "between_tools"}; switch if the API says so.
+        thinking_mode = _THINKING_OFF.get(model, "disabled")
+        import anthropic
+
+        try:
+            resp = self._client.messages.create(**kwargs, thinking={"type": thinking_mode})  # type: ignore[call-overload]
+        except anthropic.BadRequestError as e:
+            if "between_tools" not in str(e) or thinking_mode == "between_tools":
+                raise
+            _THINKING_OFF[model] = "between_tools"
+            resp = self._client.messages.create(**kwargs, thinking={"type": "between_tools"})  # type: ignore[call-overload]
 
         # 3) Log actual usage and cost, whatever happens next.
         u = resp.usage

@@ -10,6 +10,10 @@ import CallsPanel from "@/components/CallsPanel";
 import CallView from "@/components/CallView";
 import { compact, filingIndexFromDocUrl, GENERAL_GROUPS, PACK_GROUPS } from "@/lib/metrics";
 import type { Company, Filing } from "@/lib/types";
+import BriefView, { figureText, releaseFigure, type StreetRow } from "@/components/BriefView";
+import FilingsView from "@/components/FilingsView";
+import { getBrief, getLatestBriefJob, getRiskChanges, type Brief } from "@/lib/filings";
+import { select } from "@/lib/db";
 
 export default function CompanyPage(props: PageProps<"/c/[ticker]">) {
   return (
@@ -117,9 +121,9 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
       <div className="mt-6">
         {tab === "financials" && <FinancialsTab company={company} filings={filings} />}
         {tab === "sources" && <SourcesTab company={company} filings={filings} />}
-        {tab === "brief" && <ComingSoon phase="3" what="The “what changed” brief compares any two periods across calls and filings, with every claim linked to its source." />}
+        {tab === "brief" && <BriefTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />}
         {tab === "call" && <CallTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />}
-        {tab === "filings" && <ComingSoon phase="3" what="Risk-factor redlines, MD&A drivers, and call-vs-filing consistency flags." />}
+        {tab === "filings" && <BriefTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} mode="filings" />}
         {tab === "peers" && <ComingSoon phase="4" what="Editable peer set, ranking table, scatter plot, and a how-it-stacks-up summary." />}
       </div>
     </>
@@ -137,26 +141,7 @@ async function CallTab({
   a?: string;
   b?: string;
 }) {
-  // Quarter choices: reported quarters (once report dates are loaded), else the last 12 fiscal quarters.
-  const quarters: [number, number][] = events.length
-    ? [...events]
-        .sort((x, y) => y.report_date.localeCompare(x.report_date)) // newest first, whatever the row order
-        .slice(0, 24)
-        .map((e) => [e.fiscal_year, e.fiscal_quarter])
-    : fallbackQuarters();
-  const latest = quarters[0];
-  const pb = parseQ(b) ?? latest;
-  const pa = parseQ(a) ?? [pb[0] - 1, pb[1]];
-  const [ea, eb] = [pa, pb].sort((x, y) => x[0] - y[0] || x[1] - y[1]);
-  const la = qLabel(ea[0], ea[1]);
-  const lb = qLabel(eb[0], eb[1]);
-  const options = [...new Set([...quarters.map(([y, q]) => qLabel(y, q)), la, lb])]
-    .sort()
-    .reverse()
-    .map((v) => {
-      const ev = events.find((e) => qLabel(e.fiscal_year, e.fiscal_quarter) === v);
-      return { value: v, label: `${v.replace("FY", "FY ").replace("Q", " · Q")}${ev ? ` (reported ${ev.report_date})` : ""}` };
-    });
+  const { ea, eb, la, lb, options } = quarterChoice(events, a, b);
 
   const [comparison, job, trend] = await Promise.all([
     getComparison(company.cik, la, lb),
@@ -181,6 +166,151 @@ async function CallTab({
       )}
     </div>
   );
+}
+
+function quarterChoice(events: Awaited<ReturnType<typeof getEvents>>, a?: string, b?: string) {
+  // Quarter choices: reported quarters (once report dates are loaded), else the last 12 fiscal quarters.
+  const quarters: [number, number][] = events.length
+    ? [...events]
+        .sort((x, y) => y.report_date.localeCompare(x.report_date)) // newest first, whatever the row order
+        .slice(0, 24)
+        .map((e) => [e.fiscal_year, e.fiscal_quarter])
+    : fallbackQuarters();
+  const latest = quarters[0];
+  const pb = parseQ(b) ?? latest;
+  const pa = parseQ(a) ?? [pb[0] - 1, pb[1]];
+  const [ea, eb] = [pa, pb].sort((x, y) => x[0] - y[0] || x[1] - y[1]);
+  const la = qLabel(ea[0], ea[1]);
+  const lb = qLabel(eb[0], eb[1]);
+  const options = [...new Set([...quarters.map(([y, q]) => qLabel(y, q)), la, lb])]
+    .sort()
+    .reverse()
+    .map((v) => {
+      const ev = events.find((e) => qLabel(e.fiscal_year, e.fiscal_quarter) === v);
+      return { value: v, label: `${v.replace("FY", "FY ").replace("Q", " · Q")}${ev ? ` (reported ${ev.report_date})` : ""}` };
+    });
+
+  return { ea, eb, la, lb, options };
+}
+
+type Events = Awaited<ReturnType<typeof getEvents>>;
+
+const usd = (v: number | null | undefined) => (v === null || v === undefined ? "—" : `$${v.toFixed(2)}`);
+const big = (v: number | null | undefined) =>
+  v === null || v === undefined ? "—" : Math.abs(v) >= 1e9 ? `$${(v / 1e9).toFixed(1)}B` : `$${(v / 1e6).toFixed(0)}M`;
+
+async function BriefTab({ company, events, a, b, mode = "brief" }: { company: Company; events: Events; a?: string; b?: string; mode?: "brief" | "filings" }) {
+  const { ea, eb, la, lb, options } = quarterChoice(events, a, b);
+  const [brief, job] = await Promise.all([getBrief(company.cik, la, lb), getLatestBriefJob(company.ticker, la, lb)]);
+  const activeJob = job && ["queued", "running", "failed", "deferred"].includes(job.status) ? job : null;
+  const panel = (
+    <CallsPanel
+      ticker={company.ticker}
+      options={options}
+      a={la}
+      b={lb}
+      initialJob={activeJob}
+      hasResult={Boolean(brief)}
+      endpoint="/api/brief"
+      tab={mode}
+      cta={mode === "brief" ? "Write brief" : "Analyze filings"}
+      hint="Reads the 10-K/10-Q, earnings releases and call for both quarters. About $0.05 of AI budget the first time; cached after that."
+      doneStep="brief"
+    />
+  );
+  if (!brief) {
+    return (
+      <div className="space-y-8">
+        {panel}
+        <div className="rounded-2xl border border-dashed border-border p-8 text-center text-muted">
+          Pick two quarters and press <b className="text-foreground">{mode === "brief" ? "Write brief" : "Analyze filings"}</b>. The same run fills both
+          the Brief and Filings tabs. Comparing the same quarter a year apart shows risk-factor changes too.
+        </div>
+      </div>
+    );
+  }
+  if (mode === "filings") {
+    const risks = brief.inputs.risk ? await getRiskChanges(company.cik, brief.inputs.risk.accession_new, brief.inputs.risk.accession_old) : [];
+    return (
+      <div className="space-y-8">
+        {panel}
+        <FilingsView inputs={brief.inputs} risks={risks} la={la} lb={lb} />
+      </div>
+    );
+  }
+  const street = await streetRows(company, events, brief, ea, eb, la, lb);
+  return (
+    <div className="space-y-8">
+      {panel}
+      <BriefView brief={brief} street={street} la={la} lb={lb} />
+    </div>
+  );
+}
+
+async function streetRows(company: Company, events: Events, brief: Brief, ea: [number, number], eb: [number, number], la: string, lb: string): Promise<StreetRow[]> {
+  const ev = (q: [number, number]) => events.find((e) => e.fiscal_year === q[0] && e.fiscal_quarter === q[1]);
+  const factId = (pred: (t: string, q?: string | null) => boolean) => Object.entries(brief.inputs.facts).find(([, f]) => pred(f.text, f.quote))?.[0];
+  const rows: StreetRow[] = [];
+  const [evA, evB] = [ev(ea), ev(eb)];
+  if (evB?.eps_reported !== null && evB?.eps_reported !== undefined) {
+    const beat = evB.eps_estimated !== null && evB.eps_estimated !== undefined ? evB.eps_reported - evB.eps_estimated : null;
+    rows.push({
+      label: "Street EPS (vs. consensus)",
+      note: beat === null ? "Adjusted EPS as tracked by analysts" : `${lb}: ${beat >= 0 ? "beat" : "missed"} consensus ${usd(evB.eps_estimated)} by ${usd(Math.abs(beat))}`,
+      a: evA?.eps_reported !== null && evA?.eps_reported !== undefined ? `${usd(evA.eps_reported)} vs ${usd(evA.eps_estimated)}` : "—",
+      b: `${usd(evB.eps_reported)} vs ${usd(evB.eps_estimated)}`,
+      tone: beat === null ? null : beat >= 0 ? "up" : "down",
+      ref: factId((t) => t.startsWith(`${lb} Street EPS`)),
+    });
+  }
+  const relB = brief.inputs.results[lb]?.release;
+  const relA = brief.inputs.results[la]?.release;
+  for (const [kind, label] of [
+    ["eps_adjusted", "Company adjusted EPS"],
+    ["eps_gaap", "GAAP diluted EPS"],
+    ["revenue", "Revenue"],
+    ["operating_margin_adjusted", "Adjusted operating margin"],
+    ["ebitda_adjusted", "Company adjusted EBITDA"],
+    ["free_cash_flow", "Free cash flow (company)"],
+  ] as const) {
+    const fB = releaseFigure(relB, kind);
+    const fA = releaseFigure(relA, kind);
+    if (!fB && !fA) continue;
+    rows.push({
+      label,
+      note: fB?.label && fB.label !== label ? `“${fB.label}” in the release` : undefined,
+      a: fA ? figureText(fA) : fB ? figureText(fB, "prior") : "—",
+      b: figureText(fB),
+      tone: fB && (fA || fB.prior !== null) ? (fB.current >= (fA ? fA.current : (fB.prior as number)) ? "up" : "down") : null,
+      ref: fB ? factId((_t, q) => q === fB.quote) : undefined,
+    });
+  }
+  const mv = await select<{ metric: string; fiscal_year: number; fiscal_period: string; value: number; derivation: string | null }>("metric_values", {
+    cik: `eq.${company.cik}`,
+    metric: "in.(adj_eps_std,adj_ebitda_std)",
+    fiscal_period: `in.(Q${ea[1]},Q${eb[1]})`,
+    fiscal_year: `in.(${ea[0]},${eb[0]})`,
+    select: "metric,fiscal_year,fiscal_period,value,derivation",
+  });
+  const get = (m: string, q: [number, number]) => mv.find((r) => r.metric === m && r.fiscal_year === q[0] && r.fiscal_period === `Q${q[1]}`);
+  for (const [m, label, fmt] of [
+    ["adj_eps_std", "Adjusted EPS — computed by this app", usd],
+    ["adj_ebitda_std", "Adjusted EBITDA — computed by this app", big],
+  ] as const) {
+    const [va, vb] = [get(m, ea), get(m, eb)];
+    if (!va && !vb) continue;
+    rows.push({
+      label,
+      note: (vb ?? va)?.derivation?.replace("Computed by this app: ", "") ?? undefined,
+      a: fmt(va?.value),
+      b: fmt(vb?.value),
+      tone: va && vb ? (vb.value >= va.value ? "up" : "down") : null,
+    });
+  }
+  const v = company.valuation;
+  if (v?.pe_fwd_ntm) rows.push({ label: "Forward P/E (next 12 months)", note: v.eps_ntm_method ?? undefined, a: "", b: `${v.pe_fwd_ntm.toFixed(1)}x` });
+  if (v?.pe_adj_ltm) rows.push({ label: "Adjusted P/E (last 12 months)", a: "", b: `${v.pe_adj_ltm.toFixed(1)}x` });
+  return rows;
 }
 
 function fallbackQuarters(): [number, number][] {

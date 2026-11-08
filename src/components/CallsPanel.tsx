@@ -7,6 +7,17 @@ import type { Job } from "@/lib/types";
 type Option = { value: string; label: string };
 
 const STEP_ORDER = ["company", "dates"];
+const STEP_LABELS: Record<string, string> = {
+  dates: "Earnings dates",
+  compare: "Compare",
+  history: "Tone history (background)",
+  company: "Load company",
+  filings: "Find filings",
+  parse: "Read filings",
+  risks: "Risk factors",
+  call: "Earnings call",
+  brief: "Write brief",
+};
 
 /** Choose two quarters, start the comparison job, and follow its progress. */
 export default function CallsPanel({
@@ -16,6 +27,11 @@ export default function CallsPanel({
   b,
   initialJob,
   hasResult,
+  endpoint = "/api/calls",
+  tab = "call",
+  cta = "Analyze calls",
+  hint = "Uses ~3 free transcript requests and about $0.01 of AI budget for two new quarters (cached quarters are free).",
+  doneStep = "compare",
 }: {
   ticker: string;
   options: Option[];
@@ -23,6 +39,11 @@ export default function CallsPanel({
   b: string;
   initialJob: Job | null;
   hasResult: boolean;
+  endpoint?: string;
+  tab?: string;
+  cta?: string;
+  hint?: string;
+  doneStep?: string;
 }) {
   const router = useRouter();
   const path = usePathname();
@@ -40,15 +61,15 @@ export default function CallsPanel({
       if (!res.ok) return;
       const { job: next } = (await res.json()) as { job: Job };
       setJob(next);
-      if (next.steps?.compare?.status === "done" || ["done", "failed", "deferred"].includes(next.status)) router.refresh();
+      if (next.steps?.[doneStep]?.status === "done" || ["done", "failed", "deferred"].includes(next.status)) router.refresh();
     }, 3000);
     return () => clearInterval(t);
-  }, [job, active, router]);
+  }, [job, active, router, doneStep]);
 
   const select = (which: "a" | "b", v: string) => {
     if (which === "a") setPa(v);
     else setPb(v);
-    const next = new URLSearchParams({ tab: "call", a: which === "a" ? v : pa, b: which === "b" ? v : pb });
+    const next = new URLSearchParams({ tab, a: which === "a" ? v : pa, b: which === "b" ? v : pb });
     router.replace(`${path}?${next}`, { scroll: false });
   };
 
@@ -56,7 +77,7 @@ export default function CallsPanel({
     setStarting(true);
     setError(null);
     try {
-      const res = await fetch("/api/calls", {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ticker, period_a: pa, period_b: pb }),
@@ -72,7 +93,12 @@ export default function CallsPanel({
   };
 
   const steps = job?.steps ?? {};
-  const stepKeys = [...STEP_ORDER.filter((k) => steps[k]), ...Object.keys(steps).filter((k) => k.startsWith("FY")), "compare", "history"].filter(
+  const stepKeys = [
+    ...STEP_ORDER.filter((k) => steps[k]),
+    ...Object.keys(steps).filter((k) => !STEP_ORDER.includes(k) && k !== "compare" && k !== "history"),
+    "compare",
+    "history",
+  ].filter(
     (k, i, arr) => steps[k] && arr.indexOf(k) === i,
   );
 
@@ -88,13 +114,13 @@ export default function CallsPanel({
             disabled={starting || pa === pb}
             className="ml-auto rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-black transition hover:brightness-110 disabled:opacity-50"
           >
-            {starting ? "Starting…" : hasResult ? "Re-run" : "Analyze calls"}
+            {starting ? "Starting…" : hasResult ? "Re-run" : cta}
           </button>
         )}
       </div>
       {!active && !hasResult && (
         <p className="mt-3 text-xs text-muted">
-          Uses ~3 free transcript requests and about $0.01 of AI budget for two new quarters (cached quarters are free).
+          {hint}
         </p>
       )}
       {error && <p className="mt-3 text-sm text-down">{error}</p>}
@@ -105,7 +131,7 @@ export default function CallsPanel({
             {stepKeys.map((k) => {
               const s = steps[k];
               const icon = s.status === "done" ? "✓" : s.status === "running" ? "◌" : s.status === "deferred" ? "⏸" : "•";
-              const label = k === "dates" ? "Earnings dates" : k === "compare" ? "Compare" : k === "history" ? "Tone history (background)" : k === "company" ? "Load company" : k;
+              const label = STEP_LABELS[k] ?? k.replace(/^release /, "Earnings release ").replace(/^mdna /, "MD&A ");
               return (
                 <li key={k}>
                   <span className="inline-block w-5">{icon}</span>
