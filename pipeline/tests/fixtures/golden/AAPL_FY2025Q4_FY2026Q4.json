@@ -433,6 +433,43 @@
   "embedder": "BAAI/bge-small-en-v1.5",
   "guidance": [
    {
+    "delta": 0.15,
+    "later": {
+     "low": null,
+     "high": null,
+     "role": "cfo",
+     "turn": 2,
+     "unit": "USD billions",
+     "point": 0.3,
+     "quote": "We expect OI&E to be around $300 million, excluding any potential impact from the mark-to-market of minority investments",
+     "metric": "Other income and expense",
+     "period": "December quarter",
+     "section": "prepared",
+     "speaker": "Kevan Parekh",
+     "withdrawn": false,
+     "qualitative": "around $300 million, excluding any potential impact from the mark-to-market of minority investments"
+    },
+    "change": "raised",
+    "metric": "Other income and expense",
+    "earlier": {
+     "low": null,
+     "high": null,
+     "role": "cfo",
+     "turn": 2,
+     "unit": "USD millions",
+     "point": 150.0,
+     "quote": "We project other income and expenses to be around $150 million, excluding any potential impacts from the mark-to-market of minority investments",
+     "metric": "Other income and expense",
+     "period": "December quarter",
+     "section": "prepared",
+     "speaker": "Kevan Parekh",
+     "withdrawn": false,
+     "qualitative": null
+    },
+    "delta_pct": 1.0,
+    "same_target_period": true
+   },
+   {
     "delta": 2.3,
     "later": {
      "low": 20.4,
@@ -639,41 +676,6 @@
     },
     "delta_pct": 0.0,
     "same_target_period": true
-   },
-   {
-    "later": {
-     "low": null,
-     "high": null,
-     "role": "cfo",
-     "turn": 2,
-     "unit": "USD billions",
-     "point": null,
-     "quote": "We expect OI&E to be around $300 million, excluding any potential impact from the mark-to-market of minority investments",
-     "metric": "Other income and expense",
-     "period": "December quarter",
-     "section": "prepared",
-     "speaker": "Kevan Parekh",
-     "withdrawn": false,
-     "qualitative": "around $300 million, excluding any potential impact from the mark-to-market of minority investments",
-     "numbers_removed": true
-    },
-    "change": "qualitative",
-    "metric": "Other income and expense",
-    "earlier": {
-     "low": null,
-     "high": null,
-     "role": "cfo",
-     "turn": 2,
-     "unit": "USD millions",
-     "point": 150.0,
-     "quote": "We project other income and expenses to be around $150 million, excluding any potential impacts from the mark-to-market of minority investments",
-     "metric": "Other income and expense",
-     "period": "December quarter",
-     "section": "prepared",
-     "speaker": "Kevan Parekh",
-     "withdrawn": false,
-     "qualitative": null
-    }
    },
    {
     "later": {
@@ -10646,15 +10648,14 @@
       "role": "cfo",
       "turn": 2,
       "unit": "USD billions",
-      "point": null,
+      "point": 0.3,
       "quote": "We expect OI&E to be around $300 million, excluding any potential impact from the mark-to-market of minority investments",
       "metric": "Other income and expense",
       "period": "December quarter",
       "section": "prepared",
       "speaker": "Kevan Parekh",
       "withdrawn": false,
-      "qualitative": "around $300 million, excluding any potential impact from the mark-to-market of minority investments",
-      "numbers_removed": true
+      "qualitative": "around $300 million, excluding any potential impact from the mark-to-market of minority investments"
      },
      {
       "low": null,
