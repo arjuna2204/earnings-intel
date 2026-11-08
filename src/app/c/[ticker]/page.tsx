@@ -5,7 +5,7 @@ import CompanyTabs, { type TabKey } from "@/components/CompanyTabs";
 import FinancialsView from "@/components/FinancialsView";
 import PriceChart from "@/components/PriceChart";
 import { getCompanyByTicker, getFilings, getFinancials, getLatestJob, getPrices, getTicker } from "@/lib/company";
-import { compact, GENERAL_GROUPS, PACK_GROUPS, secFilingIndexUrl } from "@/lib/metrics";
+import { compact, filingIndexFromDocUrl, GENERAL_GROUPS, PACK_GROUPS } from "@/lib/metrics";
 import type { Company, Filing } from "@/lib/types";
 
 export default function CompanyPage(props: PageProps<"/c/[ticker]">) {
@@ -74,6 +74,7 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
         </div>
         <AnalyzePanel ticker={company.ticker} initialJob={job?.status === "running" || job?.status === "queued" ? job : null} mode="refresh" />
       </header>
+      {company.history_note && <p className="mt-3 text-sm text-muted">ⓘ {company.history_note}</p>}
       {company.sector_note && (
         <p className="mt-3 rounded-xl border border-border bg-card px-4 py-3 text-sm">
           <b>Sector check:</b> {company.sector_note}. Using general metrics for now — tell Claude if a sector pack should apply.
@@ -168,7 +169,7 @@ function SourcesTab({ company, filings }: { company: Company; filings: Filing[] 
               <a href={f.url} target="_blank" rel="noreferrer" className="text-accent underline">
                 Document ↗
               </a>
-              <a href={secFilingIndexUrl(company.cik, f.accession)} target="_blank" rel="noreferrer" className="text-muted underline">
+              <a href={filingIndexFromDocUrl(f.url, f.accession)} target="_blank" rel="noreferrer" className="text-muted underline">
                 Index
               </a>
             </span>

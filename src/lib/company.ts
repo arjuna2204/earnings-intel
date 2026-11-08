@@ -79,6 +79,6 @@ export async function getFinancials(company: Company, filings: Filing[]): Promis
     series,
     derivations,
     unresolved: Object.fromEntries(unresolved.map((u) => [u.metric, u.reason])),
-    filings: Object.fromEntries(filings.map((f) => [f.accession, { form: f.form, filed: f.filed_date }])),
+    filings: Object.fromEntries(filings.map((f) => [f.accession, { form: f.form, filed: f.filed_date, url: f.url }])),
   };
 }

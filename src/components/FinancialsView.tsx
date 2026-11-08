@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import EChart from "@/components/EChart";
 import SourcePanel from "@/components/SourcePanel";
 import { useThemeColors } from "@/components/useThemeColors";
-import { fmtValue, periodLabel, secFilingIndexUrl, type MetricGroup, type MetricInfo } from "@/lib/metrics";
+import { filingIndexFromDocUrl, fmtValue, periodLabel, secFilingIndexUrl, type MetricGroup, type MetricInfo } from "@/lib/metrics";
 
 /** Compact row sent from the server: [fy, fp, value, source, tag, derivationIdx, accession, periodEnd, unit] */
 export type CompactRow = [number, string, number, "reported" | "derived", string | null, number, string | null, string, string];
@@ -15,7 +15,7 @@ export type FinancialsData = {
   series: Record<string, CompactRow[]>;
   derivations: string[];
   unresolved: Record<string, string>;
-  filings: Record<string, { form: string; filed: string }>;
+  filings: Record<string, { form: string; filed: string; url: string }>;
 };
 
 type Mode = "FY" | "Q";
@@ -227,7 +227,7 @@ function SourceDetails({ data, metric, row }: { data: FinancialsData; metric: Me
               <br />
               <a
                 className="text-accent underline"
-                href={secFilingIndexUrl(data.cik, accession)}
+                href={filing ? filingIndexFromDocUrl(filing.url, accession) : secFilingIndexUrl(data.cik, accession)}
                 target="_blank"
                 rel="noreferrer"
               >

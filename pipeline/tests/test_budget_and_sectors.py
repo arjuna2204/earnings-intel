@@ -69,3 +69,31 @@ def test_sector_classification(sic: str, pack: str, etf: str) -> None:
 def test_ambiguous_sector_flagged() -> None:
     s = classify("6324")
     assert s.pack == "general" and s.ambiguous_reason
+
+
+def test_predecessor_merge_successor_wins_overlap() -> None:
+    from ei.predecessors import merge_companyfacts
+    from ei.xbrl.normalize import normalize
+
+    def rev(rows: list[tuple[str, str, float, str]]) -> dict[str, object]:
+        return {
+            "facts": {
+                "us-gaap": {
+                    "Revenues": {
+                        "units": {
+                            "USD": [
+                                {"start": s, "end": e, "val": v, "filed": f, "accn": f, "form": "10-K"}
+                                for s, e, v, f in rows
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+
+    new = rev([("2025-01-01", "2025-12-31", 300.0, "2026-02-20"), ("2024-01-01", "2024-12-31", 205.0, "2026-02-20")])
+    old = rev([("2023-01-01", "2023-12-31", 190.0, "2024-02-20"), ("2024-01-01", "2024-12-31", 200.0, "2025-02-20")])
+    nc = normalize(merge_companyfacts(new, [old]), "1231", "general")  # type: ignore[arg-type]
+    assert nc.get("revenue", 2023, "FY").value == 190  # type: ignore[union-attr]  # only in predecessor
+    assert nc.get("revenue", 2024, "FY").value == 205  # type: ignore[union-attr]  # successor's newer filing wins
+    assert nc.get("revenue", 2025, "FY").value == 300  # type: ignore[union-attr]

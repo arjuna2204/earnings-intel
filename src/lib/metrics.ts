@@ -124,3 +124,8 @@ export function periodLabel(fy: number, fp: string): string {
 export function secFilingIndexUrl(cik: number, accession: string): string {
   return `https://www.sec.gov/Archives/edgar/data/${cik}/${accession.replace(/-/g, "")}/${accession}-index.htm`;
 }
+
+/** SEC filing index page, derived from the stored document URL (works for predecessor entities too). */
+export function filingIndexFromDocUrl(docUrl: string, accession: string): string {
+  return `${docUrl.slice(0, docUrl.lastIndexOf("/"))}/${accession}-index.htm`;
+}

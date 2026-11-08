@@ -347,24 +347,21 @@ def _place_durations(out: NormalizedCompany, m: MetricDef, facts: Any, cal: Fisc
                     )
                 )
         q3 = out.get(m.name, fy, "Q3")
-        # Q4 from FY
+        # Q4 from FY. Prefer FY minus the three quarters we actually show, so the four quarters always
+        # add up to the year; flag when the full year was restated after those quarters were filed.
         if out.get(m.name, fy, "Q4") is None and fy in annual:
             a = annual[fy]
-            if (fy, 3) in ytd:
+            if q1 and q2 and q3:
+                how = f"Full year minus Q1–Q3{approx}"
+                if (fy, 3) in ytd:
+                    via_ytd = a.value - ytd[(fy, 3)].value
+                    via_q = a.value - q1.value - q2.value - q3.value
+                    if abs(via_ytd - via_q) > 0.005 * max(abs(a.value), 1.0):
+                        how += " (full year was restated after Q1–Q3 were filed; Q4 absorbs the difference)"
+                out.put(_derived(m, fy, "Q4", a, a.value - q1.value - q2.value - q3.value, how, q3.period_end))
+            elif (fy, 3) in ytd:
                 n = ytd[(fy, 3)]
                 out.put(_derived(m, fy, "Q4", a, a.value - n.value, f"Full year minus 9-month YTD{approx}", n.end))
-            elif q1 and q2 and q3:
-                out.put(
-                    _derived(
-                        m,
-                        fy,
-                        "Q4",
-                        a,
-                        a.value - q1.value - q2.value - q3.value,
-                        f"Full year minus Q1–Q3{approx}",
-                        q3.period_end,
-                    )
-                )
 
 
 def _derived(m: MetricDef, fy: int, fp: str, src: Fact, value: float, how: str, prev_end: date | None) -> PeriodValue:

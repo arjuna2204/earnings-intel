@@ -10,6 +10,8 @@ from zoneinfo import ZoneInfo
 
 from ei.config import HISTORY_YEARS, Settings
 from ei.db import Db
+from ei.predecessors import KNOWN as KNOWN_PREDECESSORS
+from ei.predecessors import merge_companyfacts
 from ei.prices import PriceProvider, TiingoProvider
 from ei.sec import SecClient, filer_type, recent_filings
 from ei.sectors import classify
@@ -167,8 +169,12 @@ def analyze(settings: Settings, ticker: str, job_id: int | None = None, primary:
             "fiscal_year_end": subs.get("fiscalYearEnd") or None,
             "state_of_inc": subs.get("stateOfIncorporation") or None,
         }
-        existing = db.select("companies", {"cik": f"eq.{cik}", "select": "is_primary"})
+        existing = db.select("companies", {"cik": f"eq.{cik}", "select": "is_primary,predecessor_ciks"})
         company["is_primary"] = primary or bool(existing and existing[0]["is_primary"])
+        pred_ciks = sorted(
+            set(KNOWN_PREDECESSORS.get(cik, [])) | set((existing[0]["predecessor_ciks"] or []) if existing else [])
+        )
+        company["predecessor_ciks"] = pred_ciks
         db.upsert("companies", [company], on_conflict="cik")
         job.step("resolve", "done", f"{company['name']} · CIK {cik} · {sector.pack} pack · benchmark {sector.etf}")
 
@@ -177,12 +183,22 @@ def analyze(settings: Settings, ticker: str, job_id: int | None = None, primary:
         rows = recent_filings(cik, subs, since_year)
         for page in sec.older_submission_pages(subs, since_year):
             rows += recent_filings(cik, page, since_year)
+        pred_names = []
+        for pc in pred_ciks:
+            psubs = sec.submissions(pc)
+            pred_names.append(f"{psubs.get('name', 'predecessor')} (CIK {pc})")
+            prow = recent_filings(pc, psubs, since_year)
+            for page in sec.older_submission_pages(psubs, since_year):
+                prow += recent_filings(pc, page, since_year)
+            rows += [{**r, "cik": cik} for r in prow]  # listed under the current company
         db.upsert("filings", list({r["accession"]: r for r in rows}.values()), on_conflict="accession")
         job.step("filings", "done", f"{len(rows)} filings since {since_year}")
 
         # 3. Financials from XBRL
         job.step("financials", "running")
         facts = sec.companyfacts(cik)
+        if pred_ciks:
+            facts = merge_companyfacts(facts, [sec.companyfacts(pc) for pc in pred_ciks])
         nc = normalize(facts, company["fiscal_year_end"], sector.pack, min_fiscal_year=since_year)
         nc = derive_all(nc, sector.pack)
         db.replace_rows(

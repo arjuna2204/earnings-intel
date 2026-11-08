@@ -13,6 +13,7 @@ export type Company = {
   currency: string;
   valuation: Valuation | null;
   last_ingested_at: string | null;
+  history_note: string | null;
 };
 
 export type Valuation = {
