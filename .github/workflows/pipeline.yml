@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       command:
-        description: "analyze | tickers | refresh"
+        description: "analyze | calls | tickers | refresh | retry-deferred"
         required: true
         default: analyze
       ticker:
@@ -13,6 +13,12 @@ on:
         required: false
       job_id:
         description: "Job row id created by the website"
+        required: false
+      period_a:
+        description: "First quarter for calls, e.g. FY2025Q4"
+        required: false
+      period_b:
+        description: "Second quarter for calls, e.g. FY2026Q4"
         required: false
   # Lets Claude queue a run by committing ops/run.json, e.g. {"command": "analyze", "ticker": "AAPL"}.
   push:
@@ -32,7 +38,7 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     env:
       SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -47,13 +53,27 @@ jobs:
           python-version: "3.11"
           cache: pip
           cache-dependency-path: pipeline/pyproject.toml
-      - run: pip install -e pipeline
+      - run: pip install -e "pipeline[embeddings]"
+      - name: Cache embedding model
+        uses: actions/cache@v4
+        with:
+          path: /home/runner/.cache/fastembed
+          key: fastembed-bge-small-en-v1.5
+      - name: Analyze calls
+        if: github.event_name == 'workflow_dispatch' && inputs.command == 'calls'
+        working-directory: pipeline
+        env:
+          FASTEMBED_CACHE_PATH: /home/runner/.cache/fastembed
+        run: python -m ei.cli calls "${{ inputs.ticker }}" "${{ inputs.period_a }}" "${{ inputs.period_b }}" ${{ inputs.job_id && format('--job-id {0}', inputs.job_id) || '' }}
       - name: Run request file
         if: github.event_name == 'push'
         working-directory: pipeline
         run: |
           CMD=$(python -c "import json;print(json.load(open('../ops/run.json'))['command'])")
-          if [ "$CMD" = "analyze" ]; then
+          if [ "$CMD" = "calls" ]; then
+            ARGS=$(python -c "import json;d=json.load(open('../ops/run.json'));print(d['ticker'], *d['periods'])")
+            FASTEMBED_CACHE_PATH=$HOME/.cache/fastembed python -m ei.cli calls $ARGS
+          elif [ "$CMD" = "analyze" ]; then
             for T in $(python -c "import json;d=json.load(open('../ops/run.json'));print(' '.join(d.get('tickers') or [d['ticker']]))"); do
               python -m ei.cli analyze "$T" || echo "::warning::analyze $T failed"
             done

@@ -1,1 +1,1 @@
-{"command": "retry-deferred"}
+{"command": "calls", "ticker": "AAPL", "periods": ["FY2025Q4", "FY2026Q4"]}
