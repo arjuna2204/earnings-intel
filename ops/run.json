@@ -1,1 +1,1 @@
-{"command": "calls", "ticker": "AAPL", "periods": ["FY2025Q4", "FY2026Q4"], "save_golden": true, "nonce": 1794101431}
+{"command": "reverify", "ticker": "AAPL", "nonce": 1794102136}

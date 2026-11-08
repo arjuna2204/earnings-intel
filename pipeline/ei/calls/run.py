@@ -196,6 +196,23 @@ def analyze_call(
     return row
 
 
+def build_result(a: dict[str, Any], b: dict[str, Any], la: str, lb: str) -> dict[str, Any]:
+    emb = default_embedder()
+    ea, eb = a.get("extraction") or {}, b.get("extraction") or {}
+    words_a = [t["words"] for t in a["parsed"]["turns"]]
+    words_b = [t["words"] for t in b["parsed"]["turns"]]
+    return {
+        "period_a": la,
+        "period_b": lb,
+        "embedder": emb.name,
+        "guidance": compare_guidance(ea.get("guidance", []), eb.get("guidance", []), emb),
+        "topics": compare_topics(ea.get("topics", []), eb.get("topics", []), words_a, words_b, emb),
+        "tone": compare_tone(a["tone"], b["tone"]),
+        "price_reaction": {la: a.get("price_reaction"), lb: b.get("price_reaction")},
+        "partial": a["status"] != "done" or b["status"] != "done",
+    }
+
+
 def compare_calls(
     settings: Settings, ticker: str, period_a: str, period_b: str, job_id: int | None = None
 ) -> dict[str, Any]:
@@ -232,20 +249,7 @@ def compare_calls(
 
         a, b = results[label(fa, qa)], results[label(fb, qb)]
         job.step("compare", "running")
-        emb = default_embedder()
-        ea, eb = a.get("extraction") or {}, b.get("extraction") or {}
-        words_a = [t["words"] for t in a["parsed"]["turns"]]
-        words_b = [t["words"] for t in b["parsed"]["turns"]]
-        result = {
-            "period_a": label(fa, qa),
-            "period_b": label(fb, qb),
-            "embedder": emb.name,
-            "guidance": compare_guidance(ea.get("guidance", []), eb.get("guidance", []), emb),
-            "topics": compare_topics(ea.get("topics", []), eb.get("topics", []), words_a, words_b, emb),
-            "tone": compare_tone(a["tone"], b["tone"]),
-            "price_reaction": {label(fa, qa): a.get("price_reaction"), label(fb, qb): b.get("price_reaction")},
-            "partial": a["status"] != "done" or b["status"] != "done",
-        }
+        result = build_result(a, b, label(fa, qa), label(fb, qb))
         db.upsert(
             "call_comparisons",
             [
@@ -342,3 +346,90 @@ def backfill_all(settings: Settings) -> list[dict[str, Any]]:
         if res.get("paused"):
             break
     return out
+
+
+def reverify(settings: Settings, ticker: str) -> dict[str, Any]:
+    """Re-run quote/number verification from stored raw model output and rebuild comparisons.
+    No transcript requests and no AI calls; used after improving verification or matching rules."""
+    from ei.calls.extract import Extraction, evasiveness_rows, verify_extraction
+
+    db = Db(settings.supabase_url, settings.supabase_secret_key)
+    try:
+        company = db.select("companies", {"ticker": f"eq.{ticker.upper()}", "select": "*"})[0]
+        cik = company["cik"]
+        rows = db.select(
+            "call_analysis", {"cik": f"eq.{cik}", "analysis_version": f"eq.{ANALYSIS_VERSION}", "select": "*"}
+        )
+        n = 0
+        for r in rows:
+            if not r.get("raw_extraction"):
+                continue
+            t = db.select(
+                "transcripts",
+                {
+                    "cik": f"eq.{cik}",
+                    "fiscal_year": f"eq.{r['fiscal_year']}",
+                    "fiscal_quarter": f"eq.{r['fiscal_quarter']}",
+                    "select": "turns",
+                },
+            )
+            turns = [Turn(**x) for x in t[0]["turns"]]
+            parsed = parse_call(turns)
+            ex = Extraction.model_validate(r["raw_extraction"])
+            kept, dropped = verify_extraction(ex, turns, parsed)
+            db.update(
+                "call_analysis",
+                {
+                    "cik": cik,
+                    "fiscal_year": r["fiscal_year"],
+                    "fiscal_quarter": r["fiscal_quarter"],
+                    "analysis_version": ANALYSIS_VERSION,
+                },
+                {"extraction": kept, "evasiveness": evasiveness_rows(ex, parsed), "dropped_claims": dropped},
+            )
+            n += 1
+        comps = db.select(
+            "call_comparisons",
+            {"cik": f"eq.{cik}", "analysis_version": f"eq.{ANALYSIS_VERSION}", "select": "period_a,period_b"},
+        )
+    finally:
+        db.close()
+    for c in comps:
+        compare_only(settings, company, c["period_a"], c["period_b"])
+    return {"ok": True, "reverified_calls": n, "comparisons": len(comps)}
+
+
+def compare_only(settings: Settings, company: dict[str, Any], la: str, lb: str) -> None:
+    """Rebuild one comparison from stored analyses (no external requests)."""
+    db = Db(settings.supabase_url, settings.supabase_secret_key)
+    try:
+
+        def load(lbl: str) -> dict[str, Any]:
+            fy, fq = parse_period(lbl)
+            return db.select(
+                "call_analysis",
+                {
+                    "cik": f"eq.{company['cik']}",
+                    "fiscal_year": f"eq.{fy}",
+                    "fiscal_quarter": f"eq.{fq}",
+                    "analysis_version": f"eq.{ANALYSIS_VERSION}",
+                    "select": "*",
+                },
+            )[0]
+
+        a, b = load(la), load(lb)
+        db.upsert(
+            "call_comparisons",
+            [
+                {
+                    "cik": company["cik"],
+                    "period_a": la,
+                    "period_b": lb,
+                    "analysis_version": ANALYSIS_VERSION,
+                    "result": build_result(a, b, la, lb),
+                }
+            ],
+            on_conflict="cik,period_a,period_b,analysis_version",
+        )
+    finally:
+        db.close()

@@ -78,7 +78,8 @@ jobs:
               python -m ei.cli analyze "$T" || echo "::warning::analyze $T failed"
             done
           else
-            python -m ei.cli "$CMD"
+            T=$(python -c "import json;print(json.load(open('../ops/run.json')).get('ticker',''))")
+            FASTEMBED_CACHE_PATH=$HOME/.cache/fastembed python -m ei.cli "$CMD" $T
           fi
       - name: Analyze ticker
         if: github.event_name == 'workflow_dispatch' && inputs.command == 'analyze'

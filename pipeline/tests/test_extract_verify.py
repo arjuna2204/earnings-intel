@@ -142,3 +142,19 @@ def test_paraphrased_topic_quote_is_replaced_from_its_turns() -> None:
     t = kept["topics"][0]
     assert t["quote_selected_by_code"] and t["quote"] in CALL[t["turn"]].content
     assert dropped[0]["reason"].startswith("quote replaced")
+
+
+def test_guidance_number_at_a_different_scale_is_accepted() -> None:
+    from ei.calls.extract import check_guidance_numbers
+
+    item = check_guidance_numbers(
+        {
+            "low": None,
+            "high": None,
+            "point": 0.3,
+            "unit": "USD billions",
+            "quote": "We expect OI&E to be around $300 million",
+            "qualitative": None,
+        }
+    )
+    assert item["point"] == 0.3 and "numbers_removed" not in item

@@ -137,11 +137,16 @@ def _number_in_text(x: float, text: str) -> bool:
     return any(abs(n - x) < 1e-9 for n in nums)
 
 
+def _stated(x: float, text: str) -> bool:
+    """The number is in the quote as written, or at a different scale ("$300 million" recorded as 0.3 billions)."""
+    return any(_number_in_text(round(x * k, 9), text) for k in (1, 1000, 0.001, 1_000_000, 0.000001))
+
+
 def check_guidance_numbers(item: dict[str, Any]) -> dict[str, Any]:
     """Guidance numbers must be stated in the quote itself. Numbers the model inferred from context
     are removed (the item stays, as qualitative, with its exact quote)."""
     fields = [f for f in ("low", "high", "point") if item.get(f) is not None]
-    if fields and not all(_number_in_text(float(item[f]), item["quote"]) for f in fields):
+    if fields and not all(_stated(float(item[f]), item["quote"]) for f in fields):
         item = {**item, "qualitative": item.get("qualitative") or item["quote"], "numbers_removed": True}
         for f in fields:
             item[f] = None
