@@ -1,1 +1,1 @@
-{"command": "peers", "ticker": "MSFT", "nonce": 1794116800}
+{"command": "peers", "tickers": ["AAPL", "NVDA", "JPM"], "nonce": 1794118088}
