@@ -139,7 +139,10 @@ async function CallTab({
 }) {
   // Quarter choices: reported quarters (once report dates are loaded), else the last 12 fiscal quarters.
   const quarters: [number, number][] = events.length
-    ? events.slice(0, 24).map((e) => [e.fiscal_year, e.fiscal_quarter])
+    ? [...events]
+        .sort((x, y) => y.report_date.localeCompare(x.report_date)) // newest first, whatever the row order
+        .slice(0, 24)
+        .map((e) => [e.fiscal_year, e.fiscal_quarter])
     : fallbackQuarters();
   const latest = quarters[0];
   const pb = parseQ(b) ?? latest;

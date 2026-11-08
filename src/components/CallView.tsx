@@ -219,7 +219,33 @@ function PriceReactions({ la, lb, pa, pb }: { la: string; lb: string; pa: PriceR
 function GuidanceTable({ rows, la, lb, onPick }: { rows: GuidanceChange[]; la: string; lb: string; onPick: (r: GuidanceChange) => void }) {
   if (!rows.length) return <Empty text="No numeric guidance found on either call." />;
   return (
-    <div className="overflow-x-auto rounded-2xl border border-border">
+    <>
+    <ul className="space-y-3 sm:hidden">
+      {rows.map((r, i) => (
+        <li key={i}>
+          <button onClick={() => onPick(r)} className="w-full rounded-2xl border border-border p-4 text-left">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <div className="font-medium">{r.metric}</div>
+                <div className="text-xs text-muted">{(r.later ?? r.earlier)?.period}</div>
+              </div>
+              <Chip change={r.change} />
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+              <div>
+                <div className="text-xs text-muted">{la}</div>
+                <div className="tabular-nums">{fmtGuide(r.earlier)}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted">{lb}</div>
+                <div className="font-semibold tabular-nums">{fmtGuide(r.later)}</div>
+              </div>
+            </div>
+          </button>
+        </li>
+      ))}
+    </ul>
+    <div className="hidden overflow-x-auto rounded-2xl border border-border sm:block">
       <table className="w-full min-w-[560px] text-sm">
         <thead className="text-left text-xs text-muted">
           <tr className="border-b border-border">
@@ -247,7 +273,15 @@ function GuidanceTable({ rows, la, lb, onPick }: { rows: GuidanceChange[]; la: s
         </tbody>
       </table>
     </div>
+    </>
   );
+}
+
+function fmtDelta(d: number, unit: string | null | undefined): string {
+  const { pre, post } = unitText(unit ?? null);
+  const v = Number(Math.abs(d).toFixed(3));
+  const postShort = post.replace(" y/y", "");
+  return `${d >= 0 ? "+" : "−"}${pre}${v}${pre ? postShort : post.includes("%") ? " pts" : postShort}`;
 }
 
 function guidancePanel(r: GuidanceChange, la: string, lb: string): Panel {
@@ -267,7 +301,7 @@ function guidancePanel(r: GuidanceChange, la: string, lb: string): Panel {
         <dt className="text-muted">Change</dt>
         <dd>
           {CHANGE_STYLE[r.change]?.text ?? r.change}
-          {r.delta != null && ` (${r.delta > 0 ? "+" : ""}${Number(r.delta.toFixed(3))} at midpoint)`}
+          {r.delta != null && ` (${fmtDelta(r.delta, (r.later ?? r.earlier)?.unit)} at the midpoint)`}
         </dd>
         {r.earlier && r.later && (
           <>
