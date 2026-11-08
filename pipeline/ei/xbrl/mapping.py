@@ -271,6 +271,14 @@ REPORTED: tuple[MetricDef, ...] = (
     ),
     # --- Add-backs for the app's standardized adjusted figures ---
     M(
+        "interest_expense",
+        "Interest expense",
+        "duration",
+        "money",
+        ("InterestExpense", "InterestExpenseNonoperating", "InterestExpenseDebt", "InterestAndDebtExpense"),
+        ("FinanceCosts", "InterestExpense"),
+    ),
+    M(
         "sbc",
         "Stock-based compensation",
         "duration",

@@ -275,6 +275,14 @@ def analyze(settings: Settings, ticker: str, job_id: int | None = None, primary:
                 else None,
             },
         )
+        try:  # 6. DCF (no AI, no extra API calls)
+            from ei.dcf import run_dcf
+
+            d = run_dcf(db, db.select("companies", {"cik": f"eq.{cik}", "select": "*"})[0])
+            if d.get("per_share"):
+                job.step("dcf", "done", f"DCF value ${d['per_share']:.2f} per share")
+        except Exception as exc:
+            log.warning("dcf skipped: %s", exc)
         job.finish(
             "deferred" if deferred else "done",
             "Price download paused by the free-tier limit; retries automatically within 3 hours" if deferred else None,

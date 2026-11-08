@@ -34,6 +34,8 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("period_a")
     c.add_argument("period_b")
     c.add_argument("--job-id", type=int, default=None)
+    dc = sub.add_parser("dcf")
+    dc.add_argument("ticker", nargs="?", default=None)
     cs = sub.add_parser("cases")
     cs.add_argument("ticker")
     btc = sub.add_parser("backtest-collect")
@@ -62,6 +64,10 @@ def main(argv: list[str] | None = None) -> int:
         from ei.calls.run import compare_calls
 
         print(json.dumps(compare_calls(settings, args.ticker, args.period_a, args.period_b, job_id=args.job_id)))
+    elif args.cmd == "dcf":
+        from ei.dcf import run_all
+
+        print(json.dumps(run_all(settings, [args.ticker.upper()] if args.ticker else None), default=str))
     elif args.cmd == "cases":
         from ei.filings.cases import run_cases
 
