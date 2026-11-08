@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import SourcePanel from "@/components/SourcePanel";
-import { figureText } from "@/components/BriefView";
+import { figureText } from "@/lib/figures";
 import type { BriefInputs, Driver, Release, RiskChange } from "@/lib/filings";
 
 type Panel = { title: string; quote: string; link?: string | null; label?: string } | null;

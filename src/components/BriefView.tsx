@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import SourcePanel from "@/components/SourcePanel";
-import type { Brief, Fact, Release, ReleaseFigure } from "@/lib/filings";
+import type { StreetRow } from "@/lib/figures";
+import type { Brief, Fact } from "@/lib/filings";
 
 const SECTION_TITLES: Record<string, string> = {
   headline: "What changed",
@@ -17,7 +18,6 @@ const SECTION_TITLES: Record<string, string> = {
 const ORDER = ["headline", "street", "results", "guidance", "call", "risks", "tensions"];
 const SOURCE_KIND: Record<string, string> = { X: "Financials", S: "Street", C: "Call", F: "Filing", R: "Risk factors" };
 
-export type StreetRow = { label: string; a: string; b: string; note?: string; tone?: "up" | "down" | null; ref?: string };
 
 /** The brief: claims grouped by section, each with source chips that open the exact fact and quote. */
 export default function BriefView({ brief, street, la, lb }: { brief: Brief; street: StreetRow[]; la: string; lb: string }) {
@@ -159,18 +159,4 @@ function StreetScorecard({ rows, la, lb, onSource }: { rows: StreetRow[]; la: st
       </div>
     </section>
   );
-}
-
-export function figureText(f: ReleaseFigure | undefined, which: "current" | "prior" = "current"): string {
-  if (!f) return "—";
-  const v = which === "current" ? f.current : f.prior;
-  if (v === null || v === undefined) return "—";
-  if (f.unit === "percent") return `${v}%`;
-  if (f.unit === "USD per share") return `$${v.toFixed(2)}`;
-  const abs = which === "current" ? f.value : (f.prior_value ?? 0);
-  return abs >= 1e9 ? `$${(abs / 1e9).toFixed(1)}B` : `$${(abs / 1e6).toFixed(0)}M`;
-}
-
-export function releaseFigure(r: Release | null | undefined, kind: string): ReleaseFigure | undefined {
-  return r?.figures.find((f) => f.kind === kind);
 }
