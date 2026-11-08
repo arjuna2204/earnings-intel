@@ -411,20 +411,31 @@ def collect(settings: Settings, max_annual: int = 40) -> dict[str, Any]:
     - risk-factor comparisons for consecutive 10-Ks since 2014 (SEC, free; only risk factors stored)."""
     from ei.calls.run import AvQuota, analyze_call, ensure_events
     from ei.filings.run import ANNUAL, Fetcher, risk_compare
+    from ei.jobs import Job
     from ei.transcripts import AlphaVantageProvider, QuotaReached
 
     db = Db(settings.supabase_url, settings.supabase_secret_key)
-    report: dict[str, Any] = {"events": [], "transcripts": 0, "no_transcript": 0, "risk_pairs": 0}
-    companies = db.select("companies", {"select": "*", "order": "is_primary.desc,ticker"})
+    job = Job(db, "backtest", "ALL", None)
+    report: dict[str, Any] = {"events": [], "transcripts": 0, "no_transcript": 0, "risk_pairs": 0, "errors": []}
+    etfs = {r["sector_etf"] for r in db.select("companies", {"select": "sector_etf"}) if r.get("sector_etf")} | {"SPY"}
+    companies = [
+        c for c in db.select("companies", {"select": "*", "order": "is_primary.desc,ticker"}) if c["ticker"] not in etfs
+    ]
+    job.step("history", "running", f"{len(companies)} companies")
     av = AlphaVantageProvider(
         settings.alpha_vantage_api_key, quota_check=AvQuota(db, AlphaVantageProvider.daily_limit, reserve=USER_RESERVE)
     )
     try:
         have = {r["cik"] for r in db.select("earnings_events", {"select": "cik"})}
         for c in companies:
-            if c["cik"] not in have and c.get("filer_type") != "fund":
-                ensure_events(db, av, c)
-                report["events"].append(c["ticker"])
+            if c["cik"] not in have:
+                try:
+                    ensure_events(db, av, c)
+                    report["events"].append(c["ticker"])
+                except QuotaReached:
+                    raise
+                except Exception as err:  # one company's data problem shouldn't stop the rest
+                    report["errors"].append(f"{c['ticker']} earnings: {type(err).__name__}")
         # round-robin newest-first so every company gets coverage
         done = {
             (r["cik"], r["fiscal_year"], r["fiscal_quarter"])
@@ -460,10 +471,21 @@ def collect(settings: Settings, max_annual: int = 40) -> dict[str, Any]:
                     report["transcripts"] += 1
                 except LookupError:
                     report["no_transcript"] += 1
+                except QuotaReached:
+                    raise
+                except Exception as err:
+                    report["errors"].append(f"{c['ticker']} transcript: {type(err).__name__}")
     except QuotaReached:
         report["paused"] = "Transcript allowance for today used (reserve kept for your own briefs)"
     finally:
         av.close()
+    job.step(
+        "history",
+        "done",
+        f"Earnings history added: {len(report['events'])} · transcripts added: {report['transcripts']}"
+        + (f" · {report['paused']}" if report.get("paused") else ""),
+    )
+    job.step("risk", "running", "Comparing risk factors in consecutive 10-Ks (SEC, free)")
     fetch = Fetcher(settings, db)
     try:
         budget = max_annual
@@ -492,25 +514,37 @@ def collect(settings: Settings, max_annual: int = 40) -> dict[str, Any]:
                     continue
                 if budget <= 0:
                     report["risk_paused"] = f"Parsed {max_annual} annual reports this run; continues next run"
-                    return report
-                so = fetch.sections(old, c["cik"], only={"risk_factors"})
-                sn = fetch.sections(new, c["cik"], only={"risk_factors"})
+                    break
                 budget -= 2
-                if (
-                    "risk_factors" in so
-                    and "risk_factors" in sn
-                    and so["risk_factors"].get("risk_factors")
-                    and sn["risk_factors"].get("risk_factors")
-                ):
-                    risk_compare(
-                        db,
-                        c["cik"],
-                        {**sn["risk_factors"], "report_date": new["report_date"]},
-                        {**so["risk_factors"], "report_date": old["report_date"]},
+                try:
+                    so = fetch.sections(old, c["cik"], only={"risk_factors"})
+                    sn = fetch.sections(new, c["cik"], only={"risk_factors"})
+                    ro, rn = so.get("risk_factors") or {}, sn.get("risk_factors") or {}
+                    if ro.get("risk_factors") and rn.get("risk_factors"):
+                        risk_compare(
+                            db,
+                            c["cik"],
+                            {**rn, "report_date": new["report_date"]},
+                            {**ro, "report_date": old["report_date"]},
+                        )
+                        report["risk_pairs"] += 1
+                except Exception as e:
+                    report["errors"].append(
+                        f"{c['ticker']} {new['report_date']} 10-K: {type(e).__name__}: {str(e)[:80]}"
                     )
-                    report["risk_pairs"] += 1
+            if budget <= 0:
+                break
     finally:
         fetch.close()
+    job.step(
+        "risk",
+        "done",
+        f"{report['risk_pairs']} 10-K pairs compared"
+        + (f" · {report['risk_paused']}" if report.get("risk_paused") else ""),
+    )
+    if report["errors"]:
+        job.step("skipped", "done", f"{len(report['errors'])} skipped: " + "; ".join(report["errors"][:6]))
+    job.finish("done", None, None)
     return report
 
 

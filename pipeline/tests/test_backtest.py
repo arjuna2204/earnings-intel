@@ -40,7 +40,16 @@ def test_summary_finds_a_planted_effect() -> None:
     ev = []
     for i in range(90):
         v = i / 90
-        ev.append({"signal": "eps_surprise", "ticker": f"T{i % 9}", "value": v, "reaction": v / 10, "drift20": 0.05 * v - 0.025 + (0.002 if i % 2 else -0.002), "drift60": 0.0 + (0.01 if i % 2 else -0.01)})
+        ev.append(
+            {
+                "signal": "eps_surprise",
+                "ticker": f"T{i % 9}",
+                "value": v,
+                "reaction": v / 10,
+                "drift20": 0.05 * v - 0.025 + (0.002 if i % 2 else -0.002),
+                "drift60": 0.0 + (0.01 if i % 2 else -0.01),
+            }
+        )
     s = summarize(ev)["eps_surprise"]
     assert s["drift20"]["significant"] and s["drift20"]["spread"] > 0.02
     assert not s["drift60"]["significant"]
