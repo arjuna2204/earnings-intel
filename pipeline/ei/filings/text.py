@@ -222,6 +222,74 @@ def split_subitem(section: Section, letter: str) -> Section | None:
     return Section(f"{section.key}.{letter}", section.blocks[start].text, section.blocks[start + 1 :])
 
 
+_TOC_ROW = re.compile(r"^(.{3,180}?)\s*\|\s*(\d{1,3})$")
+
+
+def _norm(t: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", t.lower().replace("’", "'")).strip()
+
+
+def toc_section(blocks: list[Block], item_key: str) -> Section | None:
+    """Fallback for filers (often banks) whose body has no "Item 2." heading: the table of contents
+    lists the Item's sub-sections with page numbers ("Executive Overview | 5"). The section starts at
+    the body heading of its first sub-section and ends at the heading of the next sub-section of a
+    different Item in page order."""
+    limit = min(len(blocks), 400)
+    rows: list[tuple[str, str, int]] = []  # (item, title, page)
+    cur_item = ""
+    seen_items: list[str] = []  # 10-Q Part II re-uses item numbers: label repeats "2#2"
+    toc_end = 0
+    misses = 0
+    for i in range(limit):
+        t = blocks[i].text
+        if rows and (len(t) > 250 or misses >= 3):
+            break  # body text: the table of contents is over
+        k = _item_key(t)
+        if not k and not _TOC_ROW.match(t):
+            misses += 1
+            continue
+        misses = 0
+        if k:
+            cur_item = k[0] if k[0] not in seen_items else f"{k[0]}#{seen_items.count(k[0]) + 1}"
+            seen_items.append(k[0])
+            m = _TOC_ROW.match(t)
+            if m:
+                rows.append(
+                    (cur_item, re.sub(r"^item\s*\d+[a-d]?\.?\s*\|\s*", "", m.group(1), flags=re.I), int(m.group(2)))
+                )
+            toc_end = i
+            continue
+        m = _TOC_ROW.match(t)
+        if m and cur_item:
+            rows.append((cur_item, m.group(1), int(m.group(2))))
+            toc_end = i
+    mine = [r for r in rows if r[0] == item_key]
+    if len(mine) < 2:
+        return None
+    first = min(mine, key=lambda r: r[2])
+    last_page = max(r[2] for r in mine)
+    after = [r for r in rows if r[0] != item_key and r[2] > last_page]
+    nxt = min(after, key=lambda r: r[2]) if after else None
+
+    def find(title: str, start: int) -> int | None:
+        nt = _norm(title)
+        for i in range(start, len(blocks)):
+            b = blocks[i]
+            if len(b.text) > 200:
+                continue
+            nb = _norm(b.text)
+            if len(nb) >= min(25, len(nt)) and (nt.startswith(nb) or nb.startswith(nt)):
+                return i
+        return None
+
+    start = find(first[1], toc_end + 1)
+    if start is None:
+        return None
+    end = find(nxt[1], start + 1) if nxt else None
+    body = [b for b in blocks[start : end or len(blocks)] if not _RUNNING_ITEM.match(b.text)]
+    return Section(item_key, first[1], body) if len(body) > 20 else None
+
+
 SECTION_PLAN = {
     "10-K": {"business": "1", "risk_factors": "1A", "mdna": "7"},
     "10-Q": {"mdna": "2", "risk_factors": "1A"},
@@ -242,7 +310,10 @@ def extract_sections(form: str, html: str) -> dict[str, Section]:
             sub = split_subitem(sec, letter) if sec else None
             if sub:
                 out[name] = sub
-        elif key in items:
-            # 10-Q Part II also has an "Item 1A"; the longest-text rule picks the right one.
+        elif key in items and (name != "mdna" or len(items[key].text) > 5000):
             out[name] = items[key]
+        elif name == "mdna":
+            sec = toc_section(blocks, key)
+            if sec:
+                out[name] = sec
     return out

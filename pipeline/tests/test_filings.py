@@ -87,3 +87,17 @@ def test_fallback_without_headings() -> None:
     sec = Section("1A", "Risk Factors", [Block(long), Block(long.replace("one", "two"))])
     f = split_risk_factors(sec)
     assert len(f) == 2 and f[0].headline == "Risk sentence one is here."
+
+
+def test_bank_10q_mdna_found_through_table_of_contents() -> None:
+    """JPMorgan's 10-Q has no 'Item 2.' heading in the body; MD&A is located via the contents page."""
+    s = extract_sections("10-Q", gzip.decompress((FIX / "JPM_10-Q_2026-09-30.htm.gz").read_bytes()).decode())
+    m = s["mdna"]
+    assert m.blocks[0].text.startswith("Consolidated financial highlights")
+    assert 100_000 < len(m.text) < 400_000  # stops before the financial statements
+    assert not any(b.text == "Consolidated statements of income (unaudited)" for b in m.blocks)
+
+
+def test_10q_mdna_regular_layout() -> None:
+    s = extract_sections("10-Q", gzip.decompress((FIX / "MSFT_10-Q_2026-09-30.htm.gz").read_bytes()).decode())
+    assert len(s["mdna"].text) > 20_000

@@ -29,7 +29,7 @@ from ei.jobs import Job
 from ei.sec import SEC_LIMITER, SecClient
 
 log = logging.getLogger(__name__)
-PARSER_VERSION = "parse-v1"
+PARSER_VERSION = "parse-v2"
 RISK_VERSION = "risk-v1"
 ANNUAL = {"10-K", "10-K/A", "20-F", "20-F/A"}
 QUARTERLY = {"10-Q", "10-Q/A"}
