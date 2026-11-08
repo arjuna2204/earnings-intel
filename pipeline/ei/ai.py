@@ -82,7 +82,7 @@ class AiClient:
             if "between_tools" not in str(e) or thinking_mode == "between_tools":
                 raise
             _THINKING_OFF[model] = "between_tools"
-            resp = self._client.messages.create(**kwargs, thinking={"type": "between_tools"})  # type: ignore[call-overload]
+            resp = self._client.messages.create(**kwargs, thinking={"type": "between_tools"})
 
         # 3) Log actual usage and cost, whatever happens next.
         u = resp.usage
