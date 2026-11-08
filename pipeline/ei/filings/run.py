@@ -423,7 +423,7 @@ def run_brief(
                 "filings": {
                     k: {
                         kk: (
-                            v[kk]
+                            str(v[kk])
                             if kk == "end"
                             else (
                                 v[kk]
