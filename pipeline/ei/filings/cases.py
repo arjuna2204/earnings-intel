@@ -159,12 +159,12 @@ def scenario_numbers(db: Db, company: dict[str, Any], today: date) -> dict[str, 
     out["pe"] = pct
     sc: dict[str, dict[str, Any] | None] = {}
     for case, ek, pk in (("bear", "eps_low", "p20"), ("base", "eps_avg", "p50"), ("bull", "eps_high", "p80")):
-        e = eps.get(ek)
-        if e is None or e <= 0:
+        ev = eps.get(ek)
+        if ev is None or ev <= 0:
             sc[case] = None
             continue
-        val = e * pct[pk]
-        sc[case] = {"eps": e, "pe": pct[pk], "value": val, "vs_price": val / price - 1}
+        val = ev * pct[pk]
+        sc[case] = {"eps": ev, "pe": pct[pk], "value": val, "vs_price": val / price - 1}
     out["scenarios"] = sc
     return out
 
