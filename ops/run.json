@@ -1,1 +1,1 @@
-{"command": "analyze", "tickers": ["AAPL", "MSFT", "NVDA", "JPM", "WMT", "XOM", "O", "TSM"], "nonce": 1794113551}
+{"command": "brief", "ticker": "MSFT", "periods": ["FY2026Q1", "FY2027Q1"], "nonce": 1794113766}
