@@ -2,9 +2,9 @@
  {
   "ticker": "AAPL",
   "cik": 320193,
-  "form": "10-K",
   "file": "AAPL_10-K_2026-09-26.htm.gz",
   "url": "https://www.sec.gov/Archives/edgar/data/320193/000032019326000026/aapl-20260926.htm",
+  "form": "10-K",
   "accessionNumber": "0000320193-26-000026",
   "primaryDocument": "aapl-20260926.htm",
   "reportDate": "2026-09-26",
@@ -14,9 +14,9 @@
  {
   "ticker": "AAPL",
   "cik": 320193,
-  "form": "10-K",
   "file": "AAPL_10-K_2025-09-27.htm.gz",
   "url": "https://www.sec.gov/Archives/edgar/data/320193/000032019325000079/aapl-20250927.htm",
+  "form": "10-K",
   "accessionNumber": "0000320193-25-000079",
   "primaryDocument": "aapl-20250927.htm",
   "reportDate": "2025-09-27",
@@ -38,9 +38,9 @@
  {
   "ticker": "MSFT",
   "cik": 789019,
-  "form": "10-K",
   "file": "MSFT_10-K_2026-06-30.htm.gz",
   "url": "https://www.sec.gov/Archives/edgar/data/789019/000119312526323660/msft-20260630.htm",
+  "form": "10-K",
   "accessionNumber": "0001193125-26-323660",
   "primaryDocument": "msft-20260630.htm",
   "reportDate": "2026-06-30",
@@ -50,13 +50,25 @@
  {
   "ticker": "MSFT",
   "cik": 789019,
-  "form": "10-K",
   "file": "MSFT_10-K_2025-06-30.htm.gz",
   "url": "https://www.sec.gov/Archives/edgar/data/789019/000095017025100235/msft-20250630.htm",
+  "form": "10-K",
   "accessionNumber": "0000950170-25-100235",
   "primaryDocument": "msft-20250630.htm",
   "reportDate": "2025-06-30",
   "filingDate": "2025-07-30",
+  "items": ""
+ },
+ {
+  "ticker": "MSFT",
+  "cik": 789019,
+  "file": "MSFT_10-Q_2026-09-30.htm.gz",
+  "url": "https://www.sec.gov/Archives/edgar/data/789019/000119312526436133/msft-20260930.htm",
+  "form": "10-Q",
+  "accessionNumber": "0001193125-26-436133",
+  "primaryDocument": "msft-20260930.htm",
+  "reportDate": "2026-09-30",
+  "filingDate": "2026-10-28",
   "items": ""
  },
  {
@@ -70,5 +82,17 @@
   "reportDate": "2026-10-28",
   "filingDate": "2026-10-28",
   "items": "2.02,9.01"
+ },
+ {
+  "ticker": "JPM",
+  "cik": 19617,
+  "file": "JPM_10-Q_2026-09-30.htm.gz",
+  "url": "https://www.sec.gov/Archives/edgar/data/19617/000162828026069523/jpm-20260930.htm",
+  "form": "10-Q",
+  "accessionNumber": "0001628280-26-069523",
+  "primaryDocument": "jpm-20260930.htm",
+  "reportDate": "2026-09-30",
+  "filingDate": "2026-11-03",
+  "items": ""
  }
 ]
