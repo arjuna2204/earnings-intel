@@ -1,1 +1,1 @@
-{"command": "peers", "tickers": ["AAPL", "NVDA", "JPM"], "nonce": 1794118088}
+{"command": "peers", "tickers": ["AAPL", "NVDA", "MSFT"], "args": ["--n", "5"], "nonce": 1794118505}

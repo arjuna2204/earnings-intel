@@ -104,7 +104,8 @@ jobs:
             done
           else
             for T in $(python -c "import json;d=json.load(open('../ops/run.json'));print(' '.join(d.get('tickers') or [d.get('ticker','')]))"); do
-              FASTEMBED_CACHE_PATH=$HOME/.cache/fastembed python -m ei.cli "$CMD" $T || echo "::warning::$CMD $T failed"
+              EXTRA=$(python -c "import json;print(' '.join(json.load(open('../ops/run.json')).get('args', [])))")
+              FASTEMBED_CACHE_PATH=$HOME/.cache/fastembed python -m ei.cli "$CMD" $T $EXTRA || echo "::warning::$CMD $T failed"
             done
           fi
       - name: Analyze ticker

@@ -20,7 +20,7 @@ def test_competitors_first_then_closest_revenue() -> None:
     peers, rest = choose_peers(1, REV[1], [1, 3, 4, 5, 7], LISTED, REV, comps, n=3)
     assert [p["ticker"] for p in peers] == ["BBB", "CCC", "EEE"]  # FFF too large (>20x), skipped
     assert peers[0]["source"] == "10-K competitor"
-    assert "DDD" in [r["ticker"] for r in rest]
+    assert "DDD" not in [r["ticker"] for r in rest]  # 200x smaller: out of range
 
 
 def test_named_competitors_leave_room_for_industry_peers() -> None:
@@ -70,3 +70,19 @@ def test_formatting() -> None:
         "13th",
         "22nd",
     ]
+
+
+def test_assets_cross_check_rejects_bad_revenue_value() -> None:
+    # "TINY" reports a bogus revenue close to the target's, but its assets are 1/1000th: excluded.
+    listed = LISTED | {9: ("TINY", "Tiny Mislabelled")}
+    rev = REV | {9: 101e9}
+    assets = {1: 300e9, 3: 250e9, 5: 200e9, 9: 0.3e9}
+    peers, _ = choose_peers(1, REV[1], [3, 5, 9], listed, rev, [], n=3, assets=assets)
+    assert "TINY" not in [p["ticker"] for p in peers]
+
+
+def test_related_industry_ranks_after_exact_match() -> None:
+    tiers = {3: 1, 5: 0}  # CCC closer in size but only a related industry
+    peers, _ = choose_peers(1, REV[1], tiers, LISTED, REV, [], n=2)
+    assert [p["ticker"] for p in peers] == ["EEE", "CCC"]
+    assert peers[1]["reason"].startswith("Closely related")

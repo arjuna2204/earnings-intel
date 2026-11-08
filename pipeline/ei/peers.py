@@ -61,28 +61,62 @@ def sic_ciks(sec: SecClient, sic: str, max_pages: int = 40) -> list[int]:
     return list(dict.fromkeys(out))
 
 
+def _frame(sec: SecClient, tag: str, period: str) -> list[dict[str, Any]]:
+    try:
+        r = get_with_retries(
+            sec._client, f"https://data.sec.gov/api/xbrl/frames/us-gaap/{tag}/USD/{period}.json", limiter=SEC_LIMITER
+        )
+    except Exception:  # no frame for that tag/period
+        return []
+    if r.status_code != 200:
+        return []
+    data: list[dict[str, Any]] = r.json().get("data", [])
+    return data
+
+
 def revenue_frame(sec: SecClient, today: date) -> dict[int, float]:
-    """Latest full calendar-year revenue for every XBRL filer (largest value across revenue tags)."""
+    """Latest full calendar-year revenue for every XBRL filer. One value per company, taken from the
+    first revenue tag it reports (in priority order) — never the largest, so one bad tag can't win."""
     out: dict[int, float] = {}
     for year in (today.year - 1, today.year - 2):
         for tag in REVENUE_TAGS:
-            try:
-                r = get_with_retries(
-                    sec._client,
-                    f"https://data.sec.gov/api/xbrl/frames/us-gaap/{tag}/USD/CY{year}.json",
-                    limiter=SEC_LIMITER,
-                )
-            except Exception:  # a tag with no frame for that year
-                continue
-            if r.status_code != 200:
-                continue
-            for row in r.json().get("data", []):
-                cik, val = int(row["cik"]), float(row["val"])
-                if cik not in out or val > out[cik]:
-                    out[cik] = val
+            for row in _frame(sec, tag, f"CY{year}"):
+                out.setdefault(int(row["cik"]), float(row["val"]))
         if len(out) > 1500:
             break
     return out
+
+
+def assets_frame(sec: SecClient, today: date) -> dict[int, float]:
+    """Total assets at the latest year-end, a second size check."""
+    out: dict[int, float] = {}
+    for year in (today.year - 1, today.year - 2):
+        for row in _frame(sec, "Assets", f"CY{year}Q4I"):
+            out.setdefault(int(row["cik"]), float(row["val"]))
+        if len(out) > 1500:
+            break
+    return out
+
+
+def sic_tiers(sec: SecClient, sic: str, listed: dict[int, tuple[str, str]], want: int) -> dict[int, int]:
+    """CIK -> tier: 0 = same SIC, 1 = same 3-digit group, 2 = same 2-digit major group.
+    Widens only while there are too few listed candidates."""
+    tiers: dict[int, int] = {}
+    for cik in sic_ciks(sec, sic):
+        tiers.setdefault(cik, 0)
+    if sum(1 for c in tiers if c in listed) >= want * 4 or len(sic) != 4:
+        return tiers
+    for code in (f"{sic[:3]}{d}" for d in range(10)):
+        if code != sic:
+            for cik in sic_ciks(sec, code, max_pages=10):
+                tiers.setdefault(cik, 1)
+    if sum(1 for c in tiers if c in listed) >= want * 4:
+        return tiers
+    for code in (f"{sic[:2]}{d:02d}" for d in range(100)):
+        if code[:3] != sic[:3]:
+            for cik in sic_ciks(sec, code, max_pages=5):
+                tiers.setdefault(cik, 2)
+    return tiers
 
 
 def listed_map(db: Db) -> dict[int, tuple[str, str]]:
@@ -176,30 +210,43 @@ def extract_competitors(
 # ---------------------------------------------------------------- choosing
 
 
+TIER_PENALTY = {0: 0.0, 1: 0.8, 2: 1.6}
+MAX_SIZE_GAP = math.log(20)
+
+
 def choose_peers(
     target_cik: int,
     target_rev: float | None,
-    same_sic: list[int],
+    same_sic: list[int] | dict[int, int],
     listed: dict[int, tuple[str, str]],
     revenues: dict[int, float],
     competitors: list[dict[str, Any]],
     n: int = DEFAULT_N,
+    assets: dict[int, float] | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Named competitors of comparable scale first, then same-industry companies closest in revenue.
+    """Named competitors of comparable scale first, then same-industry companies closest in size.
+    Size = revenue, cross-checked with total assets when available (both must be within 20x).
     Returns (peers, next-best candidates)."""
+    assets = assets or {}
+    tiers = same_sic if isinstance(same_sic, dict) else {c: 0 for c in same_sic}
+    target_assets = assets.get(target_cik)
+
+    def gap(vals: dict[int, float], target: float | None, cik: int) -> float | None:
+        v = vals.get(cik)
+        if not target or not v or v <= 0 or target <= 0:
+            return None
+        return abs(math.log(v / target))
 
     def dist(cik: int) -> float:
-        r = revenues.get(cik)
-        if not target_rev or not r or r <= 0:
+        gaps = [g for g in (gap(revenues, target_rev, cik), gap(assets, target_assets, cik)) if g is not None]
+        if not gaps or max(gaps) > MAX_SIZE_GAP:
             return 99.0
-        return abs(math.log(r / target_rev))
+        return sum(gaps) / len(gaps)
 
     picked: list[dict[str, Any]] = []
     used = {target_cik}
     for c in competitors:
-        if c["cik"] in used or c["cik"] not in listed:
-            continue
-        if dist(c["cik"]) > math.log(20):  # skip names 20x bigger/smaller than the company
+        if c["cik"] in used or c["cik"] not in listed or dist(c["cik"]) >= 99:
             continue
         used.add(c["cik"])
         t, name = listed[c["cik"]]
@@ -213,14 +260,22 @@ def choose_peers(
                 "quote": c["quote"],
             }
         )
-    pool = sorted((cik for cik in same_sic if cik in listed and cik not in used and cik in revenues), key=dist)
+    reasons = {
+        0: "Same SEC industry code, similar size",
+        1: "Closely related SEC industry, similar size",
+        2: "Same broad SEC industry group, similar size",
+    }
+    pool = sorted(
+        (cik for cik in tiers if cik in listed and cik not in used and dist(cik) < 99),
+        key=lambda c: dist(c) + TIER_PENALTY[tiers[c]],
+    )
     ranked = [
         {
             "cik": cik,
             "ticker": listed[cik][0],
             "name": listed[cik][1],
             "source": "same industry",
-            "reason": "Same SEC industry code, similar revenue",
+            "reason": reasons[tiers[cik]],
         }
         for cik in pool
     ]
@@ -561,10 +616,26 @@ def run_peers(
                         ],
                         on_conflict="accession,kind,version",
                     )
-            same = sic_ciks(fetch.sec, company["sic"]) if company.get("sic") else []
+            same: dict[int, int] = (
+                sic_tiers(fetch.sec, company["sic"], listed, n or DEFAULT_N) if company.get("sic") else {}
+            )
             revenues = revenue_frame(fetch.sec, _today())
+            assets = assets_frame(fetch.sec, _today())
+            # The company's own revenue from its loaded XBRL data beats the frame value.
+            own = db.select(
+                "metric_values",
+                {
+                    "cik": f"eq.{cik}",
+                    "metric": "eq.revenue",
+                    "fiscal_period": "eq.FY",
+                    "select": "value",
+                    "order": "period_end.desc",
+                    "limit": "1",
+                },
+            )
+            target_rev = float(own[0]["value"]) if own else revenues.get(cik)
             peers, candidates = choose_peers(
-                cik, revenues.get(cik), same, listed, revenues, competitors, n or DEFAULT_N
+                cik, target_rev, same, listed, revenues, competitors, n or DEFAULT_N, assets
             )
             db.upsert(
                 "peer_sets",
@@ -574,7 +645,13 @@ def run_peers(
             job.step(
                 "select",
                 "done",
-                f"{len(competitors)} competitors named in the 10-K · {sum(1 for c in same if c in listed)} listed companies in SIC {company.get('sic')} · picked "
+                f"{len(competitors)} competitors named in the 10-K · {sum(1 for c, t in same.items() if c in listed and t == 0)} listed companies in SIC {company.get('sic')}"
+                + (
+                    f" (+{sum(1 for c, t in same.items() if c in listed and t > 0)} in related industries)"
+                    if any(t > 0 for t in same.values())
+                    else ""
+                )
+                + " · picked "
                 + ", ".join(p["ticker"] for p in peers),
             )
 
