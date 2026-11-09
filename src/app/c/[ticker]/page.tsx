@@ -25,6 +25,9 @@ import FilingsView from "@/components/FilingsView";
 import { getBrief, getCases, getDodges, getLatestBriefJob, getRiskChanges, getTakes, type Brief } from "@/lib/filings";
 import { select, selectAll } from "@/lib/db";
 import OwnershipView from "@/components/OwnershipView";
+import RiskView from "@/components/RiskView";
+import OptionsView from "@/components/OptionsView";
+import { getOptions, getRisk } from "@/lib/riskopts";
 import QuickTake from "@/components/QuickTake";
 import WatchButton from "@/components/WatchButton";
 import { getQuickTake } from "@/lib/quicktake";
@@ -156,6 +159,8 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
         {tab === "call" && <CallTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />}
         {tab === "filings" && <BriefTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} mode="filings" />}
         {tab === "peers" && <PeersTab company={company} prices={prices} />}
+        {tab === "risk" && <RiskTab company={company} />}
+        {tab === "options" && <OptionsTab company={company} />}
         {tab === "ownership" && <OwnershipTab company={company} asOf={prices.at(-1)?.date ?? company.valuation?.price_date ?? "2026-01-01"} />}
         </Suspense>
       </div>
@@ -165,6 +170,26 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
 
 async function QuickTakeSection({ company, events, asOf }: { company: Company; events: Awaited<ReturnType<typeof getEvents>>; asOf: string }) {
   return <QuickTake signals={await getQuickTake(company, events, asOf)} />;
+}
+
+async function RiskTab({ company }: { company: Company }) {
+  const r = await getRisk(company.cik);
+  if (!r) return <Pending what="Stats & risk" />;
+  return <RiskView ticker={company.ticker} r={r} sector={company.sector_etf} />;
+}
+
+async function OptionsTab({ company }: { company: Company }) {
+  const [o, r] = await Promise.all([getOptions(company.cik), getRisk(company.cik)]);
+  if (!o) return <Pending what="Options data" note="Stocks without listed options have nothing to show here." />;
+  return <OptionsView ticker={company.ticker} o={o.result} asOf={o.as_of} avgEarningsMove={r?.avg_earnings_move ?? null} />;
+}
+
+function Pending({ what, note }: { what: string; note?: string }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted">
+      {what} for this stock will appear after the next morning refresh (it&apos;s computed daily for every loaded stock). {note}
+    </div>
+  );
 }
 
 async function OwnershipTab({ company, asOf }: { company: Company; asOf: string }) {

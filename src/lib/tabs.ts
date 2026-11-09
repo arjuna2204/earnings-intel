@@ -7,10 +7,12 @@ export const TABS = [
   { key: "filings", label: "Filings" },
   { key: "peers", label: "Peers" },
   { key: "ownership", label: "Ownership" },
+  { key: "risk", label: "Stats & Risk" },
+  { key: "options", label: "Options" },
   { key: "sources", label: "Sources" },
 ] as const;
 
 export type TabKey = (typeof TABS)[number]["key"];
-const ALIASES: Record<string, TabKey> = { financials: "historical", streetview: "street", insiders: "ownership", holders: "ownership" };
+const ALIASES: Record<string, TabKey> = { financials: "historical", streetview: "street", insiders: "ownership", holders: "ownership", stats: "risk" };
 export const normalizeTab = (t: string | null | undefined, fallback: TabKey): TabKey =>
   (t && (ALIASES[t] ?? (TABS.some((x) => x.key === t) ? (t as TabKey) : undefined))) || fallback;

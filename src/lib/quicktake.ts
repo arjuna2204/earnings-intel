@@ -4,6 +4,7 @@ import { CALLS_VERSION } from "@/lib/calls";
 import { getDcf } from "@/lib/dcf";
 import { getCases } from "@/lib/filings";
 import { getHolders, getInsiderTrades, summarizeInsiders } from "@/lib/ownership";
+import { getOptions, getRisk } from "@/lib/riskopts";
 import type { Company, EarningsEvent } from "@/lib/types";
 
 export type Signal = {
@@ -25,7 +26,7 @@ export async function getQuickTake(company: Company, events: EarningsEvent[], as
   const t = encodeURIComponent(company.ticker);
   const tab = (k: string, extra = "") => `/c/${t}?tab=${k}${extra}`;
   const since = `${Number(asOf.slice(0, 4)) - 1}${asOf.slice(4)}`;
-  const [cases, dcf, cmp, hist, trades, holders] = await Promise.all([
+  const [cases, dcf, cmp, hist, trades, holders, risk, opts] = await Promise.all([
     getCases(company.cik),
     getDcf(company.cik),
     select<{ period_a: string; period_b: string; result: { tone?: { all?: { net_tone?: { delta: number } } }; guidance?: { change: string }[] } }>(
@@ -41,6 +42,8 @@ export async function getQuickTake(company: Company, events: EarningsEvent[], as
     }),
     getInsiderTrades(company.cik, since),
     getHolders(company.cik),
+    getRisk(company.cik),
+    getOptions(company.cik),
   ]);
   const out: Signal[] = [];
 
@@ -171,6 +174,32 @@ export async function getQuickTake(company: Company, events: EarningsEvent[], as
       detail: `Funds filing both quarters · ${holders.result.holders.toLocaleString()} holders · quarter ended ${holders.period}`,
       tone: Math.abs(ch) < 0.01 ? "neutral" : ch > 0 ? "up" : "down",
       href: tab("ownership", "#institutions"),
+    });
+  }
+  // 8. Options: the move priced for the next earnings report
+  const em = opts?.result.earnings;
+  if (em) {
+    const avg = risk?.avg_earnings_move;
+    out.push({
+      key: "options",
+      title: "Options",
+      text: `Pricing ±${pct(em.move)} move for earnings`,
+      detail: `Report ${em.date}${avg != null ? ` · past earnings days averaged ±${pct(avg)}` : ""}`,
+      tone: "neutral",
+      href: tab("options"),
+    });
+  }
+
+  // 9. Financial strength (Piotroski F-score from SEC filings)
+  const f = risk?.fundamental.piotroski;
+  if (f) {
+    out.push({
+      key: "fscore",
+      title: "Financial strength",
+      text: `Piotroski score ${f.score} of ${f.out_of} — ${f.score >= 7 ? "strong" : f.score <= 3 ? "weak" : "middling"}`,
+      detail: `Profitability, balance sheet and efficiency checks, FY${f.fiscal_year}`,
+      tone: f.score >= 7 ? "up" : f.score <= 3 ? "down" : "neutral",
+      href: tab("risk", "#rk-fund"),
     });
   }
   return out;

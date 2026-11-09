@@ -9,6 +9,7 @@ import {
   MarkPointComponent,
   TooltipComponent,
   DataZoomComponent,
+  LegendComponent,
 } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 
@@ -21,6 +22,7 @@ echarts.use([
   MarkPointComponent,
   MarkLineComponent,
   DataZoomComponent,
+  LegendComponent,
   CanvasRenderer,
 ]);
 
