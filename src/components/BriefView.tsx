@@ -1,6 +1,6 @@
 "use client";
 
-import Info from "@/components/Info";
+import Term from "@/components/Term";
 import { useState } from "react";
 import Link from "next/link";
 import SourcePanel from "@/components/SourcePanel";
@@ -179,8 +179,7 @@ export function Cases({ cases, refs }: { cases: StockCases; refs: (c: Claim) => 
     <section id="brief-cases" className="scroll-mt-20">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3 border-b border-border pb-3">
         <h3 className="flex items-center text-xl font-semibold tracking-tight">
-          Bull, base &amp; bear
-          <Info k="cases" />
+          <Term k="cases" quiet>Bull, base &amp; bear</Term>
         </h3>
         <div className="flex gap-1 text-sm" role="tablist">
           {(["bear", "base", "bull"] as const).map((k) => (
@@ -284,8 +283,7 @@ export function ValuationSlider({ price, epsNtm, peerMedianPe, ticker }: { price
   return (
     <div>
       <div className="flex items-center font-semibold">
-        What if earnings come in different?
-        <Info k="valuation_slider" />
+        <Term k="valuation_slider" quiet>What if earnings come in different?</Term>
       </div>
       <p className="mt-0.5 text-sm text-muted">
         Drag to change next-12-months EPS from the analyst consensus (${epsNtm.toFixed(2)}) and see the forward P/E at today&apos;s price (${price.toFixed(2)}).
@@ -336,8 +334,7 @@ function Dodges({ items }: { items: Dodge[] }) {
   return (
     <div>
       <div className="flex items-center font-semibold">
-        Least direct answers
-        <Info k="dodged_questions" />
+        <Term k="dodged_questions" quiet>Least direct answers</Term>
       </div>
       <p className="mt-0.5 text-sm text-muted">Analyst questions management answered least directly, scored 0 (direct) to 1 (avoided) by AI. Read the exchange and judge for yourself.</p>
       <ul className="mt-2 divide-y divide-border">
@@ -522,8 +519,7 @@ export function Streak({ items }: { items: StreakItem[] }) {
     <div>
       <div className="flex items-baseline justify-between">
         <span className="inline-flex items-center font-semibold">
-          Earnings vs. estimates
-          <Info k="beat_streak" />
+          <Term k="beat_streak" quiet>Earnings vs. estimates</Term>
         </span>
         <span className="text-sm text-muted">
           Beat {beats} of {items.length}
@@ -589,8 +585,7 @@ function BridgeChart({ bridge, lb }: { bridge: Bridge; lb: string }) {
   return (
     <div>
       <div className="flex items-center font-semibold">
-        GAAP to adjusted
-        <Info k="gaap_adjusted" />
+        <Term k="gaap_adjusted" quiet>GAAP to adjusted</Term>
       </div>
       <p className="mt-0.5 text-sm text-muted">
         {bridge.basis}, {lb}. What the company excludes to reach the figure analysts use.
@@ -802,8 +797,7 @@ function Scorecard({ rows, la, lb, onSource }: { rows: StreetRow[]; la: string; 
   return (
     <div>
       <div className="flex items-center font-semibold">
-        Scorecard
-        <Info k="brief_scorecard" />
+        <Term k="brief_scorecard" quiet>Scorecard</Term>
       </div>
       <table className="mt-2 w-full text-sm">
         <thead>

@@ -1,6 +1,6 @@
 "use client";
 
-import Info from "@/components/Info";
+import Term from "@/components/Term";
 import { useEffect, useMemo, useState } from "react";
 import EChart from "@/components/EChart";
 import SourcePanel from "@/components/SourcePanel";
@@ -181,8 +181,7 @@ function Section({ title, subtitle, info, children }: { title: string; subtitle?
   return (
     <section>
       <h2 className="flex items-center text-lg font-semibold">
-        {title}
-        {info && <Info k={info} />}
+        <Term k={info} quiet>{title}</Term>
       </h2>
       {subtitle && <p className="mt-0.5 text-xs text-muted">{subtitle}</p>}
       <div className="mt-3">{children}</div>
@@ -415,14 +414,12 @@ function ToneTable({ a, b, la, lb }: { a: CallAnalysis; b: CallAnalysis; la: str
             <tr className="border-b border-border">
               <th className="px-3 py-2.5 font-medium">Speaker ({la} → {lb})</th>
               <th className="px-3 py-2.5 font-medium">
-                Hedging
-                <Info k="hedging" />
+                <Term k="hedging">Hedging</Term>
               </th>
               <th className="px-3 py-2.5 font-medium">Positive</th>
               <th className="px-3 py-2.5 font-medium">Negative</th>
               <th className="px-3 py-2.5 font-medium">
-                Net tone
-                <Info k="call_tone" />
+                <Term k="call_tone">Net tone</Term>
               </th>
             </tr>
           </thead>

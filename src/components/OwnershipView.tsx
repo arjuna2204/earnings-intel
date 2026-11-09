@@ -1,6 +1,6 @@
 "use client";
 
-import Info from "@/components/Info";
+import Term, { AboutNumbers } from "@/components/Term";
 import { useState } from "react";
 import EChart from "@/components/EChart";
 import { useThemeColors } from "@/components/useThemeColors";
@@ -57,13 +57,19 @@ export default function OwnershipView({
 }) {
   return (
     <div className="space-y-12">
-      <nav className="flex gap-4 text-sm text-muted" aria-label="Sections">
+      <nav className="flex flex-wrap items-center gap-4 text-sm text-muted" aria-label="Sections">
         <a href="#insiders" className="hover:text-foreground">
           Insider trades
         </a>
         <a href="#institutions" className="hover:text-foreground">
           Institutions (13F)
         </a>
+        <span className="ml-auto">
+          <AboutNumbers
+            title="About ownership data"
+            keys={["insider_trades", "open_market", "plan_10b5_1", "institutions_13f", "funds_holding", "pct_held", "holdings_change", "largest_holders", "fund_movers"]}
+          />
+        </span>
       </nav>
       <Insiders ticker={ticker} trades={trades} s={summary} asOf={asOf} />
       <Institutions ticker={ticker} h={holders} />
@@ -126,8 +132,7 @@ function Insiders({ ticker, trades, s, asOf }: { ticker: string; trades: Insider
   return (
     <section id="insiders" className="scroll-mt-32">
       <h2 className="flex items-center border-b border-border pb-3 text-xl font-semibold tracking-tight">
-          Insider trades
-          <Info k="insider_trades" />
+          <Term k="insider_trades" quiet>Insider trades</Term>
         </h2>
       <p className="mt-2 text-sm text-muted">
         Officers, directors and 10%+ owners must report trades in {ticker} stock to the SEC within two business days (Form 4).
@@ -240,8 +245,7 @@ function Institutions({ ticker, h }: { ticker: string; h: Holders | null }) {
     return (
       <section id="institutions" className="scroll-mt-32">
         <h2 className="flex items-center border-b border-border pb-3 text-xl font-semibold tracking-tight">
-          Institutions (13F)
-          <Info k="institutions_13f" />
+          <Term k="institutions_13f" quiet>Institutions (13F)</Term>
         </h2>
         <p className="mt-3 text-sm text-muted">Not loaded yet — institutional holdings are refreshed every morning from the SEC&apos;s quarterly 13F data.</p>
       </section>
@@ -259,8 +263,7 @@ function Institutions({ ticker, h }: { ticker: string; h: Holders | null }) {
   return (
     <section id="institutions" className="scroll-mt-32">
       <h2 className="flex items-center border-b border-border pb-3 text-xl font-semibold tracking-tight">
-          Institutions (13F)
-          <Info k="institutions_13f" />
+          <Term k="institutions_13f" quiet>Institutions (13F)</Term>
         </h2>
       <p className="mt-2 text-sm text-muted">
         Funds managing $100M+ report their US stock holdings every quarter, up to 45 days after it ends. Holdings as of {h.period}
@@ -275,8 +278,7 @@ function Institutions({ ticker, h }: { ticker: string; h: Holders | null }) {
       {verdict && <p className="mt-4 rounded-xl bg-card px-4 py-3 text-sm">{verdict}</p>}
 
       <h3 className="mt-6 flex items-center font-semibold">
-        Largest holders
-        <Info k="largest_holders" />
+        <Term k="largest_holders" quiet>Largest holders</Term>
       </h3>
       <div className="mt-2 overflow-x-auto">
         <table className="w-full min-w-[560px] text-sm">
@@ -314,8 +316,7 @@ function Movers({ title, rows }: { title: string; rows: HolderRow[] }) {
   return (
     <div>
       <h3 className="flex items-center font-semibold">
-        {title}
-        <Info k="fund_movers" />
+        <Term k="fund_movers" quiet>{title}</Term>
       </h3>
       <ul className="mt-2 divide-y divide-border text-sm">
         {rows.map((x) => (
@@ -343,8 +344,7 @@ function Stat({ label, value, sub, info }: { label: string; value: string; sub?:
   return (
     <div>
       <dt className="flex items-center text-xs text-muted">
-        {label}
-        {info && <Info k={info} />}
+        <Term k={info} value={value || undefined}>{label}</Term>
       </dt>
       {value && <dd className="mt-0.5 text-lg font-semibold tabular-nums">{value}</dd>}
       {sub && <dd className={`text-xs text-muted ${value ? "" : "mt-0.5 text-lg font-semibold"}`}>{sub}</dd>}

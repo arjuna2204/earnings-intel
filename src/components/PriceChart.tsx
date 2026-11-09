@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import EChart from "@/components/EChart";
-import Info from "@/components/Info";
+import Term from "@/components/Term";
 import { useThemeColors } from "@/components/useThemeColors";
 import type { PricePoint } from "@/lib/types";
 
@@ -220,8 +220,7 @@ export default function PriceChart({
             {Math.abs(change).toFixed(2)} ({up ? "+" : "−"}
             {Math.abs(pct * 100).toFixed(2)}%){" "}
             <span className="text-muted">
-              {hover !== null ? shown.date : `past ${range}`} · adjusted for splits & dividends
-              <Info k="adjusted_price" />
+              <Term k="adjusted_price">{hover !== null ? shown.date : `past ${range}`} · adjusted for splits & dividends</Term>
             </span>
           </div>
           {vs.length > 0 && (
@@ -233,7 +232,9 @@ export default function PriceChart({
                 return (
                   <span key={l.ticker}>
                     <span className={`font-medium ${d >= 0 ? "text-up" : "text-down"}`}>
-                      {d >= 0 ? "▲ Beat" : "▼ Trailed"} {l.label} by {Math.abs(d * 100).toFixed(1)} pts
+                      <Term k="vs_benchmark">
+                        {d >= 0 ? "▲ Beat" : "▼ Trailed"} {l.label} by {Math.abs(d * 100).toFixed(1)} pts
+                      </Term>
                     </span>
                     <span className="text-muted">
                       {" "}
@@ -243,7 +244,6 @@ export default function PriceChart({
                   </span>
                 );
               })}
-              <Info k="vs_benchmark" />
             </div>
           )}
         </div>
@@ -283,8 +283,7 @@ export default function PriceChart({
 
       <aside aria-label="Compare on chart" className="lg:pt-2">
         <h2 className="flex items-center text-sm font-semibold">
-          Compare on chart
-          <Info k="chart_compare" />
+          <Term k="chart_compare" quiet>Compare on chart</Term>
         </h2>
         <ul className="mt-2 divide-y divide-border text-sm">
           <li className="flex items-center gap-2 py-2">

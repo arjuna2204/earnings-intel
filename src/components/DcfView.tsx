@@ -1,6 +1,6 @@
 "use client";
 
-import Info from "@/components/Info";
+import Term, { AboutNumbers } from "@/components/Term";
 import { useState } from "react";
 import type { DcfModel } from "@/lib/dcf";
 
@@ -27,8 +27,7 @@ function Bridge({ r, netDebt, shares }: { r: NonNullable<DcfModel["result"]>; ne
   return (
     <div>
       <div className="flex items-center font-semibold">
-        Where the value comes from
-        <Info k="value_bridge" />
+        <Term k="value_bridge" quiet>Where the value comes from</Term>
       </div>
       <p className="mt-0.5 text-sm text-muted">
         {r.terminal_share != null && `${Math.round(r.terminal_share * 100)}% of enterprise value comes after year 10 — the further out, the more the result depends on assumptions. `}
@@ -107,12 +106,17 @@ export default function DcfView({ ticker, dcf }: { ticker: string; dcf: DcfModel
     <section className="space-y-6">
       <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-border pb-3">
         <h3 className="flex items-center text-xl font-semibold tracking-tight">
-          DCF valuation
-          <Info k="dcf" />
+          <Term k="dcf" quiet>DCF valuation</Term>
         </h3>
-        <a href={`/api/dcf/${ticker}`} className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-black hover:brightness-110" download>
-          Download Excel model
-        </a>
+        <div className="flex items-center gap-4">
+          <AboutNumbers
+            title="About the DCF"
+            keys={["dcf", "wacc", "beta_dcf", "risk_free", "erp", "cost_of_debt", "tax_rate", "growth_fade", "sector_growth", "capex_fade", "terminal_growth", "terminal_share", "implied_exit", "sensitivity", "value_bridge", "dcf_excel"]}
+          />
+          <a href={`/api/dcf/${ticker}`} className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-black hover:brightness-110" download>
+            Download Excel model
+          </a>
+        </div>
       </div>
       <div>
         <div className="text-sm text-muted">
@@ -134,8 +138,7 @@ export default function DcfView({ ticker, dcf }: { ticker: string; dcf: DcfModel
         ].map(([k, v, info]) => (
           <div key={k}>
             <div className="flex items-center text-sm text-muted">
-              {k}
-              <Info k={info} />
+              <Term k={info} value={v}>{k}</Term>
             </div>
             <div className="mt-1 text-xl font-semibold tabular-nums">{v}</div>
           </div>
@@ -181,8 +184,7 @@ export default function DcfView({ ticker, dcf }: { ticker: string; dcf: DcfModel
 
       <div>
         <div className="flex items-center font-semibold">
-          Sensitivity
-          <Info k="sensitivity" />
+          <Term k="sensitivity" quiet>Sensitivity</Term>
         </div>
         <p className="mt-0.5 text-sm text-muted">Value per share as the discount rate (down) and terminal growth (across) change. Green = above today&apos;s price.</p>
         <div className="-mx-4 mt-3 overflow-x-auto px-4">
@@ -223,6 +225,7 @@ export default function DcfView({ ticker, dcf }: { ticker: string; dcf: DcfModel
           {shown.map((k) => (
             <li key={k} className="flex items-baseline justify-between gap-4 py-2.5 text-sm">
               <span className="min-w-0">
+                <Term k={DCF_INFO[k]} value={fmtA(k, a[k].value)}>
                 {k === "growth_1"
                   ? a.sector_growth
                     ? `Revenue growth, years 1–2 (fades toward sector growth, then to ${pct(a.terminal_growth.value)} by year 10)`
@@ -232,7 +235,7 @@ export default function DcfView({ ticker, dcf }: { ticker: string; dcf: DcfModel
                     : k === "capex_1"
                       ? `Capex, % of revenue (year 1${a.capex_10 && a.capex_10.value !== a.capex_1.value ? ` → ${pct(a.capex_10.value)} by year 10` : ", all years"})`
                       : a[k].label}
-                {DCF_INFO[k] && <Info k={DCF_INFO[k]} />}
+                </Term>
                 <Notes ids={a[k].notes} />
                 <span className="mt-0.5 block text-xs text-muted">{a[k].source}</span>
               </span>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Info from "@/components/Info";
+import Term from "@/components/Term";
 import DcfView from "@/components/DcfView";
 import SourcePanel from "@/components/SourcePanel";
 import { Cases, FactDetail, Refs, Streak, ValuationSlider } from "@/components/BriefView";
@@ -112,12 +112,10 @@ export default function StreetView({ d }: { d: StreetData }) {
                   <th className="py-2 pr-4 text-right font-normal">EPS</th>
                   <th className="py-2 pr-4 text-right font-normal">Range</th>
                   <th className="py-2 pr-4 text-right font-normal">
-                    Revenue
-                    <Info k="revenue_estimate" />
+                    <Term k="revenue_estimate">Revenue</Term>
                   </th>
                   <th className="py-2 text-right font-normal">
-                    Analysts
-                    <Info k="analysts_count" />
+                    <Term k="analysts_count">Analysts</Term>
                   </th>
                 </tr>
               </thead>
@@ -205,8 +203,7 @@ function Stat({ label, value, sub, tone, info }: { label: string; value: string;
   return (
     <div>
       <div className="flex items-center text-sm text-muted">
-        {label}
-        {info && <Info k={info} />}
+        <Term k={info} value={value}>{label}</Term>
       </div>
       <div className="mt-1 text-[26px] font-semibold leading-none tracking-tight tabular-nums">{value}</div>
       {sub && <div className={`mt-2 text-sm ${tone === "up" ? "text-up" : tone === "down" ? "text-down" : "text-muted"}`}>{sub}</div>}
@@ -219,8 +216,7 @@ function Head({ title, sub, more, info }: { title: string; sub?: string; more?: 
     <div className="mb-4 flex items-baseline justify-between gap-4 border-b border-border pb-3">
       <div>
         <h3 className="flex items-center text-xl font-semibold tracking-tight">
-          {title}
-          {info && <Info k={info} />}
+          <Term k={info} quiet>{title}</Term>
         </h3>
         {sub && <p className="mt-0.5 text-sm text-muted">{sub}</p>}
       </div>

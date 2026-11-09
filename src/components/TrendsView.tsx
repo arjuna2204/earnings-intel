@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import EChart from "@/components/EChart";
-import Info from "@/components/Info";
+import Term from "@/components/Term";
 import { useThemeColors } from "@/components/useThemeColors";
 
 export type TrendRow = { fiscal_year: number; metric: string; value: number };
@@ -103,8 +103,7 @@ export default function TrendsView({ rows, wacc }: { rows: TrendRow[]; wacc: num
       {present.length > 0 && (
         <div>
           <h3 className="flex items-center border-b border-border pb-3 text-xl font-semibold tracking-tight">
-            Margins over time
-            <Info k="trend_margins" />
+            <Term k="trend_margins" quiet>Margins over time</Term>
           </h3>
           <p className="mt-2 text-sm text-muted">How much of each dollar of sales becomes gross profit, operating profit and free cash flow (fiscal years, SEC filings).</p>
           <EChart option={marginOpt} className="mt-3 h-72 w-full" ariaLabel="Gross, operating and free-cash-flow margins by fiscal year" />
@@ -113,8 +112,7 @@ export default function TrendsView({ rows, wacc }: { rows: TrendRow[]; wacc: num
       {revG.some((v) => v != null) && (
         <div>
           <h3 className="flex items-center border-b border-border pb-3 text-xl font-semibold tracking-tight">
-            Sales growth vs. earnings growth
-            <Info k="trend_sales_eps" />
+            <Term k="trend_sales_eps" quiet>Sales growth vs. earnings growth</Term>
           </h3>
           <p className="mt-2 text-sm text-muted">When the line runs above the bars, profits are growing faster than sales (margins widening or buybacks). EPS growth is capped at 200% on the chart.</p>
           <EChart option={growthOpt} className="mt-3 h-64 w-full" ariaLabel="Revenue growth and EPS growth by fiscal year" />
@@ -123,8 +121,7 @@ export default function TrendsView({ rows, wacc }: { rows: TrendRow[]; wacc: num
       {counted > 2 && (
         <div>
           <h3 className="flex items-center border-b border-border pb-3 text-xl font-semibold tracking-tight">
-            Return on capital vs. cost of capital
-            <Info k="trend_roic_wacc" />
+            <Term k="trend_roic_wacc" quiet>Return on capital vs. cost of capital</Term>
           </h3>
           <p className="mt-2 text-sm text-muted">
             A company creates value when it earns more on the money invested in it than that money costs (the DCF&apos;s WACC).
@@ -136,8 +133,7 @@ export default function TrendsView({ rows, wacc }: { rows: TrendRow[]; wacc: num
       {lastS && (
         <div>
           <h3 className="flex items-center border-b border-border pb-3 text-xl font-semibold tracking-tight">
-            Share count
-            <Info k="trend_shares" />
+            <Term k="trend_shares" quiet>Share count</Term>
           </h3>
           <p className="mt-2 text-sm text-muted">
             Diluted shares by fiscal year.{" "}

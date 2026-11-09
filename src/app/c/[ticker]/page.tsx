@@ -30,7 +30,7 @@ import OptionsView from "@/components/OptionsView";
 import { getOptions, getRisk } from "@/lib/riskopts";
 import QuickTake from "@/components/QuickTake";
 import WatchButton from "@/components/WatchButton";
-import Info from "@/components/Info";
+import Term, { AboutNumbers } from "@/components/Term";
 import { COMPARE_ETFS, etfName } from "@/lib/etfs";
 import { getQuickTake } from "@/lib/quicktake";
 import { getHolders, getInsiderTrades, summarizeInsiders } from "@/lib/ownership";
@@ -649,8 +649,7 @@ function ValuationStrip({ company }: { company: Company }) {
             {items.map(([label, val, k]) => (
               <div key={label}>
                 <dt className="flex items-center text-xs text-muted">
-                  {label}
-                  <Info k={k} />
+                  <Term k={k} value={val}>{label}</Term>
                 </dt>
                 <dd className={`mt-0.5 text-lg font-semibold ${val ? "" : "text-muted"}`}>{val ?? "Not reported"}</dd>
               </div>
@@ -661,8 +660,7 @@ function ValuationStrip({ company }: { company: Company }) {
               {street.map(([label, val, sub, k]) => (
                 <div key={label}>
                   <dt className="flex items-center text-xs text-muted">
-                    {label}
-                    <Info k={k} />
+                    <Term k={k} value={val}>{label}</Term>
                   </dt>
                   <dd className={`mt-0.5 text-lg font-semibold ${val ? "" : "text-muted"}`}>{val ?? "Not available"}</dd>
                   <dd className="text-xs text-muted">{sub}</dd>
@@ -676,6 +674,12 @@ function ValuationStrip({ company }: { company: Company }) {
             latest filings
             {v.fy_fallback?.length ? ` · uses latest fiscal year (no quarterly data) for: ${v.fy_fallback.join(", ")}` : ""}
           </p>
+          <div className="mt-1">
+            <AboutNumbers
+              title="About these valuation numbers"
+              keys={["market_cap", "enterprise_value", "pe", "ev_ebitda", "ev_revenue", "fcf_yield", "p_tbv", "p_b", "pe_adj_ltm", "pe_adj_run_rate", "pe_fwd_ntm"]}
+            />
+          </div>
           {v.street_source && (
             <p className="mt-1 text-xs text-muted">
               Adjusted and forward P/E use Street EPS (the adjusted basis companies report to analysts) and analyst consensus from{" "}

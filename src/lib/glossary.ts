@@ -466,3 +466,15 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   tercile_spread: { term: "Top vs bottom third", what: "Average abnormal return of the third of reports with the strongest signal minus the weakest third.", read: "A positive spread whose range excludes 0 suggests the signal has an edge." },
   confidence_range: { term: "95% range", what: "The range the true average likely falls in, from resampling the results 2,000 times (bootstrap).", read: "If it crosses 0, the result could be luck." },
 };
+
+/** Everyday terms most readers know: still tappable, but not underlined (keeps pages clean). */
+const EVERYDAY = new Set([
+  "market_cap", "revenue", "revenue_growth_yoy", "net_income", "eps_growth_yoy", "cash", "total_debt",
+  "analysts_count", "revenue_estimate", "up_days", "diluted_shares", "funds_holding", "below_high",
+  "earnings_marker", "consensus_eps", "operating_cash_flow", "capex", "gross_margin", "operating_margin",
+]);
+
+/** True when a term should get the faint dotted underline. */
+export function isJargon(k: string): boolean {
+  return !EVERYDAY.has(k);
+}

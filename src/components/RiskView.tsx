@@ -1,6 +1,6 @@
 "use client";
 
-import Info from "@/components/Info";
+import Term, { AboutNumbers } from "@/components/Term";
 import { useState } from "react";
 import EChart from "@/components/EChart";
 import { useThemeColors } from "@/components/useThemeColors";
@@ -16,8 +16,7 @@ function Stat({ label, value, sub, info }: { label: string; value: string; sub?:
   return (
     <div>
       <dt className="flex items-center text-xs text-muted">
-        {label}
-        {info && <Info k={info} />}
+        <Term k={info} value={value}>{label}</Term>
       </dt>
       <dd className="mt-0.5 text-lg font-semibold tabular-nums">{value}</dd>
       {sub && <dd className="text-xs text-muted">{sub}</dd>}
@@ -29,8 +28,7 @@ function Section({ id, title, note, info, children }: { id: string; title: strin
   return (
     <section id={id} className="scroll-mt-32">
       <h2 className="flex items-center border-b border-border pb-3 text-xl font-semibold tracking-tight">
-        {title}
-        {info && <Info k={info} />}
+        <Term k={info} quiet>{title}</Term>
       </h2>
       {note && <p className="mt-2 text-sm text-muted">{note}</p>}
       <div className="mt-4">{children}</div>
@@ -129,6 +127,12 @@ export default function RiskView({ ticker, r, sector }: { ticker: string; r: Ris
 
       <Section id="rk-profile" title="Risk profile" note={`From ${r.years_of_history} years of daily prices (adjusted for splits and dividends) through ${r.as_of}. Market = S&P 500 (SPY)${sector ? `; sector = ${sector}` : ""}.`}>
         <p className="rounded-xl bg-card px-4 py-3 text-sm leading-relaxed">{summary(ticker, r)}</p>
+        <div className="mt-2 text-right">
+          <AboutNumbers
+            title="About stats & risk"
+            keys={["volatility", "beta", "correlation", "max_drawdown", "below_high", "sharpe", "sortino", "var95", "capture", "skew_kurt", "up_days", "earnings_moves", "seasonality", "piotroski", "interest_coverage", "net_debt_to_ebitda", "sbc_pct"]}
+          />
+        </div>
         <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4">
           <Stat label="Volatility (1 yr)" info="volatility" value={pct(r.volatility.y1, 0)} sub={`S&P 500: ${pct(r.volatility.market_y1, 0)} · last 30 days: ${pct(r.volatility.d30, 0)}`} />
           <Stat label="Beta (1 yr / 3 yr)" info="beta" value={`${x2(r.beta.y1)} / ${x2(r.beta.y3)}`} sub={`Correlation with market ${x2(r.beta.corr_y1)}${r.beta.sector_y1 != null ? ` · vs sector ${x2(r.beta.sector_y1)}` : ""}`} />
@@ -179,8 +183,7 @@ export default function RiskView({ ticker, r, sector }: { ticker: string; r: Ris
           </div>
         )}
         <p className="mt-3 flex items-center text-xs text-muted">
-          About this chart
-          <Info k={chart === "drawdown" ? "drawdown_chart" : chart === "vol" ? "rolling_vol" : "return_distribution"} />
+          <Term k={chart === "drawdown" ? "drawdown_chart" : chart === "vol" ? "rolling_vol" : "return_distribution"}>About this chart</Term>
         </p>
         <EChart option={charts[chart]} className="mt-3 h-72 w-full" ariaLabel={`${ticker} ${chart} chart`} />
         <div className="mt-6 grid gap-8 sm:grid-cols-2">

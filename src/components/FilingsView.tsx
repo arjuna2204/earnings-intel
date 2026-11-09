@@ -1,6 +1,6 @@
 "use client";
 
-import Info from "@/components/Info";
+import Term from "@/components/Term";
 import { useState } from "react";
 import SourcePanel from "@/components/SourcePanel";
 import RiskTrend, { type RiskYear } from "@/components/RiskTrend";
@@ -28,8 +28,7 @@ export default function FilingsView({ inputs, risks, la, lb, riskYears = [] }: {
       {mdna && (
         <section>
           <h3 className="flex items-center text-lg font-semibold">
-            What drove {lb}, per management
-            <Info k="mdna" />
+            <Term k="mdna" quiet>What drove {lb}, per management</Term>
           </h3>
           <p className="mb-3 text-xs text-muted">From MD&A in the {fb?.periodic?.form ?? "filing"} · tap any line for the exact passage</p>
           <DriverList
@@ -109,8 +108,7 @@ function ReleaseTable({ rb, ra, la, lb, onQuote }: { rb?: Release | null; ra?: R
   return (
     <section>
       <h3 className="flex items-center text-lg font-semibold">
-          Company-reported figures (earnings release)
-          <Info k="release_figures" />
+          <Term k="release_figures" quiet>Company-reported figures (earnings release)</Term>
         </h3>
       <p className="mb-3 text-xs text-muted">
         {rb?.reports_non_gaap ? "Includes the company's non-GAAP (adjusted) measures — usually what the Street compares to consensus." : "This company reports GAAP figures only in its release."}
@@ -218,8 +216,7 @@ function RiskSection({ inputs, risks }: { inputs: BriefInputs; risks: RiskChange
     return (
       <section>
         <h3 className="flex items-center text-lg font-semibold">
-          Risk factors
-          <Info k="risk_factors" />
+          <Term k="risk_factors" quiet>Risk factors</Term>
         </h3>
         <p className="mt-2 text-sm text-muted">
           Both quarters fall under the same annual report, so there is no risk-factor change to compare. Pick quarters from different
@@ -234,8 +231,7 @@ function RiskSection({ inputs, risks }: { inputs: BriefInputs; risks: RiskChange
   return (
     <section>
       <h3 className="flex items-center text-lg font-semibold">
-          Risk factors: what changed in the annual report
-          <Info k="risk_factors" />
+          <Term k="risk_factors" quiet>Risk factors: what changed in the annual report</Term>
         </h3>
       <p className="mb-3 text-xs text-muted">
         10-K for period ending {s.report_new} vs. {s.report_old}. Matched and compared by code (no AI).

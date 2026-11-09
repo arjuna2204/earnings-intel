@@ -1,6 +1,6 @@
 "use client";
 
-import Info from "@/components/Info";
+import Term from "@/components/Term";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -81,8 +81,7 @@ export default function PeersView({
       <section>
         <div className="flex items-baseline justify-between gap-4 border-b border-border pb-3">
           <h3 className="flex items-center text-xl font-semibold tracking-tight">
-          Compared with
-          <Info k="peer_selection" />
+          <Term k="peer_selection" quiet>Compared with</Term>
         </h3>
           {peers.length > 0 && !job && (
             <button onClick={() => setEditing(!editing)} className="text-sm font-semibold text-accent hover:underline">
@@ -130,8 +129,7 @@ export default function PeersView({
           {(comparison.claims ?? []).length > 0 && (
             <section>
               <h3 className="flex items-center mb-3 border-b border-border pb-3 text-xl font-semibold tracking-tight">
-          How it stacks up
-          <Info k="rank_strips" />
+          <Term k="rank_strips" quiet>How it stacks up</Term>
         </h3>
               <ul className="divide-y divide-border">
                 {comparison.claims!.map((c, i) => (
@@ -467,8 +465,7 @@ function Performance({ perf, ticker }: { perf: { ticker: string; points: [string
   return (
     <section>
       <h3 className="flex items-center mb-1 border-b border-border pb-3 text-xl font-semibold tracking-tight">
-          1-year performance
-          <Info k="peer_performance" />
+          <Term k="peer_performance" quiet>1-year performance</Term>
         </h3>
       <p className="mt-2 text-sm text-muted">
         Total return including dividends, starting from the same point.{" "}
@@ -552,8 +549,7 @@ function Scatter({ comparison, ticker }: { comparison: PeerComparison; ticker: s
     <section>
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3 border-b border-border pb-3">
         <h3 className="flex items-center text-xl font-semibold tracking-tight">
-          Map
-          <Info k="peer_scatter" />
+          <Term k="peer_scatter" quiet>Map</Term>
         </h3>
         <div className="flex flex-wrap gap-4">
           {pick(xKey, setX, "Across")}

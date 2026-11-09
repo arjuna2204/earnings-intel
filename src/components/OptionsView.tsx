@@ -1,6 +1,6 @@
 "use client";
 
-import Info from "@/components/Info";
+import Term, { AboutNumbers } from "@/components/Term";
 import EChart from "@/components/EChart";
 import { useThemeColors } from "@/components/useThemeColors";
 import type { OptContract, Options } from "@/lib/riskopts";
@@ -15,8 +15,7 @@ function Stat({ label, value, sub, info }: { label: string; value: string; sub?:
   return (
     <div>
       <dt className="flex items-center text-xs text-muted">
-        {label}
-        {info && <Info k={info} />}
+        <Term k={info} value={value}>{label}</Term>
       </dt>
       <dd className="mt-0.5 text-lg font-semibold tabular-nums">{value}</dd>
       {sub && <dd className="text-xs text-muted">{sub}</dd>}
@@ -53,8 +52,7 @@ function Contracts({ rows, title }: { rows: OptContract[]; title: string }) {
   return (
     <div>
       <h3 className="flex items-center font-semibold">
-        {title}
-        <Info k="most_active" />
+        <Term k="most_active" quiet>{title}</Term>
       </h3>
       <table className="mt-2 w-full text-sm">
         <thead>
@@ -126,8 +124,7 @@ export default function OptionsView({ ticker, o, asOf, avgEarningsMove }: { tick
     <div className="space-y-12">
       <section>
         <h2 className="flex items-center border-b border-border pb-3 text-xl font-semibold tracking-tight">
-          What options are pricing
-          <Info k="options_overview" />
+          <Term k="options_overview" quiet>What options are pricing</Term>
         </h2>
         <p className="mt-2 text-sm text-muted">
           From {k(o.contracts)} listed contracts across {o.expirations} expirations. Cboe delayed quotes (15 minutes) as of {asOf.slice(0, 10)}; stock ${o.spot.toFixed(2)}.
@@ -135,8 +132,7 @@ export default function OptionsView({ ticker, o, asOf, avgEarningsMove }: { tick
         {o.earnings && (
           <div className="mt-4 rounded-2xl border border-border p-4">
             <p className="flex items-center text-xs text-muted">
-              Earnings {day(o.earnings.date)}
-              <Info k="earnings_day_move" />
+              <Term k="earnings_day_move">Earnings {day(o.earnings.date)}</Term>
             </p>
             {o.earnings.day_move != null ? (
               <>
@@ -158,7 +154,13 @@ export default function OptionsView({ ticker, o, asOf, avgEarningsMove }: { tick
             )}
           </div>
         )}
-        <ul className="mt-4 space-y-2 rounded-xl bg-card px-4 py-3 text-sm leading-relaxed">
+        <div className="mt-3 text-right">
+          <AboutNumbers
+            title="About options data"
+            keys={["options_overview", "expected_move", "earnings_day_move", "iv30", "iv_rank", "skew25", "max_pain", "put_call_volume", "put_call_oi", "open_interest", "most_active"]}
+          />
+        </div>
+        <ul className="mt-2 space-y-2 rounded-xl bg-card px-4 py-3 text-sm leading-relaxed">
           {lines.map((l) => (
             <li key={l}>{l}</li>
           ))}
@@ -179,8 +181,7 @@ export default function OptionsView({ ticker, o, asOf, avgEarningsMove }: { tick
 
       <section>
         <h2 className="flex items-center border-b border-border pb-3 text-xl font-semibold tracking-tight">
-          Expected move by expiration
-          <Info k="expected_move" />
+          <Term k="expected_move" quiet>Expected move by expiration</Term>
         </h2>
         <p className="mt-2 text-sm text-muted">At-the-money straddle price ÷ stock price: roughly how far options expect the stock could move by each date, in either direction.</p>
         <EChart option={term} className="mt-3 h-64 w-full" ariaLabel={`${ticker} expected move and implied volatility by expiration`} />
@@ -212,8 +213,7 @@ export default function OptionsView({ ticker, o, asOf, avgEarningsMove }: { tick
 
       <section>
         <h2 className="flex items-center border-b border-border pb-3 text-xl font-semibold tracking-tight">
-          Where the open positions are
-          <Info k="open_interest" />
+          <Term k="open_interest" quiet>Where the open positions are</Term>
         </h2>
         <p className="mt-2 text-sm text-muted">Open interest by strike for the {day(o.month_exp)} expiration (strikes within 30% of the stock price).</p>
         <EChart option={oi} className="mt-3 h-64 w-full" ariaLabel={`${ticker} open interest by strike`} />

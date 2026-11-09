@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AnalyzePanel from "@/components/AnalyzePanel";
 import EChart from "@/components/EChart";
-import Info from "@/components/Info";
+import Term from "@/components/Term";
 import SearchBox from "@/components/SearchBox";
 import { useThemeColors } from "@/components/useThemeColors";
 import type { CompareSide } from "@/lib/compare";
@@ -283,8 +283,7 @@ function Score({ title, text, t, a, b, colors }: { title: string; text: string; 
   return (
     <div className="rounded-2xl border border-border p-4">
       <p className="flex items-center text-xs text-muted">
-        {title}
-        <Info k="scorecard" />
+        <Term k="scorecard">{title}</Term>
       </p>
       <p className="mt-1 font-semibold">{n ? text : "Not enough data"}</p>
       {n > 0 && (
@@ -338,8 +337,7 @@ function Table({ title, note, rows, a, b, winLabel }: { title: string; note: str
             return (
               <tr key={r.label}>
                 <td className="py-2.5 pr-3 text-muted">
-                  {r.label}
-                  {r.info && <Info k={r.info} />}
+                  <Term k={r.info}>{r.label}</Term>
                 </td>
                 {cell(r.a, "a", r.sub?.[0])}
                 {cell(r.b, "b", r.sub?.[1])}
@@ -418,8 +416,7 @@ function Performance({ a, b, colors }: { a: Ok; b: Ok; colors: { a: string; b: s
     <section>
       <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border pb-3">
         <h2 className="flex items-center text-xl font-semibold tracking-tight">
-          Performance
-          <Info k="vs_benchmark" />
+          <Term k="vs_benchmark" quiet>Performance</Term>
         </h2>
         <div className="flex gap-1" role="tablist" aria-label="Time range">
           {RANGES.map(([r]) => (
