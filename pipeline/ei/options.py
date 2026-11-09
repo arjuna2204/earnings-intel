@@ -225,7 +225,7 @@ def summarize(
 def run_all(settings: Any, tickers: list[str] | None = None) -> dict[str, Any]:
     db = Db(settings.supabase_url, settings.supabase_secret_key)
     etfs = {r["sector_etf"] for r in db.select("companies", {"select": "sector_etf"}) if r.get("sector_etf")} | {"SPY"}
-    client = httpx.Client(timeout=60, headers={"User-Agent": "EarningsIntel/1.0 (research)"})
+    client = httpx.Client(timeout=60, follow_redirects=True, headers={"User-Agent": "EarningsIntel/1.0 (research)"})
     today = date.today()
     out: dict[str, Any] = {}
     try:
