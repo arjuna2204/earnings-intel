@@ -1,8 +1,9 @@
 """Which stocks to load next: every US-listed operating company ranked by size (free, SEC).
 
-Size = public float (market value of shares held by non-insiders), which every US filer reports on its
-10-K cover page. One SEC "frames" request per quarter returns it for all companies at once. Public
-float tracks market cap closely enough to set load order (biggest first).
+Order = the SEC's own company ticker list, which it publishes sorted by market value (largest first).
+Self-reported public float (10-K cover page) is NOT used for ordering — some filers report it at the
+wrong scale (a $7B company showing $7T) — but having one confirms a US 10-K filer with full financials
+(foreign 20-F filers and funds are left out).
 """
 
 from __future__ import annotations
@@ -60,30 +61,28 @@ def refresh_universe(settings: Any) -> dict[str, Any]:
             if r.status_code == 200:
                 frames.append(r.json().get("data", []))
         floats = latest_floats(frames)
-        listed: dict[int, list[str]] = {}
-        names: dict[int, str] = {}
-        start = 0
-        while True:  # all US-exchange tickers (refreshed daily by `tickers`)
-            page = db.select(
-                "tickers", {"select": "cik,ticker,name", "order": "cik", "offset": str(start), "limit": "1000"}
-            )
-            for t in page:
-                listed.setdefault(int(t["cik"]), []).append(t["ticker"])
-                names[int(t["cik"])] = t["name"]
-            if len(page) < 1000:
-                break
-            start += 1000
-        ranked = sorted((c for c in floats if c in listed), key=lambda c: -floats[c][0])
+        all_tickers = sec.tickers()
+        order: list[dict[str, Any]] = []
+        seen: set[int] = set()
+        for t in all_tickers:  # SEC order = market value, largest first
+            if t["cik"] in seen:
+                continue
+            seen.add(t["cik"])
+            order.append(t)
+        by_cik: dict[int, list[str]] = {}
+        for t in all_tickers:
+            by_cik.setdefault(t["cik"], []).append(t["ticker"])
+        ranked = [t for t in order if t["cik"] in floats]
         rows = [
             {
-                "cik": c,
-                "ticker": pick_ticker(listed[c]),
-                "name": names[c],
-                "public_float": floats[c][0],
-                "float_date": floats[c][1],
+                "cik": t["cik"],
+                "ticker": pick_ticker(by_cik[t["cik"]]),
+                "name": t["name"],
+                "public_float": floats[t["cik"]][0],
+                "float_date": floats[t["cik"]][1],
                 "rank": i + 1,
             }
-            for i, c in enumerate(ranked)
+            for i, t in enumerate(ranked)
         ]
         db.upsert("universe", rows, on_conflict="cik")
         return {"ranked": len(rows), "top": [r["ticker"] for r in rows[:10]]}
