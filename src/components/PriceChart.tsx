@@ -18,12 +18,15 @@ type Marker = { date: string; label: string; href?: string };
 
 export default function PriceChart({
   prices,
+  benchmark = [],
   markers,
   currencySymbol = "$",
   emptyNote,
   markerNote = "○ = earnings report · tap to open that call",
 }: {
   prices: PricePoint[];
+  /** S&P 500 (SPY) prices, for the "did it beat the market" comparison */
+  benchmark?: PricePoint[];
   markers: Marker[];
   currencySymbol?: string;
   emptyNote?: string;
@@ -33,6 +36,7 @@ export default function PriceChart({
   const router = useRouter();
   const [range, setRange] = useState<(typeof RANGES)[number]["key"]>("1Y");
   const [hover, setHover] = useState<number | null>(null);
+  const [showSpy, setShowSpy] = useState(true);
 
   const series = useMemo(() => {
     if (!prices.length) return [];
@@ -41,6 +45,19 @@ export default function PriceChart({
     const cutoff = new Date(last.getTime() - days * 86400000).toISOString().slice(0, 10);
     return prices.filter((p) => p.date >= cutoff);
   }, [prices, range]);
+
+  // S&P 500 on the stock's dates (last close on or before each day), adjusted for dividends too
+  const spy = useMemo(() => {
+    if (!benchmark.length || !series.length) return null;
+    const out: (number | null)[] = [];
+    let j = 0;
+    let last: number | null = null;
+    for (const p of series) {
+      while (j < benchmark.length && benchmark[j].date <= p.date) last = benchmark[j++].adj_close;
+      out.push(last);
+    }
+    return out[0] == null ? null : out;
+  }, [benchmark, series]);
 
   if (!prices.length) {
     return (
@@ -59,6 +76,11 @@ export default function PriceChart({
   const pct = change / first.adj_close;
   const up = change >= 0;
   const color = up ? colors.up : colors.down;
+  // vs the S&P 500 over the same window (both total returns, dividends included)
+  const idx = hover ?? series.length - 1;
+  const spyPct = spy && spy[0] && spy[idx] != null ? (spy[idx] as number) / spy[0] - 1 : null;
+  const diff = spyPct == null ? null : pct - spyPct;
+  const beat = diff != null && diff >= 0;
   const inRange = markers.filter((m) => m.date >= first.date && m.date <= latest.date);
   const dateIndex = new Map(series.map((p, i) => [p.date, i]));
   const placed = inRange
@@ -89,6 +111,7 @@ export default function PriceChart({
         showSymbol: false,
         lineStyle: { color, width: 2 },
         itemStyle: { color },
+        z: 3,
         markPoint: {
           symbol: "circle",
           symbolSize: 8,
@@ -97,6 +120,21 @@ export default function PriceChart({
           data: markerPoints,
         },
       },
+      ...(showSpy && spy
+        ? [
+            {
+              type: "line",
+              name: "S&P 500",
+              // drawn on the stock's scale: where the stock would be had it matched the S&P 500
+              data: spy.map((v) => (v == null || !spy[0] ? null : (first.adj_close * v) / (spy[0] as number))),
+              showSymbol: false,
+              connectNulls: true,
+              lineStyle: { color: colors.muted, width: 1.5, type: "dashed" },
+              itemStyle: { color: colors.muted },
+              z: 2,
+            },
+          ]
+        : []),
     ],
   };
 
@@ -116,6 +154,17 @@ export default function PriceChart({
             {hover !== null ? shown.date : `past ${range}`} · adjusted for splits & dividends
           </span>
         </div>
+        {diff != null && spyPct != null && (
+          <div className="mt-1 text-sm">
+            <span className="text-muted">
+              S&amp;P 500 {spyPct >= 0 ? "+" : "−"}
+              {Math.abs(spyPct * 100).toFixed(2)}% ·{" "}
+            </span>
+            <span className={`font-medium ${beat ? "text-up" : "text-down"}`}>
+              {beat ? "▲ Beat" : "▼ Trailed"} the market by {Math.abs(diff * 100).toFixed(1)} pts
+            </span>
+          </div>
+        )}
       </div>
       <div>
         <EChart
@@ -151,7 +200,22 @@ export default function PriceChart({
             </button>
           ))}
         </div>
-        <span className="hidden text-xs text-muted sm:inline">{markerNote}</span>
+        <div className="flex items-center gap-3">
+          {spy && (
+            <button
+              type="button"
+              aria-pressed={showSpy}
+              onClick={() => setShowSpy((v) => !v)}
+              className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition ${showSpy ? "border-foreground text-foreground" : "border-border text-muted hover:text-foreground"}`}
+            >
+              <svg width="16" height="4" aria-hidden>
+                <line x1="0" y1="2" x2="16" y2="2" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 2" />
+              </svg>
+              S&amp;P 500
+            </button>
+          )}
+          <span className="hidden text-xs text-muted sm:inline">{markerNote}</span>
+        </div>
       </div>
     </section>
   );

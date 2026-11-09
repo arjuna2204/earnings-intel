@@ -83,11 +83,12 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
     );
   }
 
-  const [prices, filings, job, events] = await Promise.all([
+  const [prices, filings, job, events, spy] = await Promise.all([
     getPrices(company.ticker),
     getFilings(company.cik),
     getLatestJob(company.ticker),
     getEvents(company.cik),
+    company.ticker === "SPY" ? Promise.resolve([]) : getPrices("SPY"),
   ]);
   // Earnings-report dots (tap → that quarter's call vs. the same quarter a year earlier).
   // Until report dates are loaded (first call comparison), fall back to filing dates.
@@ -137,6 +138,7 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
       <div className="mt-6">
         <PriceChart
           prices={prices}
+          benchmark={spy}
           markers={markers}
           currencySymbol="$"
           markerNote={events.length ? "○ = earnings report · tap to open that call" : "○ = 10-K / 10-Q filed"}
