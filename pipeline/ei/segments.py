@@ -117,7 +117,7 @@ def parse_labels(xml: bytes) -> dict[str, str]:
     # one element's labels (standard, terse, documentation...) usually share a single xlink:label
     text: dict[str, list[tuple[str, str]]] = {}
     for el in root.iter("{*}label"):
-        if el.get(f"{XLINK}type") != "resource":
+        if el.get(f"{XLINK}type") not in (None, "resource"):
             continue
         text.setdefault(el.get(f"{XLINK}label", ""), []).append((el.get(f"{XLINK}role", ""), (el.text or "").strip()))
     out: dict[str, str] = {}
@@ -299,6 +299,7 @@ def run_company(db: Db, sec: SecClient, company: dict[str, Any]) -> dict[str, An
     fye = company.get("fiscal_year_end") or "1231"
     by_filing: list[tuple[str, list[SegFact]]] = []
     labels: dict[str, str] = {}
+    diag: list[str] = []
     for f in _pick_filings(db, cik):
         # file names vary (msft-10k_20260630.htm vs msft-20260630_lab.xml), so read the filing's index
         try:
@@ -317,9 +318,13 @@ def run_company(db: Db, sec: SecClient, company: dict[str, Any]) -> dict[str, An
             log.info("instance unreadable for %s: %s", f["accession"], exc)
             continue
         by_filing.append((f["accession"], facts))
+        if facts and not lab:
+            diag.append(f"no _lab.xml among {len(names)} files")
         if facts and lab:
             try:
-                labels.update(parse_labels(sec.text(archive_url(cik, f["accession"], lab)).encode()))
+                got = parse_labels(sec.text(archive_url(cik, f["accession"], lab)).encode())
+                diag.append(f"{lab}: {len(got)} labels")
+                labels.update(got)
             except Exception as exc:
                 log.info("no label file for %s: %s", f["accession"], exc)
     revenue_fy = {
@@ -342,6 +347,7 @@ def run_company(db: Db, sec: SecClient, company: dict[str, Any]) -> dict[str, An
         "axes": axes,
         "unnamed": unnamed[:5],
         "label_sample": sorted(labels)[:3] if unnamed else [],
+        "diag": diag[-3:] if unnamed else [],
     }
 
 
