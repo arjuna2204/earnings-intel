@@ -180,6 +180,12 @@ def read_quarter(path: str, companies: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _same_filer_change(cur: dict[str, dict[str, Any]], prior: dict[str, dict[str, Any]]) -> float | None:
+    both = [k for k in cur if k in prior]
+    before = sum(prior[k]["shares"] for k in both)
+    return sum(cur[k]["shares"] for k in both) / before - 1 if before else None
+
+
 def summarize(
     cur: dict[str, dict[str, Any]], prior: dict[str, dict[str, Any]] | None, shares_out: float | None
 ) -> dict[str, Any]:
@@ -232,7 +238,8 @@ def summarize(
         "pct_out": tot / shares_out if shares_out else None,
         "prior_holders": len(prior) if prior else None,
         "prior_shares": ptot,
-        "shares_change_pct": (tot / ptot - 1) if ptot else None,
+        # change among funds that filed both quarters, so newly registered filers don't inflate it
+        "shares_change_pct": _same_filer_change(cur, prior),
         "new": count["new"],
         "added": count["added"],
         "trimmed": count["trimmed"],

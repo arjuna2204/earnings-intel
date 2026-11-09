@@ -69,6 +69,6 @@ def test_summarize_changes():
     prior = {"1": {"name": "A", "shares": 80.0, "value": 1.0}, "3": {"name": "C", "shares": 40.0, "value": 1.0}}
     s = summarize(cur, prior, shares_out=1000)
     assert s["holders"] == 2 and s["new"] == 1 and s["added"] == 1 and s["sold_out"] == 1
-    assert abs(s["shares_change_pct"] - (150 / 120 - 1)) < 1e-9
+    assert abs(s["shares_change_pct"] - (100 / 80 - 1)) < 1e-9  # only fund A filed both quarters
     assert s["buyers"][0]["name"] == "B" and s["sellers"][0]["name"] == "C"
     assert s["pct_out"] == 0.15
