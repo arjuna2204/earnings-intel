@@ -1,7 +1,8 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import AnalyzePanel from "@/components/AnalyzePanel";
-import CompanyTabs, { normalizeTab } from "@/components/CompanyTabs";
+import CompanyTabs from "@/components/CompanyTabs";
+import { normalizeTab } from "@/lib/tabs";
 import StreetView, { type EstimateRow } from "@/components/StreetView";
 import FinancialsView from "@/components/FinancialsView";
 import PriceChart from "@/components/PriceChart";
