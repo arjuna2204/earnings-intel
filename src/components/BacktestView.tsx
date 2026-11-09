@@ -1,5 +1,6 @@
 "use client";
 
+import Info from "@/components/Info";
 import { useState } from "react";
 
 type Horizon = "reaction" | "drift20" | "drift60";
@@ -117,7 +118,10 @@ function Forest({ data, order, h }: { data: BacktestData; order: string[]; h: Ho
   const pos = (v: number) => ((v + ext) / (2 * ext)) * 100;
   return (
     <div>
-      <div className="font-semibold">All signals at a glance</div>
+      <div className="flex items-center font-semibold">
+        All signals at a glance
+        <Info k="tercile_spread" />
+      </div>
       <p className="mt-0.5 text-sm text-muted">Dot = difference in return between high- and low-signal events. Line = likely range. Crossing the middle line means it could be luck.</p>
       <div className="mt-4 space-y-3">
         {rows.map(({ k, meta, st }) => {

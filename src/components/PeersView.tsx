@@ -1,5 +1,6 @@
 "use client";
 
+import Info from "@/components/Info";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -79,7 +80,10 @@ export default function PeersView({
       {/* Who it's compared with */}
       <section>
         <div className="flex items-baseline justify-between gap-4 border-b border-border pb-3">
-          <h3 className="text-xl font-semibold tracking-tight">Compared with</h3>
+          <h3 className="flex items-center text-xl font-semibold tracking-tight">
+          Compared with
+          <Info k="peer_selection" />
+        </h3>
           {peers.length > 0 && !job && (
             <button onClick={() => setEditing(!editing)} className="text-sm font-semibold text-accent hover:underline">
               {editing ? "Cancel" : "Edit peers"}
@@ -125,7 +129,10 @@ export default function PeersView({
         <>
           {(comparison.claims ?? []).length > 0 && (
             <section>
-              <h3 className="mb-3 border-b border-border pb-3 text-xl font-semibold tracking-tight">How it stacks up</h3>
+              <h3 className="flex items-center mb-3 border-b border-border pb-3 text-xl font-semibold tracking-tight">
+          How it stacks up
+          <Info k="rank_strips" />
+        </h3>
               <ul className="divide-y divide-border">
                 {comparison.claims!.map((c, i) => (
                   <li key={i} className="py-3 text-[15px] leading-relaxed first:pt-0">
@@ -459,7 +466,10 @@ function Performance({ perf, ticker }: { perf: { ticker: string; points: [string
   );
   return (
     <section>
-      <h3 className="mb-1 border-b border-border pb-3 text-xl font-semibold tracking-tight">1-year performance</h3>
+      <h3 className="flex items-center mb-1 border-b border-border pb-3 text-xl font-semibold tracking-tight">
+          1-year performance
+          <Info k="peer_performance" />
+        </h3>
       <p className="mt-2 text-sm text-muted">
         Total return including dividends, starting from the same point.{" "}
         {sorted.map((p, i) => (
@@ -541,7 +551,10 @@ function Scatter({ comparison, ticker }: { comparison: PeerComparison; ticker: s
   return (
     <section>
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3 border-b border-border pb-3">
-        <h3 className="text-xl font-semibold tracking-tight">Map</h3>
+        <h3 className="flex items-center text-xl font-semibold tracking-tight">
+          Map
+          <Info k="peer_scatter" />
+        </h3>
         <div className="flex flex-wrap gap-4">
           {pick(xKey, setX, "Across")}
           {pick(yKey, setY, "Up")}

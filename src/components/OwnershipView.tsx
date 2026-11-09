@@ -1,5 +1,6 @@
 "use client";
 
+import Info from "@/components/Info";
 import { useState } from "react";
 import EChart from "@/components/EChart";
 import { useThemeColors } from "@/components/useThemeColors";
@@ -124,14 +125,17 @@ function Insiders({ ticker, trades, s, asOf }: { ticker: string; trades: Insider
 
   return (
     <section id="insiders" className="scroll-mt-32">
-      <h2 className="border-b border-border pb-3 text-xl font-semibold tracking-tight">Insider trades</h2>
+      <h2 className="flex items-center border-b border-border pb-3 text-xl font-semibold tracking-tight">
+          Insider trades
+          <Info k="insider_trades" />
+        </h2>
       <p className="mt-2 text-sm text-muted">
         Officers, directors and 10%+ owners must report trades in {ticker} stock to the SEC within two business days (Form 4).
       </p>
       <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
-        <Stat label={`Bought (${s.months} mo.)`} value={money(s.buys)} sub={`${s.buyers} ${s.buyers === 1 ? "insider" : "insiders"} · open market`} />
-        <Stat label={`Sold (${s.months} mo.)`} value={money(s.sells)} sub={`${s.sellers} ${s.sellers === 1 ? "insider" : "insiders"} · open market`} />
-        <Stat label="Pre-scheduled sales" value={pct(s.plannedSellPct, 0)} sub="Share of sales under 10b5-1 plans" />
+        <Stat label={`Bought (${s.months} mo.)`} info="open_market" value={money(s.buys)} sub={`${s.buyers} ${s.buyers === 1 ? "insider" : "insiders"} · open market`} />
+        <Stat label={`Sold (${s.months} mo.)`} info="open_market" value={money(s.sells)} sub={`${s.sellers} ${s.sellers === 1 ? "insider" : "insiders"} · open market`} />
+        <Stat label="Pre-scheduled sales" info="plan_10b5_1" value={pct(s.plannedSellPct, 0)} sub="Share of sales under 10b5-1 plans" />
         <Stat label="Latest buy or sale" value={s.lastTrade ?? "—"} />
       </dl>
       <p className="mt-4 rounded-xl bg-card px-4 py-3 text-sm">{insiderVerdict(s)}</p>
@@ -235,7 +239,10 @@ function Institutions({ ticker, h }: { ticker: string; h: Holders | null }) {
   if (!h) {
     return (
       <section id="institutions" className="scroll-mt-32">
-        <h2 className="border-b border-border pb-3 text-xl font-semibold tracking-tight">Institutions (13F)</h2>
+        <h2 className="flex items-center border-b border-border pb-3 text-xl font-semibold tracking-tight">
+          Institutions (13F)
+          <Info k="institutions_13f" />
+        </h2>
         <p className="mt-3 text-sm text-muted">Not loaded yet — institutional holdings are refreshed every morning from the SEC&apos;s quarterly 13F data.</p>
       </section>
     );
@@ -251,20 +258,26 @@ function Institutions({ ticker, h }: { ticker: string; h: Holders | null }) {
       : `Funds that reported both quarters ${r.shares_change_pct >= 0 ? "added to" : "cut"} their ${ticker} holdings by ${pct(Math.abs(r.shares_change_pct))} in ${qLabel(h.period)}. Overall, ${r.new} opened new positions and ${r.added} added, while ${r.trimmed} trimmed and ${r.sold_out} sold out.`;
   return (
     <section id="institutions" className="scroll-mt-32">
-      <h2 className="border-b border-border pb-3 text-xl font-semibold tracking-tight">Institutions (13F)</h2>
+      <h2 className="flex items-center border-b border-border pb-3 text-xl font-semibold tracking-tight">
+          Institutions (13F)
+          <Info k="institutions_13f" />
+        </h2>
       <p className="mt-2 text-sm text-muted">
         Funds managing $100M+ report their US stock holdings every quarter, up to 45 days after it ends. Holdings as of {h.period}
         {h.prior_period ? `, compared with ${h.prior_period}` : ""}. Shares only — options excluded.
       </p>
       <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
-        <Stat label="Funds holding" value={r.holders.toLocaleString()} sub={r.prior_holders != null ? <Delta v={r.holders - r.prior_holders} fmt={(x) => `${x.toLocaleString()} funds`} /> : undefined} />
-        <Stat label="Share of company held" value={pct(r.pct_out, 0)} sub="By 13F filers" />
-        <Stat label="Holdings change" value={r.shares_change_pct == null ? "—" : ""} sub={<Delta v={r.shares_change_pct} fmt={(x) => pct(x)} />} />
-        <Stat label="Value held" value={money(r.value)} />
+        <Stat label="Funds holding" info="funds_holding" value={r.holders.toLocaleString()} sub={r.prior_holders != null ? <Delta v={r.holders - r.prior_holders} fmt={(x) => `${x.toLocaleString()} funds`} /> : undefined} />
+        <Stat label="Share of company held" info="pct_held" value={pct(r.pct_out, 0)} sub="By 13F filers" />
+        <Stat label="Holdings change" info="holdings_change" value={r.shares_change_pct == null ? "—" : ""} sub={<Delta v={r.shares_change_pct} fmt={(x) => pct(x)} />} />
+        <Stat label="Value held" info="institutions_13f" value={money(r.value)} />
       </dl>
       {verdict && <p className="mt-4 rounded-xl bg-card px-4 py-3 text-sm">{verdict}</p>}
 
-      <h3 className="mt-6 font-semibold">Largest holders</h3>
+      <h3 className="mt-6 flex items-center font-semibold">
+        Largest holders
+        <Info k="largest_holders" />
+      </h3>
       <div className="mt-2 overflow-x-auto">
         <table className="w-full min-w-[560px] text-sm">
           <thead>
@@ -300,7 +313,10 @@ function Institutions({ ticker, h }: { ticker: string; h: Holders | null }) {
 function Movers({ title, rows }: { title: string; rows: HolderRow[] }) {
   return (
     <div>
-      <h3 className="font-semibold">{title}</h3>
+      <h3 className="flex items-center font-semibold">
+        {title}
+        <Info k="fund_movers" />
+      </h3>
       <ul className="mt-2 divide-y divide-border text-sm">
         {rows.map((x) => (
           <li key={x.filer_cik} className="flex items-baseline justify-between gap-3 py-2">
@@ -323,10 +339,13 @@ function fundName(s: string): string {
   return s.replace(/\b([A-Z])([A-Z]+)\b/g, (_, a: string, b: string) => (["LLC", "LP", "LTD", "INC", "PLC", "AG", "NA", "SA", "UK", "US", "JPMORGAN"].includes(a + b) ? a + b : a + b.toLowerCase()));
 }
 
-function Stat({ label, value, sub }: { label: string; value: string; sub?: React.ReactNode }) {
+function Stat({ label, value, sub, info }: { label: string; value: string; sub?: React.ReactNode; info?: string }) {
   return (
     <div>
-      <dt className="text-xs text-muted">{label}</dt>
+      <dt className="flex items-center text-xs text-muted">
+        {label}
+        {info && <Info k={info} />}
+      </dt>
       {value && <dd className="mt-0.5 text-lg font-semibold tabular-nums">{value}</dd>}
       {sub && <dd className={`text-xs text-muted ${value ? "" : "mt-0.5 text-lg font-semibold"}`}>{sub}</dd>}
     </div>

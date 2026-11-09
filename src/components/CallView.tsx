@@ -1,5 +1,6 @@
 "use client";
 
+import Info from "@/components/Info";
 import { useEffect, useMemo, useState } from "react";
 import EChart from "@/components/EChart";
 import SourcePanel from "@/components/SourcePanel";
@@ -105,23 +106,23 @@ export default function CallView({
 
       <PriceReactions la={la} lb={lb} pa={a.price_reaction} pb={b.price_reaction} />
 
-      <Section title="Guidance" subtitle={`${la} → ${lb} · labels computed in code from the numbers management gave`}>
+      <Section title="Guidance" info="guidance_changes" subtitle={`${la} → ${lb} · labels computed in code from the numbers management gave`}>
         <GuidanceTable rows={comparison.guidance} la={la} lb={lb} onPick={(row) => setPanel(guidancePanel(row, la, lb))} />
       </Section>
 
-      <Section title="Topics" subtitle="Matched across calls; airtime = share of the call's words spent on the topic">
+      <Section title="Topics" info="topics_airtime" subtitle="Matched across calls; airtime = share of the call's words spent on the topic">
         <Topics rows={comparison.topics} onPick={(t) => setPanel(topicPanel(t))} />
       </Section>
 
-      <Section title="Tone by executive" subtitle="Loughran-McDonald finance word lists — hedging, positive and negative words as a share of words (free, no AI)">
+      <Section title="Tone by executive" info="tone_by_exec" subtitle="Loughran-McDonald finance word lists — hedging, positive and negative words as a share of words (free, no AI)">
         <ToneTable a={a} b={b} la={la} lb={lb} />
       </Section>
 
-      <Section title="Tone over time" subtitle="Executives, whole call. History fills in as quarters load (up to 8).">
+      <Section title="Tone over time" info="tone_over_time" subtitle="Executives, whole call. History fills in as quarters load (up to 8).">
         <ToneTrend points={trend} highlight={[`FY${per.a[0]}Q${per.a[1]}`, `FY${per.b[0]}Q${per.b[1]}`]} />
       </Section>
 
-      <Section title="Q&A evasiveness hot spots" subtitle="How directly management answered each analyst question (0 = direct, 1 = avoided). Scored by Claude Haiku.">
+      <Section title="Q&A evasiveness hot spots" info="dodged_questions" subtitle="How directly management answered each analyst question (0 = direct, 1 = avoided). Scored by Claude Haiku.">
         <Evasiveness
           la={la}
           lb={lb}
@@ -144,13 +145,13 @@ export default function CallView({
       </Section>
 
       <div className="grid gap-8 lg:grid-cols-2">
-        <Section title={`Risks mentioned · ${lb}`}>
+        <Section title={`Risks mentioned · ${lb}`} info="risks_mentioned">
           <QuotedList
             items={(b.extraction?.risks ?? []).map((r) => ({ head: r.label, body: r.summary, item: r }))}
             onPick={(x) => setPanel({ kind: "quote", period: "b", title: x.head, item: x.item })}
           />
         </Section>
-        <Section title={`KPIs stated on the call · ${lb}`}>
+        <Section title={`KPIs stated on the call · ${lb}`} info="kpis">
           <QuotedList
             items={(b.extraction?.kpis ?? []).map((k) => ({
               head: k.name,
@@ -176,10 +177,13 @@ export default function CallView({
   );
 }
 
-function Section({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+function Section({ title, subtitle, info, children }: { title: string; subtitle?: string; info?: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className="text-lg font-semibold">{title}</h2>
+      <h2 className="flex items-center text-lg font-semibold">
+        {title}
+        {info && <Info k={info} />}
+      </h2>
       {subtitle && <p className="mt-0.5 text-xs text-muted">{subtitle}</p>}
       <div className="mt-3">{children}</div>
     </section>
@@ -410,10 +414,16 @@ function ToneTable({ a, b, la, lb }: { a: CallAnalysis; b: CallAnalysis; la: str
           <thead className="text-left text-xs text-muted">
             <tr className="border-b border-border">
               <th className="px-3 py-2.5 font-medium">Speaker ({la} → {lb})</th>
-              <th className="px-3 py-2.5 font-medium">Hedging</th>
+              <th className="px-3 py-2.5 font-medium">
+                Hedging
+                <Info k="hedging" />
+              </th>
               <th className="px-3 py-2.5 font-medium">Positive</th>
               <th className="px-3 py-2.5 font-medium">Negative</th>
-              <th className="px-3 py-2.5 font-medium">Net tone</th>
+              <th className="px-3 py-2.5 font-medium">
+                Net tone
+                <Info k="call_tone" />
+              </th>
             </tr>
           </thead>
           <tbody>

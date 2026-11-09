@@ -1,5 +1,6 @@
 "use client";
 
+import Info from "@/components/Info";
 import EChart from "@/components/EChart";
 import { useThemeColors } from "@/components/useThemeColors";
 import type { OptContract, Options } from "@/lib/riskopts";
@@ -10,12 +11,12 @@ const usd = (v: N) => (v == null ? "—" : `$${v.toFixed(2)}`);
 const k = (v: number) => (v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `${(v / 1e3).toFixed(1)}K` : `${v}`);
 const day = (iso: string) => new Date(`${iso.slice(0, 10)}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 
-function Stat({ label, value, sub, help }: { label: string; value: string; sub?: React.ReactNode; help?: string }) {
+function Stat({ label, value, sub, info }: { label: string; value: string; sub?: React.ReactNode; info?: string }) {
   return (
-    <div title={help}>
-      <dt className="text-xs text-muted">
+    <div>
+      <dt className="flex items-center text-xs text-muted">
         {label}
-        {help && <span className="ml-1 cursor-help text-[10px]">ⓘ</span>}
+        {info && <Info k={info} />}
       </dt>
       <dd className="mt-0.5 text-lg font-semibold tabular-nums">{value}</dd>
       {sub && <dd className="text-xs text-muted">{sub}</dd>}
@@ -51,7 +52,10 @@ function Contracts({ rows, title }: { rows: OptContract[]; title: string }) {
   if (!rows.length) return null;
   return (
     <div>
-      <h3 className="font-semibold">{title}</h3>
+      <h3 className="flex items-center font-semibold">
+        {title}
+        <Info k="most_active" />
+      </h3>
       <table className="mt-2 w-full text-sm">
         <thead>
           <tr className="text-left text-xs text-muted">
@@ -121,13 +125,19 @@ export default function OptionsView({ ticker, o, asOf, avgEarningsMove }: { tick
   return (
     <div className="space-y-12">
       <section>
-        <h2 className="border-b border-border pb-3 text-xl font-semibold tracking-tight">What options are pricing</h2>
+        <h2 className="flex items-center border-b border-border pb-3 text-xl font-semibold tracking-tight">
+          What options are pricing
+          <Info k="options_overview" />
+        </h2>
         <p className="mt-2 text-sm text-muted">
           From {k(o.contracts)} listed contracts across {o.expirations} expirations. Cboe delayed quotes (15 minutes) as of {asOf.slice(0, 10)}; stock ${o.spot.toFixed(2)}.
         </p>
         {o.earnings && (
           <div className="mt-4 rounded-2xl border border-border p-4">
-            <p className="text-xs text-muted">Earnings {day(o.earnings.date)}</p>
+            <p className="flex items-center text-xs text-muted">
+              Earnings {day(o.earnings.date)}
+              <Info k="earnings_day_move" />
+            </p>
             {o.earnings.day_move != null ? (
               <>
                 <p className="mt-1 text-2xl font-semibold tabular-nums">±{pct(o.earnings.day_move)}</p>
@@ -154,22 +164,24 @@ export default function OptionsView({ ticker, o, asOf, avgEarningsMove }: { tick
           ))}
         </ul>
         <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4">
-          <Stat label="Implied volatility (30 day)" value={pct(o.iv30, 0)} sub={`Actual last 30 days: ${pct(o.realized30, 0)}`} help="The yearly volatility option prices imply for the next ~30 days." />
+          <Stat label="Implied volatility (30 day)" info="iv30" value={pct(o.iv30, 0)} sub={`Actual last 30 days: ${pct(o.realized30, 0)}`} />
           <Stat
-            label="IV rank (1 yr)"
+            label="IV rank (1 yr)" info="iv_rank"
             value={o.iv_rank == null ? "Building" : pct(o.iv_rank, 0)}
             sub={o.iv_rank == null ? `${o.iv_history_days} of 60 days of history so far` : "0% = lowest IV of the year, 100% = highest"}
-            help="Where today's implied volatility sits in its own one-year range."
           />
-          <Stat label="Skew (25-delta)" value={o.skew ? pct(o.skew.skew) : "—"} sub={o.skew ? `Put IV ${pct(o.skew.put_iv, 0)} vs call IV ${pct(o.skew.call_iv, 0)}` : undefined} help="How much more volatility downside puts price than equally out-of-the-money calls (≈30-day expiry)." />
-          <Stat label="Max pain" value={o.max_pain == null ? "—" : `$${o.max_pain}`} sub={`${day(o.month_exp)} expiry`} help="The price at which option holders would collect the least at expiry. Some traders watch it; it is not a forecast." />
-          <Stat label="Put/call ratio (volume)" value={o.put_call_volume == null ? "—" : o.put_call_volume.toFixed(2)} sub={`${k(o.volume.puts)} puts · ${k(o.volume.calls)} calls today`} />
-          <Stat label="Put/call ratio (open interest)" value={o.put_call_oi == null ? "—" : o.put_call_oi.toFixed(2)} sub={`${k(o.open_interest.puts)} puts · ${k(o.open_interest.calls)} calls open`} />
+          <Stat label="Skew (25-delta)" info="skew25" value={o.skew ? pct(o.skew.skew) : "—"} sub={o.skew ? `Put IV ${pct(o.skew.put_iv, 0)} vs call IV ${pct(o.skew.call_iv, 0)}` : undefined} />
+          <Stat label="Max pain" info="max_pain" value={o.max_pain == null ? "—" : `$${o.max_pain}`} sub={`${day(o.month_exp)} expiry`} />
+          <Stat label="Put/call ratio (volume)" info="put_call_volume" value={o.put_call_volume == null ? "—" : o.put_call_volume.toFixed(2)} sub={`${k(o.volume.puts)} puts · ${k(o.volume.calls)} calls today`} />
+          <Stat label="Put/call ratio (open interest)" info="put_call_oi" value={o.put_call_oi == null ? "—" : o.put_call_oi.toFixed(2)} sub={`${k(o.open_interest.puts)} puts · ${k(o.open_interest.calls)} calls open`} />
         </dl>
       </section>
 
       <section>
-        <h2 className="border-b border-border pb-3 text-xl font-semibold tracking-tight">Expected move by expiration</h2>
+        <h2 className="flex items-center border-b border-border pb-3 text-xl font-semibold tracking-tight">
+          Expected move by expiration
+          <Info k="expected_move" />
+        </h2>
         <p className="mt-2 text-sm text-muted">At-the-money straddle price ÷ stock price: roughly how far options expect the stock could move by each date, in either direction.</p>
         <EChart option={term} className="mt-3 h-64 w-full" ariaLabel={`${ticker} expected move and implied volatility by expiration`} />
         <table className="mt-4 w-full text-sm">
@@ -199,7 +211,10 @@ export default function OptionsView({ ticker, o, asOf, avgEarningsMove }: { tick
       </section>
 
       <section>
-        <h2 className="border-b border-border pb-3 text-xl font-semibold tracking-tight">Where the open positions are</h2>
+        <h2 className="flex items-center border-b border-border pb-3 text-xl font-semibold tracking-tight">
+          Where the open positions are
+          <Info k="open_interest" />
+        </h2>
         <p className="mt-2 text-sm text-muted">Open interest by strike for the {day(o.month_exp)} expiration (strikes within 30% of the stock price).</p>
         <EChart option={oi} className="mt-3 h-64 w-full" ariaLabel={`${ticker} open interest by strike`} />
         <div className="mt-6 grid gap-8 lg:grid-cols-2">

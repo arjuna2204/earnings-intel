@@ -1,5 +1,6 @@
 "use client";
 
+import Info from "@/components/Info";
 import { useMemo } from "react";
 import EChart from "@/components/EChart";
 import { useThemeColors } from "@/components/useThemeColors";
@@ -18,7 +19,10 @@ export function FootballField({ rows, price }: { rows: FieldRow[]; price: number
   const fmt = (v: number) => `$${v >= 1000 ? v.toFixed(0) : v.toFixed(v >= 100 ? 0 : 2)}`;
   return (
     <div>
-      <div className="font-semibold">What it could be worth</div>
+      <div className="flex items-center font-semibold">
+        What it could be worth
+        <Info k="football_field" />
+      </div>
       <p className="mt-0.5 text-sm text-muted">Each valuation method as a range. The line is today&apos;s price ({fmt(price)}).</p>
       <div className="mt-4">
         <ul className="divide-y divide-border">
@@ -88,7 +92,10 @@ export function PeHistoryChart({ series, p20, p50, p80, current }: { series: [st
   );
   return (
     <div>
-      <div className="font-semibold">Forward P/E vs. its own history</div>
+      <div className="flex items-center font-semibold">
+        Forward P/E vs. its own history
+        <Info k="pe_history" />
+      </div>
       <p className="mt-0.5 text-sm text-muted">
         Price ÷ next-12-months consensus EPS, monthly over 3 years. Shaded band = 20th–80th percentile ({p20.toFixed(1)}x–{p80.toFixed(1)}x).
         {current != null && ` Today: ${current.toFixed(1)}x.`}
@@ -118,7 +125,10 @@ export function RevisionsChart({ lines, firstDate }: { lines: { name: string; po
   );
   return (
     <div>
-      <div className="font-semibold">Estimate revisions</div>
+      <div className="flex items-center font-semibold">
+        Estimate revisions
+        <Info k="estimate_revisions" />
+      </div>
       <p className="mt-0.5 text-sm text-muted">Consensus EPS for upcoming periods, recorded every week. Rising lines = analysts raising numbers.</p>
       {enough ? (
         <EChart option={option} className="mt-3 h-56 w-full" ariaLabel="Consensus EPS estimates over time" />
@@ -167,7 +177,10 @@ export function ReactionChart({ points }: { points: ReactionPoint[] }) {
   const beats = points.filter((p) => p.surprise > 0).length;
   return (
     <div>
-      <div className="font-semibold">How the stock reacts to earnings</div>
+      <div className="flex items-center font-semibold">
+        How the stock reacts to earnings
+        <Info k="earnings_reaction" />
+      </div>
       <p className="mt-0.5 text-sm text-muted">
         Stock return minus its sector ETF on the first trading day after each report.
         {beats > 0 && ` After ${beats} beats, the stock outperformed ${beatsUp} times.`}

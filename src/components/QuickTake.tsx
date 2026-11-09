@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Info from "@/components/Info";
 import type { Signal } from "@/lib/quicktake";
 
 /** One-glance summary at the top of a company page. Each card links to the tab with the evidence. */
@@ -7,9 +8,12 @@ export default function QuickTake({ signals }: { signals: Signal[] }) {
   const up = signals.filter((s) => s.tone === "up").length;
   const down = signals.filter((s) => s.tone === "down").length;
   return (
-    <section aria-label="Quick take" className="mt-5">
+    <section aria-label="Quick take">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-sm font-semibold">Quick take</h2>
+        <h2 className="flex items-center text-sm font-semibold">
+          Quick take
+          <Info k="quick_take" />
+        </h2>
         <p className="text-xs text-muted">
           <span className="text-up">▲ {up} positive</span> · <span className="text-down">▼ {down} negative</span> · {signals.length - up - down} neutral ·
           computed from the data in the tabs below, no AI

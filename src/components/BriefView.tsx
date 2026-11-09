@@ -1,5 +1,6 @@
 "use client";
 
+import Info from "@/components/Info";
 import { useState } from "react";
 import Link from "next/link";
 import SourcePanel from "@/components/SourcePanel";
@@ -177,7 +178,10 @@ export function Cases({ cases, refs }: { cases: StockCases; refs: (c: Claim) => 
   return (
     <section id="brief-cases" className="scroll-mt-20">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3 border-b border-border pb-3">
-        <h3 className="text-xl font-semibold tracking-tight">Bull, base &amp; bear</h3>
+        <h3 className="flex items-center text-xl font-semibold tracking-tight">
+          Bull, base &amp; bear
+          <Info k="cases" />
+        </h3>
         <div className="flex gap-1 text-sm" role="tablist">
           {(["bear", "base", "bull"] as const).map((k) => (
             <button
@@ -279,7 +283,10 @@ export function ValuationSlider({ price, epsNtm, peerMedianPe, ticker }: { price
   const basePe = price / epsNtm;
   return (
     <div>
-      <div className="font-semibold">What if earnings come in different?</div>
+      <div className="flex items-center font-semibold">
+        What if earnings come in different?
+        <Info k="valuation_slider" />
+      </div>
       <p className="mt-0.5 text-sm text-muted">
         Drag to change next-12-months EPS from the analyst consensus (${epsNtm.toFixed(2)}) and see the forward P/E at today&apos;s price (${price.toFixed(2)}).
       </p>
@@ -328,7 +335,10 @@ function Dodges({ items }: { items: Dodge[] }) {
   const cut = (t: string, n: number) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
   return (
     <div>
-      <div className="font-semibold">Least direct answers</div>
+      <div className="flex items-center font-semibold">
+        Least direct answers
+        <Info k="dodged_questions" />
+      </div>
       <p className="mt-0.5 text-sm text-muted">Analyst questions management answered least directly, scored 0 (direct) to 1 (avoided) by AI. Read the exchange and judge for yourself.</p>
       <ul className="mt-2 divide-y divide-border">
         {items.map((d, i) => (
@@ -511,7 +521,10 @@ export function Streak({ items }: { items: StreakItem[] }) {
   return (
     <div>
       <div className="flex items-baseline justify-between">
-        <span className="font-semibold">Earnings vs. estimates</span>
+        <span className="inline-flex items-center font-semibold">
+          Earnings vs. estimates
+          <Info k="beat_streak" />
+        </span>
         <span className="text-sm text-muted">
           Beat {beats} of {items.length}
         </span>
@@ -575,7 +588,10 @@ function BridgeChart({ bridge, lb }: { bridge: Bridge; lb: string }) {
   const pos = (v: number) => ((Math.max(v, base) - base) / span) * 100;
   return (
     <div>
-      <div className="font-semibold">GAAP to adjusted</div>
+      <div className="flex items-center font-semibold">
+        GAAP to adjusted
+        <Info k="gaap_adjusted" />
+      </div>
       <p className="mt-0.5 text-sm text-muted">
         {bridge.basis}, {lb}. What the company excludes to reach the figure analysts use.
       </p>
@@ -785,7 +801,10 @@ function Scorecard({ rows, la, lb, onSource }: { rows: StreetRow[]; la: string; 
   const shown = all ? rows : rows.slice(0, 4);
   return (
     <div>
-      <div className="font-semibold">Scorecard</div>
+      <div className="flex items-center font-semibold">
+        Scorecard
+        <Info k="brief_scorecard" />
+      </div>
       <table className="mt-2 w-full text-sm">
         <thead>
           <tr className="text-left text-muted">

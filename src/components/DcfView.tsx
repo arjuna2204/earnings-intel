@@ -1,5 +1,6 @@
 "use client";
 
+import Info from "@/components/Info";
 import { useState } from "react";
 import type { DcfModel } from "@/lib/dcf";
 
@@ -25,7 +26,10 @@ function Bridge({ r, netDebt, shares }: { r: NonNullable<DcfModel["result"]>; ne
   const pos = (v: number) => (Math.max(v, 0) / hi) * 100;
   return (
     <div>
-      <div className="font-semibold">Where the value comes from</div>
+      <div className="flex items-center font-semibold">
+        Where the value comes from
+        <Info k="value_bridge" />
+      </div>
       <p className="mt-0.5 text-sm text-muted">
         {r.terminal_share != null && `${Math.round(r.terminal_share * 100)}% of enterprise value comes after year 10 — the further out, the more the result depends on assumptions. `}
         Equity value ÷ {(shares / 1e6).toLocaleString(undefined, { maximumFractionDigits: 0 })}M shares = {r.per_share != null ? `$${r.per_share.toFixed(2)}` : "—"} per share.
@@ -50,6 +54,19 @@ function Bridge({ r, netDebt, shares }: { r: NonNullable<DcfModel["result"]>; ne
 }
 
 const PCT_KEYS = /growth|margin|capex|tax|pct|risk_free|erp|cost_of_debt|weight|wacc/;
+
+const DCF_INFO: Record<string, string> = {
+  wacc: "wacc",
+  terminal_growth: "terminal_growth",
+  beta: "beta_dcf",
+  sector_growth: "sector_growth",
+  risk_free: "risk_free",
+  erp: "erp",
+  tax_rate: "tax_rate",
+  cost_of_debt: "cost_of_debt",
+  growth_1: "growth_fade",
+  capex_1: "capex_fade",
+};
 
 /** DCF summary with sensitivity and assumptions; the Excel download has the same model with live formulas. */
 function Notes({ ids }: { ids?: number[] }) {
@@ -89,7 +106,10 @@ export default function DcfView({ ticker, dcf }: { ticker: string; dcf: DcfModel
   return (
     <section className="space-y-6">
       <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-border pb-3">
-        <h3 className="text-xl font-semibold tracking-tight">DCF valuation</h3>
+        <h3 className="flex items-center text-xl font-semibold tracking-tight">
+          DCF valuation
+          <Info k="dcf" />
+        </h3>
         <a href={`/api/dcf/${ticker}`} className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-black hover:brightness-110" download>
           Download Excel model
         </a>
@@ -107,13 +127,16 @@ export default function DcfView({ ticker, dcf }: { ticker: string; dcf: DcfModel
       </div>
       <div className="grid grid-cols-2 gap-x-6 gap-y-4 border-y border-border py-4 sm:grid-cols-4">
         {[
-          ["Discount rate (WACC)", pct(a.wacc.value)],
-          ["Terminal growth", pct(a.terminal_growth.value)],
-          ["Terminal value share", pct(r.terminal_share, 0)],
-          ["Implied exit EV/EBITDA", r.implied_exit_ev_ebitda ? `${r.implied_exit_ev_ebitda.toFixed(1)}x` : "—"],
-        ].map(([k, v]) => (
+          ["Discount rate (WACC)", pct(a.wacc.value), "wacc"],
+          ["Terminal growth", pct(a.terminal_growth.value), "terminal_growth"],
+          ["Terminal value share", pct(r.terminal_share, 0), "terminal_share"],
+          ["Implied exit EV/EBITDA", r.implied_exit_ev_ebitda ? `${r.implied_exit_ev_ebitda.toFixed(1)}x` : "—", "implied_exit"],
+        ].map(([k, v, info]) => (
           <div key={k}>
-            <div className="text-sm text-muted">{k}</div>
+            <div className="flex items-center text-sm text-muted">
+              {k}
+              <Info k={info} />
+            </div>
             <div className="mt-1 text-xl font-semibold tabular-nums">{v}</div>
           </div>
         ))}
@@ -157,7 +180,10 @@ export default function DcfView({ ticker, dcf }: { ticker: string; dcf: DcfModel
       <Bridge r={r} netDebt={a.net_debt.value} shares={a.shares.value} />
 
       <div>
-        <div className="font-semibold">Sensitivity</div>
+        <div className="flex items-center font-semibold">
+          Sensitivity
+          <Info k="sensitivity" />
+        </div>
         <p className="mt-0.5 text-sm text-muted">Value per share as the discount rate (down) and terminal growth (across) change. Green = above today&apos;s price.</p>
         <div className="-mx-4 mt-3 overflow-x-auto px-4">
           <table className="w-full min-w-[440px] text-sm tabular-nums">
@@ -206,6 +232,7 @@ export default function DcfView({ ticker, dcf }: { ticker: string; dcf: DcfModel
                     : k === "capex_1"
                       ? `Capex, % of revenue (year 1${a.capex_10 && a.capex_10.value !== a.capex_1.value ? ` → ${pct(a.capex_10.value)} by year 10` : ", all years"})`
                       : a[k].label}
+                {DCF_INFO[k] && <Info k={DCF_INFO[k]} />}
                 <Notes ids={a[k].notes} />
                 <span className="mt-0.5 block text-xs text-muted">{a[k].source}</span>
               </span>

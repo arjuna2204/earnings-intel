@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import EChart from "@/components/EChart";
+import Info from "@/components/Info";
 import SourcePanel from "@/components/SourcePanel";
 import { useThemeColors } from "@/components/useThemeColors";
 import { filingIndexFromDocUrl, fmtValue, periodLabel, secFilingIndexUrl, type MetricGroup, type MetricInfo } from "@/lib/metrics";
@@ -120,7 +121,10 @@ function MetricCard({
   if (!shown.length) {
     return (
       <div className="rounded-2xl border border-border p-5">
-        <div className="text-sm text-muted">{metric.label}</div>
+        <div className="flex items-center text-sm text-muted">
+          {metric.label}
+          <Info k={metric.key} />
+        </div>
         <div className="mt-2 text-2xl font-semibold text-muted">Not reported</div>
         <p className="mt-2 text-xs text-muted">{unresolved ?? "This company doesn't report this item in a form we can read."}</p>
       </div>
@@ -170,8 +174,9 @@ function MetricCard({
   return (
     <div className="rounded-2xl border border-border p-5">
       <div className="flex items-baseline justify-between gap-2">
-        <div className="text-sm text-muted" title={metric.help}>
+        <div className="flex items-center text-sm text-muted">
           {metric.label}
+          <Info k={metric.key} />
         </div>
         <div className="text-xs text-muted">{periodLabel(focus[0], focus[1])}</div>
       </div>

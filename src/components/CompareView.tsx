@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AnalyzePanel from "@/components/AnalyzePanel";
 import EChart from "@/components/EChart";
+import Info from "@/components/Info";
 import SearchBox from "@/components/SearchBox";
 import { useThemeColors } from "@/components/useThemeColors";
 import type { CompareSide } from "@/lib/compare";
@@ -148,6 +149,7 @@ function Slot({ side, onPick, label }: { side: CompareSide; onPick: (t: string) 
 
 type Row = {
   label: string;
+  info?: string;
   a: number | null | undefined;
   b: number | null | undefined;
   f: Fmt;
@@ -166,42 +168,42 @@ function Comparison({ a, b }: { a: Ok; b: Ok }) {
   const fyOf = (s: Ok) => s.fy.revenue?.at(-1)?.[0];
 
   const valuation: Row[] = [
-    { label: "Market cap", a: va?.market_cap, b: vb?.market_cap, f: "money", better: null },
-    { label: "P/E (TTM)", multiple: true, a: va?.pe, b: vb?.pe, f: "x", better: "low" },
-    { label: "Forward P/E (next 12 mo.)", multiple: true, a: va?.pe_fwd_ntm, b: vb?.pe_fwd_ntm, f: "x", better: "low" },
-    { label: "EV / EBITDA (TTM)", multiple: true, a: va?.ev_ebitda, b: vb?.ev_ebitda, f: "x", better: "low" },
-    { label: "EV / Revenue (TTM)", multiple: true, a: va?.ev_revenue, b: vb?.ev_revenue, f: "x", better: "low" },
-    { label: "Free-cash-flow yield (TTM)", a: va?.fcf_yield, b: vb?.fcf_yield, f: "pct", better: "high" },
+    { label: "Market cap", info: "market_cap", a: va?.market_cap, b: vb?.market_cap, f: "money", better: null },
+    { label: "P/E (TTM)", info: "pe", multiple: true, a: va?.pe, b: vb?.pe, f: "x", better: "low" },
+    { label: "Forward P/E (next 12 mo.)", info: "pe_fwd_ntm", multiple: true, a: va?.pe_fwd_ntm, b: vb?.pe_fwd_ntm, f: "x", better: "low" },
+    { label: "EV / EBITDA (TTM)", info: "ev_ebitda", multiple: true, a: va?.ev_ebitda, b: vb?.ev_ebitda, f: "x", better: "low" },
+    { label: "EV / Revenue (TTM)", info: "ev_revenue", multiple: true, a: va?.ev_revenue, b: vb?.ev_revenue, f: "x", better: "low" },
+    { label: "Free-cash-flow yield (TTM)", info: "fcf_yield", a: va?.fcf_yield, b: vb?.fcf_yield, f: "pct", better: "high" },
   ];
 
   const vs = (value: number | null | undefined, price: number | null | undefined) =>
     value != null && price ? value / price - 1 : null;
   const street: Row[] = [
     {
-      label: "DCF value per share",
+      label: "DCF value per share", info: "dcf",
       a: a.dcf?.per_share,
       b: b.dcf?.per_share,
       f: "usd",
       better: null,
       sub: [a.dcf?.upside != null ? `${signed(a.dcf.upside)} vs price` : a.dcf?.note ? "Not applicable" : null, b.dcf?.upside != null ? `${signed(b.dcf.upside)} vs price` : b.dcf?.note ? "Not applicable" : null],
     },
-    { label: "DCF upside", a: a.dcf?.upside, b: b.dcf?.upside, f: "spct", better: "high" },
-    { label: "Base case (12 mo.)", a: a.cases?.base, b: b.cases?.base, f: "usd", better: null, sub: [caseSub(a), caseSub(b)] },
-    { label: "Base case vs price", a: vs(a.cases?.base, a.cases?.price), b: vs(b.cases?.base, b.cases?.price), f: "spct", better: "high" },
-    { label: "Bear case vs price", a: vs(a.cases?.bear, a.cases?.price), b: vs(b.cases?.bear, b.cases?.price), f: "spct", better: "high" },
+    { label: "DCF upside", info: "dcf", a: a.dcf?.upside, b: b.dcf?.upside, f: "spct", better: "high" },
+    { label: "Base case (12 mo.)", info: "cases", a: a.cases?.base, b: b.cases?.base, f: "usd", better: null, sub: [caseSub(a), caseSub(b)] },
+    { label: "Base case vs price", info: "cases", a: vs(a.cases?.base, a.cases?.price), b: vs(b.cases?.base, b.cases?.price), f: "spct", better: "high" },
+    { label: "Bear case vs price", info: "cases", a: vs(a.cases?.bear, a.cases?.price), b: vs(b.cases?.bear, b.cases?.price), f: "spct", better: "high" },
   ];
 
   const fundamentals: Row[] = [
-    { label: "Revenue", a: latest(a, "revenue"), b: latest(b, "revenue"), f: "money", better: null },
-    { label: "Revenue growth", a: latest(a, "revenue_growth_yoy"), b: latest(b, "revenue_growth_yoy"), f: "pct", better: "high" },
-    { label: "EPS growth", a: latest(a, "eps_growth_yoy"), b: latest(b, "eps_growth_yoy"), f: "pct", better: "high" },
-    { label: "Gross margin", a: latest(a, "gross_margin"), b: latest(b, "gross_margin"), f: "pct", better: "high" },
-    { label: "Operating margin", a: latest(a, "operating_margin"), b: latest(b, "operating_margin"), f: "pct", better: "high" },
-    { label: "Free-cash-flow margin", a: latest(a, "fcf_margin"), b: latest(b, "fcf_margin"), f: "pct", better: "high" },
-    { label: "Return on invested capital", a: latest(a, "roic"), b: latest(b, "roic"), f: "pct", better: "high" },
-    { label: "Return on equity", a: latest(a, "roe"), b: latest(b, "roe"), f: "pct", better: "high" },
-    { label: "Net debt / EBITDA", a: latest(a, "net_debt_to_ebitda"), b: latest(b, "net_debt_to_ebitda"), f: "x", better: "low" },
-    { label: "Current ratio", a: latest(a, "current_ratio"), b: latest(b, "current_ratio"), f: "x", better: "high" },
+    { label: "Revenue", info: "revenue", a: latest(a, "revenue"), b: latest(b, "revenue"), f: "money", better: null },
+    { label: "Revenue growth", info: "revenue_growth_yoy", a: latest(a, "revenue_growth_yoy"), b: latest(b, "revenue_growth_yoy"), f: "pct", better: "high" },
+    { label: "EPS growth", info: "eps_growth_yoy", a: latest(a, "eps_growth_yoy"), b: latest(b, "eps_growth_yoy"), f: "pct", better: "high" },
+    { label: "Gross margin", info: "gross_margin", a: latest(a, "gross_margin"), b: latest(b, "gross_margin"), f: "pct", better: "high" },
+    { label: "Operating margin", info: "operating_margin", a: latest(a, "operating_margin"), b: latest(b, "operating_margin"), f: "pct", better: "high" },
+    { label: "Free-cash-flow margin", info: "fcf_margin", a: latest(a, "fcf_margin"), b: latest(b, "fcf_margin"), f: "pct", better: "high" },
+    { label: "Return on invested capital", info: "roic", a: latest(a, "roic"), b: latest(b, "roic"), f: "pct", better: "high" },
+    { label: "Return on equity", info: "roe", a: latest(a, "roe"), b: latest(b, "roe"), f: "pct", better: "high" },
+    { label: "Net debt / EBITDA", info: "net_debt_to_ebitda", a: latest(a, "net_debt_to_ebitda"), b: latest(b, "net_debt_to_ebitda"), f: "x", better: "low" },
+    { label: "Current ratio", info: "current_ratio", a: latest(a, "current_ratio"), b: latest(b, "current_ratio"), f: "x", better: "high" },
   ];
 
   const tally = (rows: Row[]) => {
@@ -280,7 +282,10 @@ function Score({ title, text, t, a, b, colors }: { title: string; text: string; 
   const n = t.ca + t.cb;
   return (
     <div className="rounded-2xl border border-border p-4">
-      <p className="text-xs text-muted">{title}</p>
+      <p className="flex items-center text-xs text-muted">
+        {title}
+        <Info k="scorecard" />
+      </p>
       <p className="mt-1 font-semibold">{n ? text : "Not enough data"}</p>
       {n > 0 && (
         <>
@@ -332,7 +337,10 @@ function Table({ title, note, rows, a, b, winLabel }: { title: string; note: str
             };
             return (
               <tr key={r.label}>
-                <td className="py-2.5 pr-3 text-muted">{r.label}</td>
+                <td className="py-2.5 pr-3 text-muted">
+                  {r.label}
+                  {r.info && <Info k={r.info} />}
+                </td>
                 {cell(r.a, "a", r.sub?.[0])}
                 {cell(r.b, "b", r.sub?.[1])}
               </tr>
@@ -409,7 +417,10 @@ function Performance({ a, b, colors }: { a: Ok; b: Ok; colors: { a: string; b: s
   return (
     <section>
       <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border pb-3">
-        <h2 className="text-xl font-semibold tracking-tight">Performance</h2>
+        <h2 className="flex items-center text-xl font-semibold tracking-tight">
+          Performance
+          <Info k="vs_benchmark" />
+        </h2>
         <div className="flex gap-1" role="tablist" aria-label="Time range">
           {RANGES.map(([r]) => (
             <button

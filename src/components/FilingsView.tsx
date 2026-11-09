@@ -1,5 +1,6 @@
 "use client";
 
+import Info from "@/components/Info";
 import { useState } from "react";
 import SourcePanel from "@/components/SourcePanel";
 import RiskTrend, { type RiskYear } from "@/components/RiskTrend";
@@ -26,7 +27,10 @@ export default function FilingsView({ inputs, risks, la, lb, riskYears = [] }: {
 
       {mdna && (
         <section>
-          <h3 className="text-lg font-semibold">What drove {lb}, per management</h3>
+          <h3 className="flex items-center text-lg font-semibold">
+            What drove {lb}, per management
+            <Info k="mdna" />
+          </h3>
           <p className="mb-3 text-xs text-muted">From MD&A in the {fb?.periodic?.form ?? "filing"} · tap any line for the exact passage</p>
           <DriverList
             drivers={mdna.drivers}
@@ -104,7 +108,10 @@ function ReleaseTable({ rb, ra, la, lb, onQuote }: { rb?: Release | null; ra?: R
   const kinds = [...new Set([...(rb?.figures ?? []), ...(ra?.figures ?? [])].map((f) => `${f.kind}|${f.label}`))];
   return (
     <section>
-      <h3 className="text-lg font-semibold">Company-reported figures (earnings release)</h3>
+      <h3 className="flex items-center text-lg font-semibold">
+          Company-reported figures (earnings release)
+          <Info k="release_figures" />
+        </h3>
       <p className="mb-3 text-xs text-muted">
         {rb?.reports_non_gaap ? "Includes the company's non-GAAP (adjusted) measures — usually what the Street compares to consensus." : "This company reports GAAP figures only in its release."}
       </p>
@@ -210,7 +217,10 @@ function RiskSection({ inputs, risks }: { inputs: BriefInputs; risks: RiskChange
   if (!inputs.risk) {
     return (
       <section>
-        <h3 className="text-lg font-semibold">Risk factors</h3>
+        <h3 className="flex items-center text-lg font-semibold">
+          Risk factors
+          <Info k="risk_factors" />
+        </h3>
         <p className="mt-2 text-sm text-muted">
           Both quarters fall under the same annual report, so there is no risk-factor change to compare. Pick quarters from different
           fiscal years (for example the same quarter a year apart).
@@ -223,7 +233,10 @@ function RiskSection({ inputs, risks }: { inputs: BriefInputs; risks: RiskChange
   const wordChange = s.words_old ? ((s.words_new / s.words_old - 1) * 100).toFixed(0) : null;
   return (
     <section>
-      <h3 className="text-lg font-semibold">Risk factors: what changed in the annual report</h3>
+      <h3 className="flex items-center text-lg font-semibold">
+          Risk factors: what changed in the annual report
+          <Info k="risk_factors" />
+        </h3>
       <p className="mb-3 text-xs text-muted">
         10-K for period ending {s.report_new} vs. {s.report_old}. Matched and compared by code (no AI).
       </p>

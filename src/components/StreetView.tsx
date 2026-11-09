@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Info from "@/components/Info";
 import DcfView from "@/components/DcfView";
 import SourcePanel from "@/components/SourcePanel";
 import { Cases, FactDetail, Refs, Streak, ValuationSlider } from "@/components/BriefView";
@@ -69,14 +70,19 @@ export default function StreetView({ d }: { d: StreetData }) {
 
       <section className="grid grid-cols-2 gap-x-8 gap-y-6 border-y border-border py-5 lg:grid-cols-4">
         <Stat label="Share price" value={d.price != null ? `$${d.price.toFixed(2)}` : "—"} sub={d.priceDate ? `as of ${d.priceDate}` : ""} />
-        <Stat label="Next-12-months EPS (consensus)" value={d.epsNtm != null ? `$${d.epsNtm.toFixed(2)}` : "—"} sub={d.adjEpsLtm != null ? `last 12 months: $${d.adjEpsLtm.toFixed(2)}` : ""} />
+        <Stat label="Next-12-months EPS (consensus)" info="consensus_eps" value={d.epsNtm != null ? `$${d.epsNtm.toFixed(2)}` : "—"} sub={d.adjEpsLtm != null ? `last 12 months: $${d.adjEpsLtm.toFixed(2)}` : ""} />
         <Stat
           label="Forward P/E"
+          info="pe_fwd_ntm"
           value={d.peFwd != null ? `${d.peFwd.toFixed(1)}x` : "—"}
-          sub={d.peerMedianPe != null ? `peer median ${d.peerMedianPe.toFixed(1)}x` : ""}
+          sub={
+            d.peerMedianPe != null
+              ? `${d.peFwd != null ? (d.peFwd <= d.peerMedianPe ? "▲ below " : "▼ above ") : ""}peer median ${d.peerMedianPe.toFixed(1)}x`
+              : ""
+          }
           tone={d.peFwd != null && d.peerMedianPe != null ? (d.peFwd <= d.peerMedianPe ? "up" : "down") : undefined}
         />
-        <Stat label="Street P/E (last 12 months)" value={d.peAdjLtm != null ? `${d.peAdjLtm.toFixed(1)}x` : "—"} sub="on adjusted EPS" />
+        <Stat label="Street P/E (last 12 months)" info="pe_adj_ltm" value={d.peAdjLtm != null ? `${d.peAdjLtm.toFixed(1)}x` : "—"} sub="on adjusted EPS" />
       </section>
 
       {d.price && d.field.length > 0 && (
@@ -94,7 +100,7 @@ export default function StreetView({ d }: { d: StreetData }) {
       {d.reactions.length >= 4 && <ReactionChart points={d.reactions} />}
 
       <section id="sv-estimates" className="scroll-mt-28">
-        <Head title="What analysts expect" sub={d.epsNtmMethod ? `Next 12 months = ${d.epsNtmMethod}` : undefined} />
+        <Head title="What analysts expect" info="consensus_eps" sub={d.epsNtmMethod ? `Next 12 months = ${d.epsNtmMethod}` : undefined} />
         {quarters.length + years.length === 0 ? (
           <p className="text-sm text-muted">No consensus estimates loaded yet.</p>
         ) : (
@@ -105,8 +111,14 @@ export default function StreetView({ d }: { d: StreetData }) {
                   <th className="py-2 pr-4 font-normal">Period ending</th>
                   <th className="py-2 pr-4 text-right font-normal">EPS</th>
                   <th className="py-2 pr-4 text-right font-normal">Range</th>
-                  <th className="py-2 pr-4 text-right font-normal">Revenue</th>
-                  <th className="py-2 text-right font-normal">Analysts</th>
+                  <th className="py-2 pr-4 text-right font-normal">
+                    Revenue
+                    <Info k="revenue_estimate" />
+                  </th>
+                  <th className="py-2 text-right font-normal">
+                    Analysts
+                    <Info k="analysts_count" />
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border border-t border-border">
@@ -134,7 +146,7 @@ export default function StreetView({ d }: { d: StreetData }) {
 
       {d.guidance && d.guidance.items.length > 0 && (
         <section id="sv-guidance" className="scroll-mt-28">
-          <Head title="What management guided" sub={`From the ${d.guidance.label} earnings call`} more={{ href: "?tab=call", label: "Full call" }} />
+          <Head title="What management guided" info="guidance" sub={`From the ${d.guidance.label} earnings call`} more={{ href: "?tab=call", label: "Full call" }} />
           <ul className="divide-y divide-border">
             {d.guidance.items.map((g, i) => (
               <li key={i} className="flex items-baseline justify-between gap-4 py-3">
@@ -189,21 +201,27 @@ function guideText(g: GuidanceItem): string {
   return g.qualitative ?? "";
 }
 
-function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: "up" | "down" }) {
+function Stat({ label, value, sub, tone, info }: { label: string; value: string; sub?: string; tone?: "up" | "down"; info?: string }) {
   return (
     <div>
-      <div className="text-sm text-muted">{label}</div>
+      <div className="flex items-center text-sm text-muted">
+        {label}
+        {info && <Info k={info} />}
+      </div>
       <div className="mt-1 text-[26px] font-semibold leading-none tracking-tight tabular-nums">{value}</div>
       {sub && <div className={`mt-2 text-sm ${tone === "up" ? "text-up" : tone === "down" ? "text-down" : "text-muted"}`}>{sub}</div>}
     </div>
   );
 }
 
-function Head({ title, sub, more }: { title: string; sub?: string; more?: { href: string; label: string } }) {
+function Head({ title, sub, more, info }: { title: string; sub?: string; more?: { href: string; label: string }; info?: string }) {
   return (
     <div className="mb-4 flex items-baseline justify-between gap-4 border-b border-border pb-3">
       <div>
-        <h3 className="text-xl font-semibold tracking-tight">{title}</h3>
+        <h3 className="flex items-center text-xl font-semibold tracking-tight">
+          {title}
+          {info && <Info k={info} />}
+        </h3>
         {sub && <p className="mt-0.5 text-sm text-muted">{sub}</p>}
       </div>
       {more && (

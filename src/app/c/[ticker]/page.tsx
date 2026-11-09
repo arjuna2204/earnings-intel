@@ -30,6 +30,8 @@ import OptionsView from "@/components/OptionsView";
 import { getOptions, getRisk } from "@/lib/riskopts";
 import QuickTake from "@/components/QuickTake";
 import WatchButton from "@/components/WatchButton";
+import Info from "@/components/Info";
+import { COMPARE_ETFS, etfName } from "@/lib/etfs";
 import { getQuickTake } from "@/lib/quicktake";
 import { getHolders, getInsiderTrades, summarizeInsiders } from "@/lib/ownership";
 
@@ -83,13 +85,27 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
     );
   }
 
-  const [prices, filings, job, events, spy] = await Promise.all([
+  const sectorEtf = company.sector_etf && company.sector_etf !== company.ticker ? company.sector_etf : null;
+  const [prices, filings, job, events, spy, sectorPx, loaded] = await Promise.all([
     getPrices(company.ticker),
     getFilings(company.cik),
     getLatestJob(company.ticker),
     getEvents(company.cik),
     company.ticker === "SPY" ? Promise.resolve([]) : getPrices("SPY"),
+    sectorEtf ? getPrices(sectorEtf) : Promise.resolve([]),
+    select<{ ticker: string; name: string }>("companies", { select: "ticker,name", order: "ticker" }),
   ]);
+  const compareDefaults = [
+    ...(spy.length ? [{ ticker: "SPY", label: "S&P 500", prices: spy.map((p) => ({ date: p.date, adj_close: p.adj_close })) }] : []),
+    ...(sectorEtf && sectorPx.length
+      ? [{ ticker: sectorEtf, label: etfName(sectorEtf) ?? sectorEtf, prices: sectorPx.map((p) => ({ date: p.date, adj_close: p.adj_close })) }]
+      : []),
+  ];
+  const fundTickers = new Set(COMPARE_ETFS.map((e) => e.ticker));
+  const compareChoices = [
+    ...COMPARE_ETFS.map((e) => ({ ticker: e.ticker, name: e.name, kind: "fund" as const })),
+    ...loaded.filter((c) => !fundTickers.has(c.ticker)).map((c) => ({ ticker: c.ticker, name: c.name, kind: "stock" as const })),
+  ];
   // Earnings-report dots (tap → that quarter's call vs. the same quarter a year earlier).
   // Until report dates are loaded (first call comparison), fall back to filing dates.
   const markers = events.length
@@ -127,18 +143,12 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
         </p>
       )}
 
-      <Suspense fallback={<div className="mt-5 h-24 animate-pulse rounded-xl bg-card" />}>
-        <QuickTakeSection company={company} events={events} asOf={prices.at(-1)?.date ?? company.valuation?.price_date ?? "2026-01-01"} />
-      </Suspense>
-
-      <div className="mt-4">
-        <CompanyTabs defaultTab="street" />
-      </div>
-
       <div className="mt-6">
         <PriceChart
+          ticker={company.ticker}
           prices={prices}
-          benchmark={spy}
+          defaults={compareDefaults}
+          choices={compareChoices}
           markers={markers}
           currencySymbol="$"
           markerNote={events.length ? "○ = earnings report · tap to open that call" : "○ = 10-K / 10-Q filed"}
@@ -153,11 +163,20 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
       <ValuationStrip company={company} />
 
       <div className="mt-6">
+        <CompanyTabs defaultTab="street" />
+      </div>
+
+      <div className="mt-6">
         <Suspense key={`${tab}-${sp.a ?? ""}-${sp.b ?? ""}`} fallback={<TabSkeleton />}>
         {tab === "historical" && <FinancialsTab company={company} filings={filings} />}
         {tab === "street" && <StreetTab company={company} events={events} prices={prices} />}
         {tab === "sources" && <SourcesTab company={company} filings={filings} />}
-        {tab === "brief" && <BriefTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />}
+        {tab === "brief" && (
+          <div className="space-y-10">
+            <QuickTakeSection company={company} events={events} asOf={prices.at(-1)?.date ?? company.valuation?.price_date ?? "2026-01-01"} />
+            <BriefTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />
+          </div>
+        )}
         {tab === "call" && <CallTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />}
         {tab === "filings" && <BriefTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} mode="filings" />}
         {tab === "peers" && <PeersTab company={company} prices={prices} />}
@@ -597,24 +616,24 @@ function ValuationStrip({ company }: { company: Company }) {
   const v = company.valuation;
   if (!v) return null;
   const cur = SYMBOL[v.currency] ?? "";
-  const items: [string, string | null][] = [
-    ["Market cap", v.market_cap != null ? `$${compact(v.market_cap)}` : null],
-    ["Enterprise value", v.enterprise_value != null ? `$${compact(v.enterprise_value)}` : null],
-    ["P/E (TTM)", v.pe != null ? `${v.pe.toFixed(1)}×` : null],
+  const items: [string, string | null, string][] = [
+    ["Market cap", v.market_cap != null ? `$${compact(v.market_cap)}` : null, "market_cap"],
+    ["Enterprise value", v.enterprise_value != null ? `$${compact(v.enterprise_value)}` : null, "enterprise_value"],
+    ["P/E (TTM)", v.pe != null ? `${v.pe.toFixed(1)}×` : null, "pe"],
   ];
-  if (company.sector_pack === "bank") items.push(["P/TBV", v.p_tbv != null ? `${v.p_tbv.toFixed(2)}×` : null]);
-  else if (company.sector_pack === "insurer") items.push(["P/B", v.p_b != null ? `${v.p_b.toFixed(2)}×` : null]);
+  if (company.sector_pack === "bank") items.push(["P/TBV", v.p_tbv != null ? `${v.p_tbv.toFixed(2)}×` : null, "p_tbv"]);
+  else if (company.sector_pack === "insurer") items.push(["P/B", v.p_b != null ? `${v.p_b.toFixed(2)}×` : null, "p_b"]);
   else {
-    items.push(["EV/EBITDA (TTM)", v.ev_ebitda != null ? `${v.ev_ebitda.toFixed(1)}×` : null]);
-    items.push(["EV/Revenue (TTM)", v.ev_revenue != null ? `${v.ev_revenue.toFixed(2)}×` : null]);
+    items.push(["EV/EBITDA (TTM)", v.ev_ebitda != null ? `${v.ev_ebitda.toFixed(1)}×` : null, "ev_ebitda"]);
+    items.push(["EV/Revenue (TTM)", v.ev_revenue != null ? `${v.ev_revenue.toFixed(2)}×` : null, "ev_revenue"]);
   }
-  items.push(["FCF yield (TTM)", v.fcf_yield != null ? `${(v.fcf_yield * 100).toFixed(1)}%` : null]);
+  items.push(["FCF yield (TTM)", v.fcf_yield != null ? `${(v.fcf_yield * 100).toFixed(1)}%` : null, "fcf_yield"]);
   const x = (n: number | null | undefined) => (n != null ? `${n.toFixed(1)}×` : null);
-  const street: [string, string | null, string][] = v.street_source
+  const street: [string, string | null, string, string][] = v.street_source
     ? [
-        ["Adj. P/E (LTM)", x(v.pe_adj_ltm), v.adj_eps_ltm != null ? `EPS $${v.adj_eps_ltm.toFixed(2)}, last 4 quarters` : "needs 4 reported quarters"],
-        ["Adj. P/E (run-rate)", x(v.pe_adj_run_rate), v.adj_eps_run_rate != null ? `${v.adj_eps_run_rate_quarter} EPS × 4 = $${v.adj_eps_run_rate.toFixed(2)}` : ""],
-        ["Fwd P/E (next 12 mo.)", x(v.pe_fwd_ntm), v.eps_ntm != null ? `consensus EPS $${v.eps_ntm.toFixed(2)}` : "no consensus available"],
+        ["Adj. P/E (LTM)", x(v.pe_adj_ltm), v.adj_eps_ltm != null ? `EPS $${v.adj_eps_ltm.toFixed(2)}, last 4 quarters` : "needs 4 reported quarters", "pe_adj_ltm"],
+        ["Adj. P/E (run-rate)", x(v.pe_adj_run_rate), v.adj_eps_run_rate != null ? `${v.adj_eps_run_rate_quarter} EPS × 4 = $${v.adj_eps_run_rate.toFixed(2)}` : "", "pe_adj_run_rate"],
+        ["Fwd P/E (next 12 mo.)", x(v.pe_fwd_ntm), v.eps_ntm != null ? `consensus EPS $${v.eps_ntm.toFixed(2)}` : "no consensus available", "pe_fwd_ntm"],
       ]
     : [];
 
@@ -625,18 +644,24 @@ function ValuationStrip({ company }: { company: Company }) {
       ) : (
         <>
           <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-6">
-            {items.map(([label, val]) => (
+            {items.map(([label, val, k]) => (
               <div key={label}>
-                <dt className="text-xs text-muted">{label}</dt>
+                <dt className="flex items-center text-xs text-muted">
+                  {label}
+                  <Info k={k} />
+                </dt>
                 <dd className={`mt-0.5 text-lg font-semibold ${val ? "" : "text-muted"}`}>{val ?? "Not reported"}</dd>
               </div>
             ))}
           </dl>
           {street.length > 0 && (
             <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-border pt-4 sm:grid-cols-3">
-              {street.map(([label, val, sub]) => (
+              {street.map(([label, val, sub, k]) => (
                 <div key={label}>
-                  <dt className="text-xs text-muted">{label}</dt>
+                  <dt className="flex items-center text-xs text-muted">
+                    {label}
+                    <Info k={k} />
+                  </dt>
                   <dd className={`mt-0.5 text-lg font-semibold ${val ? "" : "text-muted"}`}>{val ?? "Not available"}</dd>
                   <dd className="text-xs text-muted">{sub}</dd>
                 </div>
