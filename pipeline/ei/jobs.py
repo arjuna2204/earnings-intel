@@ -153,7 +153,13 @@ def _metric_rows(cik: int, nc: NormalizedCompany) -> list[dict[str, Any]]:
     return rows
 
 
-def analyze(settings: Settings, ticker: str, job_id: int | None = None, primary: bool = True) -> dict[str, Any]:
+def analyze(
+    settings: Settings, ticker: str, job_id: int | None = None, primary: bool = True, fetch_street: bool | None = None
+) -> dict[str, Any]:
+    """`fetch_street`: call Alpha Vantage for Street data now (default: only for loads a person started;
+    background loads and daily refreshes leave that to the market-cap-ordered coverage run)."""
+    if fetch_street is None:
+        fetch_street = primary
     ticker = ticker.strip().upper()
     db, sec = Db(settings.supabase_url, settings.supabase_secret_key), SecClient(settings.sec_user_agent)
     prices = TiingoProvider(settings.tiingo_api_key)
@@ -255,7 +261,7 @@ def analyze(settings: Settings, ticker: str, job_id: int | None = None, primary:
             from ei.calls.run import street_snapshot
 
             company_row = db.select("companies", {"cik": f"eq.{cik}", "select": "*"})[0]
-            snap.update(street_snapshot(settings, db, company_row, price))
+            snap.update(street_snapshot(settings, db, company_row, price, fetch=fetch_street))
         except Exception as exc:  # never fail a company load over Street data
             log.warning("street data skipped: %s", exc)
         db.update(
@@ -323,7 +329,32 @@ def refresh_all(settings: Settings) -> list[str]:
     return done
 
 
-__all__ = ["analyze", "asdict", "refresh_all", "refresh_tickers"]
+__all__ = ["analyze", "asdict", "mark_daily", "refresh_all", "refresh_tickers"]
+
+
+def mark_daily(settings: Settings, status: str, job_id: int | None) -> dict[str, Any]:
+    """Record the daily run in `jobs` (the website's backup trigger skips a day that already has one)."""
+    db = Db(settings.supabase_url, settings.supabase_secret_key)
+    vals: dict[str, Any] = {"status": status}
+    vals["started_at" if status == "running" else "finished_at"] = _now()
+    if job_id is None:
+        today = db.select(
+            "jobs",
+            {
+                "kind": "eq.daily",
+                "created_at": f"gte.{_today_et().isoformat()}",
+                "select": "id",
+                "order": "created_at.desc",
+                "limit": "1",
+            },
+        )
+        if today:
+            job_id = int(today[0]["id"])
+        else:
+            row = db.insert("jobs", {"kind": "daily", **vals})
+            return {"job": row["id"] if row else None}
+    db.update("jobs", {"id": job_id}, vals)
+    return {"job": job_id}
 
 
 def retry_deferred(settings: Settings) -> list[str]:

@@ -39,6 +39,17 @@ def main(argv: list[str] | None = None) -> int:
     hd = sub.add_parser("holders")
     hd.add_argument("--force", action="store_true")
     sub.add_parser("earnings-calendar")
+    sub.add_parser("universe")
+    dm = sub.add_parser("daily-mark")
+    dm.add_argument("status", choices=["running", "done"])
+    dm.add_argument("job_id", nargs="?", default=None)
+    al = sub.add_parser("autoload")
+    al.add_argument("--n", type=int, default=10)
+    sub.add_parser("coverage")
+    rk = sub.add_parser("risk")
+    rk.add_argument("ticker", nargs="?", default=None)
+    op = sub.add_parser("options")
+    op.add_argument("ticker", nargs="?", default=None)
     hdd = sub.add_parser("holders-debug")
     hdd.add_argument("ticker")
     sg = sub.add_parser("sector-growth")
@@ -89,6 +100,30 @@ def main(argv: list[str] | None = None) -> int:
         from ei.holders_debug import debug
 
         print(json.dumps(debug(settings, args.ticker.upper()), default=str))
+    elif args.cmd == "daily-mark":
+        from ei.jobs import mark_daily
+
+        print(json.dumps(mark_daily(settings, args.status, int(args.job_id) if args.job_id else None)))
+    elif args.cmd == "universe":
+        from ei.universe import refresh_universe
+
+        print(json.dumps(refresh_universe(settings)))
+    elif args.cmd == "autoload":
+        from ei.universe import autoload
+
+        print(json.dumps(autoload(settings, args.n)))
+    elif args.cmd == "coverage":
+        from ei.coverage import run as run_coverage
+
+        print(json.dumps(run_coverage(settings)))
+    elif args.cmd == "risk":
+        from ei.risk import run_all as run_risk
+
+        print(json.dumps(run_risk(settings, [args.ticker.upper()] if args.ticker else None), default=str))
+    elif args.cmd == "options":
+        from ei.options import run_all as run_options
+
+        print(json.dumps(run_options(settings, [args.ticker.upper()] if args.ticker else None), default=str))
     elif args.cmd == "earnings-calendar":
         from ei.earnings_calendar import refresh as refresh_calendar
 

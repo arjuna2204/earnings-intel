@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       command:
-        description: "analyze | calls | brief | peers | backtest | dcf | tickers | refresh | retry-deferred"
+        description: "daily | analyze | calls | brief | peers | backtest | dcf | tickers | refresh | autoload | coverage | risk-options | retry-deferred"
         required: true
         default: analyze
       ticker:
@@ -41,7 +41,7 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
     env:
       SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -114,44 +114,70 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && inputs.command == 'analyze'
         working-directory: pipeline
         run: python -m ei.cli analyze "${{ inputs.ticker }}" ${{ inputs.job_id && format('--job-id {0}', inputs.job_id) || '' }}
+      - name: Daily run started
+        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily'
+        working-directory: pipeline
+        run: |
+          python -m ei.cli daily-mark running ${{ inputs.job_id || '' }} || true
       - name: Refresh ticker list
-        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'tickers'
+        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily' || inputs.command == 'tickers'
         working-directory: pipeline
-        run: python -m ei.cli tickers
-      - name: Refresh tracked companies
-        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'refresh'
+        run: |
+          python -m ei.cli tickers || echo "::warning::ticker list refresh failed"
+      - name: Refresh tracked companies (SEC + prices; no Alpha Vantage)
+        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily' || inputs.command == 'refresh'
         working-directory: pipeline
-        run: python -m ei.cli refresh
+        run: |
+          python -m ei.cli refresh || echo "::warning::refresh failed"
+      - name: Rank all stocks by size and load the next 10 largest (free)
+        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily' || inputs.command == 'autoload'
+        working-directory: pipeline
+        run: |
+          python -m ei.cli universe || echo "::warning::size ranking failed"
+          python -m ei.cli autoload --n 10 || echo "::warning::autoload failed"
       - name: Upcoming earnings dates (1 Alpha Vantage request)
-        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'earnings-calendar'
+        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily' || inputs.command == 'earnings-calendar'
         working-directory: pipeline
-        run: python -m ei.cli earnings-calendar || echo "::warning::earnings calendar refresh failed"
-      - name: Continue call-history backfill (free, no AI)
-        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'backfill-calls'
+        run: |
+          python -m ei.cli earnings-calendar || echo "::warning::earnings calendar refresh failed"
+      - name: Street data and latest call, biggest companies first (Alpha Vantage)
+        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily' || inputs.command == 'coverage'
         working-directory: pipeline
         env:
           FASTEMBED_CACHE_PATH: /home/runner/.cache/fastembed
-        run: python -m ei.cli backfill-calls
+        run: |
+          python -m ei.cli coverage || echo "::warning::coverage stopped early"
       - name: Insider trades and institutional holders (SEC, free, no AI)
-        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'ownership'
+        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily' || inputs.command == 'ownership'
         working-directory: pipeline
         run: |
           python -m ei.cli insiders || echo "::warning::insider refresh failed"
           python -m ei.cli holders || echo "::warning::13F holders refresh failed"
       - name: Refresh sector growth rates and DCFs (free, no AI)
-        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'dcf'
+        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily' || inputs.command == 'dcf'
         working-directory: pipeline
         run: |
           python -m ei.cli sector-growth || echo "::warning::sector growth refresh failed; DCFs use the last saved rates"
-          python -m ei.cli dcf
-      - name: Grow backtest history and re-run the backtest (free, no AI)
-        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'backtest'
+          python -m ei.cli dcf || echo "::warning::dcf failed"
+      - name: Stats, risk and options (free, no AI)
+        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily' || inputs.command == 'risk-options'
+        working-directory: pipeline
+        run: |
+          python -m ei.cli risk || echo "::warning::risk stats failed"
+          python -m ei.cli options || echo "::warning::options refresh failed"
+      - name: Backtest with whatever Alpha Vantage allowance is left (free, no AI)
+        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily' || inputs.command == 'backtest'
         working-directory: pipeline
         env:
           FASTEMBED_CACHE_PATH: /home/runner/.cache/fastembed
         run: |
           python -m ei.cli backtest-collect --max-annual 120 || echo "::warning::backtest collection stopped early"
-          python -m ei.cli backtest-run
+          python -m ei.cli backtest-run || echo "::warning::backtest run failed"
+      - name: Daily run finished
+        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily'
+        working-directory: pipeline
+        run: |
+          python -m ei.cli daily-mark done ${{ inputs.job_id || '' }} || true
       - name: Retry paused loads
         if: (github.event_name == 'schedule' && github.event.schedule == '41 */3 * * *') || inputs.command == 'retry-deferred'
         working-directory: pipeline

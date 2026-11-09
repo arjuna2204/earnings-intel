@@ -435,11 +435,30 @@ def compare_only(settings: Settings, company: dict[str, Any], la: str, lb: str) 
         db.close()
 
 
+def estimates_stale(db: Db, company: dict[str, Any], fetched: date) -> bool:
+    """Estimates move most around earnings: re-check weekly within 3 weeks of a report, else monthly.
+    Keeps the free 25 requests/day stretching across hundreds of stocks."""
+    age = (_today_et() - fetched).days
+    if age >= 30:
+        return True
+    if age < 7:
+        return False
+    today = _today_et()
+    near = [today - timedelta(days=21), today + timedelta(days=21)]
+    cal = db.select("earnings_calendar", {"ticker": f"eq.{company['ticker']}", "select": "report_date"})
+    ev = db.select(
+        "earnings_events",
+        {"cik": f"eq.{company['cik']}", "select": "report_date", "order": "report_date.desc", "limit": "1"},
+    )
+    dates = [date.fromisoformat(str(r["report_date"])[:10]) for r in cal + ev]
+    return any(near[0] <= d <= near[1] for d in dates)
+
+
 def ensure_estimates(db: Db, av: AlphaVantageProvider, company: dict[str, Any]) -> list[dict[str, Any]]:
-    """Consensus EPS estimates, refreshed at most weekly (1 request)."""
+    """Consensus EPS estimates (1 request), refreshed on the schedule in `estimates_stale`."""
     cik = company["cik"]
     rows = db.select("eps_estimates", {"cik": f"eq.{cik}", "select": "*", "order": "fetched_at.desc"})
-    if rows and (_today_et() - date.fromisoformat(str(rows[0]["fetched_at"])[:10])).days < 7:
+    if rows and not estimates_stale(db, company, date.fromisoformat(str(rows[0]["fetched_at"])[:10])):
         return rows
     est = av.earnings_estimates(company["ticker"])
     if est:
@@ -464,12 +483,19 @@ def ensure_estimates(db: Db, av: AlphaVantageProvider, company: dict[str, Any]) 
     return db.select("eps_estimates", {"cik": f"eq.{cik}", "select": "*"})
 
 
-def street_snapshot(settings: Settings, db: Db, company: dict[str, Any], price: float | None) -> dict[str, Any]:
-    """Adjusted (Street) and forward P/E inputs; quietly skipped if the free quota is used up."""
+def street_snapshot(
+    settings: Settings, db: Db, company: dict[str, Any], price: float | None, fetch: bool = True
+) -> dict[str, Any]:
+    """Adjusted (Street) and forward P/E inputs; quietly skipped if the free quota is used up.
+    fetch=False uses only stored Street data (no Alpha Vantage requests)."""
     from ei.street import street_multiples
 
-    if not settings.alpha_vantage_api_key or price is None:
+    if price is None:
         return {}
+    if not fetch or not settings.alpha_vantage_api_key:
+        events = db.select("earnings_events", {"cik": f"eq.{company['cik']}", "select": "*"})
+        estimates = db.select("eps_estimates", {"cik": f"eq.{company['cik']}", "select": "*"})
+        return street_multiples(price, events, estimates, _today_et()) if events or estimates else {}
     av = AlphaVantageProvider(
         settings.alpha_vantage_api_key,
         quota_check=AvQuota(db, AlphaVantageProvider.daily_limit, reserve=BACKFILL_RESERVE),
