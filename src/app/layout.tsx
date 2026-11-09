@@ -3,6 +3,7 @@ import Link from "next/link";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import ThemeToggle from "@/components/ThemeToggle";
+import HeaderSearch from "@/components/HeaderSearch";
 import { APP_NAME } from "@/lib/app";
 import "./globals.css";
 
@@ -35,13 +36,17 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <span className="text-accent">●</span> {APP_NAME}
             </Link>
             <nav className="ml-auto flex items-center gap-1 text-sm">
-              <Link href="/backtest" className="rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground">
+              <Link href="/compare" className="rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground">
+                Compare
+              </Link>
+              <Link href="/backtest" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground sm:block">
                 Backtest
               </Link>
-              <Link href="/status" className="rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground">
+              <Link href="/status" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground sm:block">
                 Status
               </Link>
               <ThemeToggle />
+              <HeaderSearch />
             </nav>
           </div>
         </header>

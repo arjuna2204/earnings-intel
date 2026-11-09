@@ -4,7 +4,20 @@ import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { TickerHit } from "@/lib/types";
 
-export default function SearchBox({ autoFocus = false, large = false }: { autoFocus?: boolean; large?: boolean }) {
+export default function SearchBox({
+  autoFocus = false,
+  large = false,
+  placeholder = "Search any US-listed ticker or company",
+  onPick,
+  onEscape,
+}: {
+  autoFocus?: boolean;
+  large?: boolean;
+  placeholder?: string;
+  /** Called with the chosen ticker instead of opening its page. */
+  onPick?: (ticker: string) => void;
+  onEscape?: () => void;
+}) {
   const router = useRouter();
   const listId = useId();
   const [q, setQ] = useState("");
@@ -40,7 +53,9 @@ export default function SearchBox({ autoFocus = false, large = false }: { autoFo
     const ticker = hit?.ticker ?? q.trim().toUpperCase();
     if (!ticker) return;
     setOpen(false);
-    router.push(`/c/${encodeURIComponent(ticker)}`);
+    setQ("");
+    if (onPick) onPick(ticker);
+    else router.push(`/c/${encodeURIComponent(ticker)}`);
   };
 
   return (
@@ -62,9 +77,12 @@ export default function SearchBox({ autoFocus = false, large = false }: { autoFo
           } else if (e.key === "Enter") {
             e.preventDefault();
             go(visible[active]);
-          } else if (e.key === "Escape") setOpen(false);
+          } else if (e.key === "Escape") {
+            setOpen(false);
+            onEscape?.();
+          }
         }}
-        placeholder="Search any US-listed ticker or company"
+        placeholder={placeholder}
         role="combobox"
         aria-expanded={open}
         aria-controls={listId}

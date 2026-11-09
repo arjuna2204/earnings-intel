@@ -100,7 +100,15 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
           </p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">{company.name}</h1>
         </div>
-        <AnalyzePanel ticker={company.ticker} initialJob={job?.status === "running" || job?.status === "queued" ? job : null} mode="refresh" />
+        <div className="flex items-start gap-2">
+          <Link
+            href={`/compare?a=${encodeURIComponent(company.ticker)}`}
+            className="rounded-full border border-border px-4 py-2 text-sm font-medium hover:bg-card"
+          >
+            Compare
+          </Link>
+          <AnalyzePanel ticker={company.ticker} initialJob={job?.status === "running" || job?.status === "queued" ? job : null} mode="refresh" />
+        </div>
       </header>
       {company.history_note && <p className="mt-3 text-sm text-muted">ⓘ {company.history_note}</p>}
       {company.sector_note && (
