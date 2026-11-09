@@ -23,3 +23,18 @@ jobs:
       - run: ruff check .
       - run: mypy ei
       - run: pytest -q
+
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node scripts/check-client-imports.mjs
+      - run: npx next typegen
+      - run: npx tsc --noEmit
+      - run: npx eslint src
