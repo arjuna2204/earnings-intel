@@ -1,11 +1,13 @@
 import type { NextRequest } from "next/server";
 import { upsert } from "@/lib/db";
+import { allow, tooMany } from "@/lib/rate-limit";
 
 const Q = /^FY\d{4}Q[1-4]$/;
 const VERDICTS = new Set(["better", "same", "worse"]);
 
 /** Save "your take" on a quarter: {cik, period_a, period_b, verdict, note?}. */
 export async function POST(req: NextRequest) {
+  if (!(await allow(req, "take"))) return tooMany();
   const b = (await req.json().catch(() => ({}))) as { cik?: number; period_a?: string; period_b?: string; verdict?: string; note?: string };
   const cik = Number(b.cik);
   if (!Number.isInteger(cik) || cik <= 0 || !Q.test(b.period_a ?? "") || !Q.test(b.period_b ?? "") || !VERDICTS.has(b.verdict ?? "")) {

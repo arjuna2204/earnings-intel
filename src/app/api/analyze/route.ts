@@ -2,9 +2,11 @@ import type { NextRequest } from "next/server";
 import { insert, select, update } from "@/lib/db";
 import { dispatchPipeline } from "@/lib/github";
 import type { Job } from "@/lib/types";
+import { allow, tooMany } from "@/lib/rate-limit";
 
 /** Start loading a company's data. Reuses a job that's already queued/running for the same ticker. */
 export async function POST(req: NextRequest) {
+  if (!(await allow(req, "job"))) return tooMany();
   const body = (await req.json().catch(() => ({}))) as { ticker?: string };
   const ticker = (body.ticker ?? "").trim().toUpperCase();
   if (!/^[A-Z0-9.\-]{1,10}$/.test(ticker)) return Response.json({ error: "Invalid ticker" }, { status: 400 });

@@ -2,11 +2,13 @@ import type { NextRequest } from "next/server";
 import { insert, select, update } from "@/lib/db";
 import { dispatchPipeline } from "@/lib/github";
 import type { Job } from "@/lib/types";
+import { allow, tooMany } from "@/lib/rate-limit";
 
 const Q = /^FY\d{4}Q[1-4]$/;
 
 /** Start a two-quarter brief (filings + call + Street figures) (reuses an in-flight job for the same request). */
 export async function POST(req: NextRequest) {
+  if (!(await allow(req, "job"))) return tooMany();
   const body = (await req.json().catch(() => ({}))) as { ticker?: string; period_a?: string; period_b?: string };
   const ticker = (body.ticker ?? "").trim().toUpperCase();
   let [a, b] = [(body.period_a ?? "").toUpperCase(), (body.period_b ?? "").toUpperCase()];

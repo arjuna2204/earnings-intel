@@ -8,7 +8,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: APP_NAME,
-  description: "Private investor research tool",
+  description: "Equity Research for the everyday investor",
   robots: { index: false, follow: false },
 };
 

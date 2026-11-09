@@ -1,6 +1,6 @@
 # Earnings Intel
 
-A private, password-protected research site for one person. Type any US-listed ticker and get:
+**Equity Research for the everyday investor.** A public research site (no login; hidden from search engines). Type any US-listed ticker and get:
 
 1. **Brief** — what changed between two quarters: Street results (beat/miss, GAAP vs. adjusted), guidance, what drove the numbers, what management said on the call, risk-factor changes, and places where the call and the filing don't line up.
 2. **Call** — the two earnings calls compared: guidance raised/lowered/dropped, topics, tone, and the analyst questions management answered least directly.
@@ -16,7 +16,7 @@ A private, password-protected research site for one person. Type any US-listed t
 
 ## How to use it
 
-- **Open the site:** https://earnings-intel-eight.vercel.app — log in with your site password.
+- **Open the site:** https://earnings-intel-eight.vercel.app — no login needed. Buttons that start new work (loading a company, writing a brief, peers) are limited to 8 per hour per visitor, and the $10/month AI cap still applies.
 - **Add a company:** type a ticker or name on the home page, open it, and press **Load ⟨TICKER⟩ data**. The first load takes 1–3 minutes (it downloads 15 years of SEC data and prices). After that it opens instantly.
 - **Write a brief:** open the company → **Brief** → pick two quarters (the same quarter a year apart shows risk-factor changes too) → **Write brief**. Takes 2–4 minutes the first time.
 - **Peers:** **Peers** → **Find peers**. Edit the list any time with **Edit peers**.
@@ -87,16 +87,16 @@ History grows every morning within the free limits (transcripts: Alpha Vantage, 
 | A chart says "Not reported" | The company didn't file that number | Expected — the app never fills gaps with guesses |
 
 **Where the keys live** (never in the code):
-- **Vercel** (website): `SITE_PASSWORD`, `SESSION_SECRET`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `GH_DISPATCH_TOKEN`.
+- **Vercel** (website): `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `GH_DISPATCH_TOKEN`.
 - **GitHub → Settings → Secrets → Actions** (background jobs): `ANTHROPIC_API_KEY`, `ALPHA_VANTAGE_API_KEY`, `TIINGO_API_KEY`, `SEC_USER_AGENT`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`.
 
-To change the site password: Vercel → Settings → Environment Variables → edit `SITE_PASSWORD` → then Deployments → ⋯ → Redeploy.
+`SITE_PASSWORD` and `SESSION_SECRET` are no longer used and can be deleted from Vercel.
 
 ---
 
 ## For developers
 
-- `src/` — the website (Next.js on Vercel). Pages read from Supabase on the server; the password gate is `src/proxy.ts`.
+- `src/` — the website (Next.js on Vercel). Pages read from Supabase on the server; job-starting endpoints are rate-limited per visitor (`src/lib/rate-limit.ts`).
 - `pipeline/` — the data jobs (Python, run by `.github/workflows/pipeline.yml`).
   - `ei/xbrl/` SEC financial data → standardized metrics; `ei/calls/` transcripts → guidance/topics/tone; `ei/filings/` filing text, risk redlines, press releases, MD&A, brief; `ei/peers.py` peer selection and ranking; `ei/street.py` Street multiples; `ei/budget.py` the $10 cap.
 - `prompts/` — every AI instruction, versioned (`*.v1.md`, `*.v2.md`). Changing a prompt means adding a new version so stored results are re-made.

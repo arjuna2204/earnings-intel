@@ -2,9 +2,11 @@ import type { NextRequest } from "next/server";
 import { insert, select, update } from "@/lib/db";
 import { dispatchPipeline } from "@/lib/github";
 import type { Job } from "@/lib/types";
+import { allow, tooMany } from "@/lib/rate-limit";
 
 /** Start a peer comparison. Body: {ticker, peers?: string[]} or {ticker, auto?: number (3–7)}. */
 export async function POST(req: NextRequest) {
+  if (!(await allow(req, "job"))) return tooMany();
   const body = (await req.json().catch(() => ({}))) as { ticker?: string; peers?: string[]; auto?: number };
   const ticker = (body.ticker ?? "").trim().toUpperCase();
   if (!/^[A-Z0-9.\-]{1,10}$/.test(ticker)) return Response.json({ error: "Bad ticker" }, { status: 400 });

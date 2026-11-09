@@ -6,8 +6,6 @@ export async function GET() {
   const url = process.env.SUPABASE_URL ?? "";
   const key = process.env.SUPABASE_SECRET_KEY ?? "";
   const env = {
-    SITE_PASSWORD: Boolean(process.env.SITE_PASSWORD),
-    SESSION_SECRET: Boolean(process.env.SESSION_SECRET),
     SUPABASE_URL: url ? (url.startsWith("https://") && url.includes(".supabase.co") ? "looks right" : "set, but not a https://….supabase.co address") : false,
     SUPABASE_SECRET_KEY: key
       ? key.startsWith("sb_secret_")
