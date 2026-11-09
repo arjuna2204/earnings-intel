@@ -624,5 +624,34 @@ def valuation_snapshot(
     return snap
 
 
+def reprice(snap: dict[str, object], price: float, price_date: str) -> dict[str, object]:
+    """Move a valuation snapshot to a new price without re-reading filings. Every multiple is linear
+    in price (market cap, P/E) or in enterprise value (= old EV − old market cap + new market cap)."""
+    old = snap.get("price")
+    if not isinstance(old, (int, float)) or old <= 0 or price <= 0:
+        return snap
+    out = dict(snap)
+    s = price / old
+    out["price"], out["price_date"] = price, price_date
+    mcap, ev = snap.get("market_cap"), snap.get("enterprise_value")
+    if isinstance(mcap, (int, float)):
+        out["market_cap"] = mcap * s
+        if isinstance(ev, (int, float)):
+            new_ev = ev - mcap + mcap * s
+            out["enterprise_value"] = new_ev
+            for k in ("ev_ebitda", "ev_revenue"):
+                v = snap.get(k)
+                if isinstance(v, (int, float)) and ev:
+                    out[k] = v * new_ev / ev
+    for k in ("pe", "p_tbv", "p_b", "pe_adj_ltm", "pe_adj_run_rate", "pe_fwd_ntm"):
+        v = snap.get(k)
+        if isinstance(v, (int, float)):
+            out[k] = v * s
+    fy = snap.get("fcf_yield")
+    if isinstance(fy, (int, float)):
+        out["fcf_yield"] = fy / s
+    return out
+
+
 Deriver = Callable[[NormalizedCompany, str], NormalizedCompany]
-__all__ = ["BY_NAME", "derive_all", "valuation_snapshot"]
+__all__ = ["BY_NAME", "derive_all", "reprice", "valuation_snapshot"]

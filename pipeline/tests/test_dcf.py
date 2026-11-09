@@ -82,3 +82,23 @@ def test_growth_path_follows_sector():
     assert abs(hot[-1] - t) < 0.02  # lands near terminal growth by year 10
     slow = growth_path(0.02, 0.12, t, YEARS)
     assert slow[2] > slow[0]  # a laggard in a hot sector is pulled up toward the sector rate
+
+
+def test_reprice_moves_multiples_with_price():
+    from ei.xbrl.derive import reprice
+
+    snap = {
+        "price": 100.0,
+        "price_date": "2026-11-06",
+        "market_cap": 1000.0,
+        "enterprise_value": 1200.0,
+        "pe": 20.0,
+        "ev_ebitda": 12.0,
+        "fcf_yield": 0.05,
+        "pe_fwd_ntm": 15.0,
+    }
+    r = reprice(snap, 110.0, "2026-11-09")
+    assert r["market_cap"] == 1100.0 and r["enterprise_value"] == 1300.0
+    assert abs(r["pe"] - 22.0) < 1e-9 and abs(r["pe_fwd_ntm"] - 16.5) < 1e-9
+    assert abs(r["ev_ebitda"] - 13.0) < 1e-9  # EBITDA unchanged: 1300 / 100
+    assert abs(r["fcf_yield"] - 0.05 / 1.1) < 1e-12 and r["price_date"] == "2026-11-09"

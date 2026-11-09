@@ -122,10 +122,13 @@ def form4_list(sub: dict[str, Any], since: date) -> list[dict[str, str]]:
     return out
 
 
-def run_company(db: Db, sec: SecClient, company: dict[str, Any], today: date | None = None) -> dict[str, Any]:
+def run_company(
+    db: Db, sec: SecClient, company: dict[str, Any], today: date | None = None, subs: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """`subs`: the company's EDGAR filing list if already fetched (saves a request)."""
     today = today or date.today()
     cik = int(company["cik"])
-    filings = form4_list(sec.submissions(cik), today - timedelta(days=LOOKBACK_DAYS))
+    filings = form4_list(subs or sec.submissions(cik), today - timedelta(days=LOOKBACK_DAYS))
     if not filings:
         return {"filings": 0, "new": 0}
     seen: set[str] = set()

@@ -144,7 +144,7 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
           markerNote={events.length ? "○ = earnings report · tap to open that call" : "○ = 10-K / 10-Q filed"}
           emptyNote={
             job?.status === "deferred"
-              ? "The price download was paused by the free price source's hourly limit (50 requests/hour). It retries automatically within 3 hours; per-share history is split-adjusted once prices arrive."
+              ? "The price download was paused by the free price source's hourly limit (50 requests/hour). It retries automatically within 6 hours; per-share history is split-adjusted once prices arrive."
               : undefined
           }
         />

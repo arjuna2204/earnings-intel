@@ -85,7 +85,7 @@ History grows every morning within the free limits (transcripts: Alpha Vantage, 
 |---|---|---|
 | "Couldn't load this page" | The site can't reach its data | Open `/api/health` — it shows which setting is missing |
 | A job stuck on "Waiting for GitHub" | The GitHub token expired or was removed | Create a new fine-grained token (earnings-intel repo only, Actions: read & write) and replace `GH_DISPATCH_TOKEN` in Vercel → Settings → Environment Variables |
-| "Paused — free limit reached" | Tiingo or Alpha Vantage daily/hourly limit | Nothing; it resumes automatically within 3 hours (or the next day for Alpha Vantage) |
+| "Paused — free limit reached" | Tiingo or Alpha Vantage daily/hourly limit | Nothing; it resumes automatically within 6 hours (or the next day for Alpha Vantage) |
 | "Monthly AI budget reached" | $10 used this month | Wait for the 1st, or raise the cap (ask Claude) |
 | A chart says "Not reported" | The company didn't file that number | Expected — the app never fills gaps with guesses |
 
@@ -106,3 +106,12 @@ History grows every morning within the free limits (transcripts: Alpha Vantage, 
 - `supabase/migrations/` — database tables.
 - Checks: `cd pipeline && ruff check . && mypy ei && pytest` and `npx tsc --noEmit && npx eslint src`. Tests use real SEC data and real filings saved under `pipeline/tests/fixtures/`.
 - All math is done in code; the AI only reads text and writes sentences, and code verifies every quote and number it returns.
+
+### What runs each day (and what doesn't)
+The daily job does only what changed:
+- **Prices** download only after a new trading day (checked with one S&P 500 request); valuation multiples are moved to the new price in code.
+- **Filings:** one quick EDGAR check per company; financials are fully re-read only for companies that filed a new 10-K/10-Q. New Form 4s go straight to insider trades.
+- **DCFs, stats & risk, options** run only after a new trading day.
+- **13F fund holdings** download only when the SEC publishes a new quarter; **sector growth** refreshes monthly.
+- **Earnings calendar** on weekdays; **backtest** weekly on Sundays.
+- New stocks (10 largest not yet loaded) and Street data / latest calls (biggest first) run every day.

@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
 
 from ei.config import Settings
@@ -79,7 +80,13 @@ def main(argv: list[str] | None = None) -> int:
     elif args.cmd == "analyze":
         print(json.dumps(analyze(settings, args.ticker, job_id=args.job_id)))
     elif args.cmd == "refresh":
-        print(json.dumps({"refreshed": refresh_all(settings)}))
+        res = refresh_all(settings)
+        print(json.dumps(res))
+        # let later workflow steps skip work when the market had no new trading day
+        gh_out = os.environ.get("GITHUB_OUTPUT")
+        if gh_out:
+            with open(gh_out, "a") as fh:
+                fh.write(f"new_trading_day={'true' if res['new_trading_day'] else 'false'}\n")
     elif args.cmd == "calls":
         from ei.calls.run import compare_calls
 

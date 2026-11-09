@@ -298,7 +298,7 @@ def analyze(
             log.warning("insiders skipped: %s", exc)
         job.finish(
             "deferred" if deferred else "done",
-            "Price download paused by the free-tier limit; retries automatically within 3 hours" if deferred else None,
+            "Price download paused by the free-tier limit; retries automatically within 6 hours" if deferred else None,
             cik,
         )
         return {"ok": True, "cik": cik, "values": len(nc.values), "unresolved": sorted(nc.unresolved)}
@@ -312,21 +312,83 @@ def analyze(
         db.close()
 
 
-def refresh_all(settings: Settings) -> list[str]:
-    """Daily: re-ingest every company we track (cheap: SEC + incremental prices, no AI)."""
-    db = Db(settings.supabase_url, settings.supabase_secret_key)
+# Filings that change the financial statements; anything else needs no re-read of the financials.
+FINANCIAL_FORMS = {"10-K", "10-K/A", "10-Q", "10-Q/A", "20-F", "20-F/A", "40-F", "40-F/A", "6-K"}
+
+
+def refresh_all(settings: Settings) -> dict[str, Any]:
+    """Daily refresh, doing only what changed:
+    - prices: one request per ticker, and only when the market had a new trading day (checked with SPY);
+      valuation multiples are then moved to the new price in code (no filings re-read);
+    - filings: one quick EDGAR check per company; a full re-read of the financials only for companies
+      that filed a new 10-K / 10-Q (or foreign equivalent); new Form 4s go straight to insider trades.
+    """
+    from ei.insiders import run_company as run_insiders
+    from ei.xbrl.derive import reprice
+
+    db, sec = Db(settings.supabase_url, settings.supabase_secret_key), SecClient(settings.sec_user_agent)
+    tiingo = TiingoProvider(settings.tiingo_api_key)
+    since_year = _today_et().year - HISTORY_YEARS
+    recent_cut = (_today_et() - timedelta(days=45)).isoformat()
+    out: dict[str, Any] = {
+        "new_trading_day": False,
+        "reingest": [],
+        "new_filings": 0,
+        "insider_filings": 0,
+        "price_notes": [],
+    }
     try:
-        tickers = [r["ticker"] for r in db.select("companies", {"select": "ticker", "order": "ticker"})]
+        companies = db.select("companies", {"select": "cik,ticker,sector_etf,valuation", "order": "ticker"})
+        etfs = {c["sector_etf"] for c in companies if c.get("sector_etf")} | {"SPY"}
+        # 1. Prices, only if there was a trading day since the last run
+        n_spy, note = load_prices(db, tiingo, "SPY")
+        out["new_trading_day"] = n_spy > 0
+        if n_spy > 0:
+            for t in sorted(etfs - {"SPY"}) + [c["ticker"] for c in companies if c["ticker"] not in etfs]:
+                _, note = load_prices(db, tiingo, t)
+                if note not in ("ok", "no new prices", "up to date"):
+                    out["price_notes"].append(f"{t}: {note}")
+        # 2. What did each company file?
+        for c in companies:
+            if c["ticker"] in etfs:
+                continue
+            cik = int(c["cik"])
+            try:
+                subs = sec.submissions(cik)
+                recent = [r for r in recent_filings(cik, subs, since_year) if r["filed_date"] >= recent_cut]
+                known: set[str] = set()
+                if recent:
+                    accs = ",".join(f'"{r["accession"]}"' for r in recent)
+                    known = {
+                        r["accession"]
+                        for r in db.select("filings", {"accession": f"in.({accs})", "select": "accession"})
+                    }
+                new = [r for r in recent if r["accession"] not in known]
+                if new:
+                    db.upsert("filings", new, on_conflict="accession")
+                    out["new_filings"] += len(new)
+                if any(r["form"] in FINANCIAL_FORMS for r in new):
+                    out["reingest"].append(c["ticker"])  # full re-read below
+                    continue
+                ins = run_insiders(db, sec, c, subs=subs)  # no request unless there are new Form 4s
+                out["insider_filings"] += ins.get("new", 0)
+                if out["new_trading_day"] and c.get("valuation"):
+                    price, price_date = latest_price(db, c["ticker"])
+                    if price and price_date and price_date != c["valuation"].get("price_date"):
+                        db.update("companies", {"cik": cik}, {"valuation": reprice(c["valuation"], price, price_date)})
+            except Exception:
+                log.exception("refresh check failed for %s", c["ticker"])
     finally:
+        sec.close()
+        tiingo.close()
         db.close()
-    done = []
-    for t in tickers:
+    # 3. Full re-read only where a new 10-K / 10-Q arrived
+    for t in out["reingest"]:
         try:
             analyze(settings, t, primary=False)
-            done.append(t)
         except Exception:
             log.exception("refresh failed for %s", t)
-    return done
+    return out
 
 
 __all__ = ["analyze", "asdict", "mark_daily", "refresh_all", "refresh_tickers"]
