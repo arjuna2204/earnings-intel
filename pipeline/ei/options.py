@@ -157,7 +157,9 @@ def summarize(
     earn = None
     if next_earnings and next_earnings >= today:
         after = [t for t in term if t["exp"] > next_earnings.isoformat()]
-        if after:
+        # only when an expiry lands within a week of the report; otherwise the straddle mostly
+        # prices the ordinary days before it, not the report itself
+        if after and (date.fromisoformat(after[0]["exp"]) - next_earnings).days <= 7:
             t = after[0]
             earn = {
                 "date": next_earnings.isoformat(),
