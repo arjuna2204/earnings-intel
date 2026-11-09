@@ -5,7 +5,7 @@ const WORKFLOW = "pipeline.yml";
 
 /** Start the background pipeline in GitHub Actions. */
 export async function dispatchPipeline(inputs: {
-  command: "analyze" | "calls" | "brief" | "peers" | "tickers" | "refresh" | "daily";
+  command: "analyze" | "calls" | "brief" | "peers" | "tickers" | "refresh" | "daily" | "retry-deferred";
   ticker?: string;
   job_id?: number;
   period_a?: string;

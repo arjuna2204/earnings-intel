@@ -23,6 +23,8 @@ export type StreetData = {
   peAdjLtm: number | null;
   adjEpsLtm: number | null;
   peerMedianPe: number | null;
+  /** why the peer multiple was left out, if it was */
+  peerNote?: string | null;
   estimates: EstimateRow[];
   streak: StreakItem[];
   guidance: { label: string; items: GuidanceItem[] } | null;
@@ -84,6 +86,7 @@ export default function StreetView({ d }: { d: StreetData }) {
         />
         <Stat label="Street P/E (last 12 months)" info="pe_adj_ltm" value={d.peAdjLtm != null ? `${d.peAdjLtm.toFixed(1)}x` : "—"} sub="on adjusted EPS" />
       </section>
+      {d.peerNote && <p className="-mt-8 text-xs text-muted">{d.peerNote}</p>}
 
       {d.price && d.field.length > 0 && (
         <section id="sv-value" className="scroll-mt-28">

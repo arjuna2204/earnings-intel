@@ -101,3 +101,27 @@ def test_bank_10q_mdna_found_through_table_of_contents() -> None:
 def test_10q_mdna_regular_layout() -> None:
     s = extract_sections("10-Q", gzip.decompress((FIX / "MSFT_10-Q_2026-09-30.htm.gz").read_bytes()).decode())
     assert len(s["mdna"].text) > 20_000
+
+
+def test_exact_derived_q4_eps():
+    from datetime import date
+
+    from ei.xbrl.normalize import NormalizedCompany, PeriodValue, _exact_derived_eps
+
+    def pv(metric, fp, value, source="reported"):
+        return PeriodValue(metric, 2026, fp, None, date(2026, 9, 26), value, "USD", source, "tag", "acc", date(2026, 10, 30))
+
+    nc = NormalizedCompany(currency="USD")
+    for p in (
+        pv("net_income", "Q4", 30_700.0, "derived"),
+        pv("diluted_shares", "FY", 14_700.0),
+        pv("diluted_shares", "Q1", 14_800.0),
+        pv("diluted_shares", "Q2", 14_750.0),
+        pv("diluted_shares", "Q3", 14_700.0),
+        pv("eps_diluted", "Q4", 2.11, "derived"),  # full year − 9 months: off by a cent
+    ):
+        nc.put(p)
+    _exact_derived_eps(nc)
+    # Q4 shares = 4 × 14,700 − (14,800 + 14,750 + 14,700) = 14,550 → 30,700 / 14,550 = 2.11; check the formula
+    assert nc.get("eps_diluted", 2026, "Q4").value == round(30_700 / 14_550, 2)
+    assert "Net income ÷ diluted shares" in nc.get("eps_diluted", 2026, "Q4").derivation

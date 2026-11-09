@@ -334,7 +334,37 @@ def normalize(
         out.values = {k: v for k, v in out.values.items() if v.fiscal_year >= min_fiscal_year}
 
     _cover_shares(companyfacts, out, splits or [])
+    _exact_derived_eps(out)
     return out
+
+
+def _exact_derived_eps(out: NormalizedCompany) -> None:
+    """Derived quarterly EPS by subtraction (e.g. Q4 = full year − 9 months) is off by a cent or two,
+    because per-share figures don't add across quarters. When the quarter's net income and the four
+    quarters' share counts are known, recompute it as net income ÷ that quarter's diluted shares
+    (Q4 shares = 4 × full-year average − Q1 − Q2 − Q3), which matches what companies report."""
+    for (metric, fy, fp), pv in list(out.values.items()):
+        if metric != "eps_diluted" or pv.source != "derived" or fp == "FY":
+            continue
+        ni = out.get("net_income", fy, fp)
+        shares = out.get("diluted_shares", fy, fp)
+        q_shares = shares.value if shares and shares.source != "derived" else None
+        if q_shares is None and fp == "Q4":
+            fy_sh = out.get("diluted_shares", fy, "FY")
+            qs = [out.get("diluted_shares", fy, q) for q in ("Q1", "Q2", "Q3")]
+            if fy_sh and all(qs):
+                q_shares = 4 * fy_sh.value - sum(q.value for q in qs if q)
+        if ni is None or not q_shares or q_shares <= 0:
+            continue
+        # sanity: keep the subtraction result if the share-based figure is far off (bad share data)
+        exact = ni.value / q_shares
+        if abs(exact - pv.value) > max(0.05, 0.05 * abs(pv.value)):
+            continue
+        out.values[(metric, fy, fp)] = replace(
+            pv,
+            value=round(exact, 2),
+            derivation=f"Net income ÷ diluted shares for the quarter ({fp} shares derived from the full-year average)",
+        )
 
 
 def _place_instants(out: NormalizedCompany, m: MetricDef, facts: Any, cal: FiscalCalendar) -> None:

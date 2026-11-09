@@ -22,11 +22,13 @@ const pct = (v: number, d = 1) => `${Math.abs(v * 100).toFixed(d)}%`;
  * One-glance summary: each signal is computed in code from data already on the page's tabs,
  * and links to the tab that shows the evidence. No AI.
  */
-export async function getQuickTake(company: Company, events: EarningsEvent[], asOf: string): Promise<Signal[]> {
+export type QuickTakeResult = { signals: Signal[]; bottomLine: string[] };
+
+export async function getQuickTake(company: Company, events: EarningsEvent[], asOf: string): Promise<QuickTakeResult> {
   const t = encodeURIComponent(company.ticker);
   const tab = (k: string, extra = "") => `/c/${t}?tab=${k}${extra}`;
   const since = `${Number(asOf.slice(0, 4)) - 1}${asOf.slice(4)}`;
-  const [cases, dcf, cmp, hist, trades, holders, risk, opts] = await Promise.all([
+  const [cases, dcf, cmp, hist, trades, holders, risk, opts, revG] = await Promise.all([
     getCases(company.cik),
     getDcf(company.cik),
     select<{ period_a: string; period_b: string; result: { tone?: { all?: { net_tone?: { delta: number } } }; guidance?: { change: string }[] } }>(
@@ -44,6 +46,14 @@ export async function getQuickTake(company: Company, events: EarningsEvent[], as
     getHolders(company.cik),
     getRisk(company.cik),
     getOptions(company.cik),
+    select<{ value: number; fiscal_year: number; fiscal_period: string }>("metric_values", {
+      cik: `eq.${company.cik}`,
+      metric: "eq.revenue_growth_yoy",
+      fiscal_period: "neq.FY",
+      select: "value,fiscal_year,fiscal_period",
+      order: "period_end.desc",
+      limit: "1",
+    }),
   ]);
   const out: Signal[] = [];
 
@@ -202,7 +212,55 @@ export async function getQuickTake(company: Company, events: EarningsEvent[], as
       href: tab("risk", "#rk-fund"),
     });
   }
-  return out;
+  return { signals: out, bottomLine: bottomLine(company.ticker, out, revG[0] ?? null, band ?? null, pe ?? null) };
+}
+
+/**
+ * Three plain sentences (results, outlook, valuation) assembled in code from the signals above.
+ * States facts in everyday words; never a recommendation.
+ */
+function bottomLine(
+  ticker: string,
+  sig: Signal[],
+  rev: { value: number; fiscal_year: number; fiscal_period: string } | null,
+  band: { p20: number; p50: number; p80: number } | null,
+  pe: number | null,
+): string[] {
+  const by = (k: string) => sig.find((x) => x.key === k);
+  const lines: string[] = [];
+  // 1. results
+  const last = by("last");
+  const revText = rev ? `revenue ${rev.value >= 0 ? "grew" : "fell"} ${pct(rev.value)} from a year earlier` : null;
+  if (last) {
+    const size = last.text.match(/by [\d.]+%/)?.[0];
+    const verb =
+      last.tone === "up" ? `beat earnings estimates${size ? ` ${size}` : ""}` : last.tone === "down" ? `missed earnings estimates${size ? ` ${size}` : ""}` : "matched earnings estimates";
+    lines.push(`${ticker} ${verb} last quarter${revText ? `, and ${revText}` : ""}.`);
+  } else if (revText) {
+    lines.push(`Last quarter, ${revText}.`);
+  }
+  // 2. outlook
+  const g = by("guidance");
+  const r = by("revisions");
+  const parts: string[] = [];
+  if (g) parts.push(g.tone === "up" ? "management raised more forecasts than it cut" : g.tone === "down" ? "management cut more forecasts than it raised" : "management raised and cut forecasts in equal measure");
+  if (r) parts.push(r.tone === "up" ? "analysts have been raising their estimates" : r.tone === "down" ? "analysts have been lowering their estimates" : "analysts' estimates have held steady");
+  if (parts.length) lines.push(`Looking ahead, ${parts.join(", and ")}.`);
+  // 3. valuation
+  const d = by("dcf");
+  const v: string[] = [];
+  if (band && pe) {
+    v.push(
+      pe > band.p80
+        ? `the stock is priced above its usual range (${pe.toFixed(0)}× forward earnings vs ${band.p20.toFixed(0)}–${band.p80.toFixed(0)}× over 3 years)`
+        : pe < band.p20
+          ? `the stock is priced below its usual range (${pe.toFixed(0)}× forward earnings vs ${band.p20.toFixed(0)}–${band.p80.toFixed(0)}× over 3 years)`
+          : `the stock is priced within its usual range (${pe.toFixed(0)}× forward earnings)`,
+    );
+  }
+  if (d) v.push(d.tone === "neutral" ? "the DCF model puts it close to fair value" : `the DCF model ${d.tone === "up" ? "is above" : "is below"} today's price (${d.text.replace(" to model value", "")})`);
+  if (v.length) lines.push(`${v.join("; ").replace(/^./, (c) => c.toUpperCase())}.`);
+  return lines.slice(0, 3);
 }
 
 function money(v: number): string {

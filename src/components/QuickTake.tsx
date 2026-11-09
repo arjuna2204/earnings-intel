@@ -3,12 +3,23 @@ import Term from "@/components/Term";
 import type { Signal } from "@/lib/quicktake";
 
 /** One-glance summary at the top of a company page. Each card links to the tab with the evidence. */
-export default function QuickTake({ signals }: { signals: Signal[] }) {
-  if (!signals.length) return null;
+export default function QuickTake({ signals, bottomLine = [] }: { signals: Signal[]; bottomLine?: string[] }) {
+  if (!signals.length && !bottomLine.length) return null;
   const up = signals.filter((s) => s.tone === "up").length;
   const down = signals.filter((s) => s.tone === "down").length;
   return (
     <section aria-label="Quick take">
+      {bottomLine.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Bottom line</h2>
+          <ul className="mt-2 space-y-1.5 text-lg leading-snug">
+            {bottomLine.map((l) => (
+              <li key={l}>{l}</li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-muted">Facts from the tabs below, assembled in code. Not investment advice.</p>
+        </div>
+      )}
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="flex items-center text-sm font-semibold">
           <Term k="quick_take" quiet>Quick take</Term>

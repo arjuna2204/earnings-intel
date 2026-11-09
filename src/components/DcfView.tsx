@@ -124,9 +124,13 @@ export default function DcfView({ ticker, dcf }: { ticker: string; dcf: DcfModel
           <Notes ids={r.model_notes} />
         </div>
         <div className="mt-1 text-4xl font-semibold tracking-tight tabular-nums">{r.per_share != null ? `$${r.per_share.toFixed(2)}` : "—"}</div>
-        <div className={`mt-1 font-semibold tabular-nums ${up >= 0 ? "text-up" : "text-down"}`}>
-          {up >= 0 ? "▲" : "▼"} {Math.abs(up * 100).toFixed(1)}% vs. ${price.toFixed(2)} today
-        </div>
+        {price > 0 ? (
+          <div className={`mt-1 font-semibold tabular-nums ${up >= 0 ? "text-up" : "text-down"}`}>
+            {up >= 0 ? "▲" : "▼"} {Math.abs(up * 100).toFixed(1)}% vs. ${price.toFixed(2)} today
+          </div>
+        ) : (
+          <div className="mt-1 text-sm text-muted">Share price not loaded yet — upside appears once prices arrive.</div>
+        )}
         {dcf.note && <p className="mt-2 text-sm text-down">{dcf.note}</p>}
       </div>
       <div className="grid grid-cols-2 gap-x-6 gap-y-4 border-y border-border py-4 sm:grid-cols-4">

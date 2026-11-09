@@ -92,6 +92,11 @@ def load_prices(db: Db, provider: PriceProvider, ticker: str) -> tuple[int, str]
     if _price_quota_left(db, provider) <= 0:
         return 0, f"{provider.name} daily limit reached; queued for tomorrow"
     last = db.select("prices", {"ticker": f"eq.{ticker}", "select": "date", "order": "date.desc", "limit": "1"})
+    if last and ticker != "SPY":
+        # already have the market's latest close (SPY is refreshed first each day): no request needed
+        spy = db.select("prices", {"ticker": "eq.SPY", "select": "date", "order": "date.desc", "limit": "1"})
+        if spy and last[0]["date"] >= spy[0]["date"]:
+            return 0, "up to date"
     start = (
         date.fromisoformat(last[0]["date"]) + timedelta(days=1)
         if last
@@ -322,6 +327,34 @@ COMPARE_ETFS = [
 FINANCIAL_FORMS = {"10-K", "10-K/A", "10-Q", "10-Q/A", "20-F", "20-F/A", "40-F", "40-F/A", "6-K"}
 
 
+def catch_up_prices(db: Db, tiingo: PriceProvider, tickers: list[str]) -> tuple[list[str], list[str]]:
+    """Bring each ticker up to the market's latest close. Stops at the first free-tier limit (the
+    rest are picked up by the next retry run). Returns (updated, still behind)."""
+    updated: list[str] = []
+    for i, t in enumerate(tickers):
+        n, note = load_prices(db, tiingo, t)
+        if "limit" in note:
+            return updated, tickers[i:]
+        if n:
+            updated.append(t)
+    return updated, []
+
+
+def reprice_companies(db: Db, companies: list[dict[str, Any]]) -> int:
+    """Move valuation multiples to each company's latest close (no filings re-read)."""
+    from ei.xbrl.derive import reprice
+
+    n = 0
+    for c in companies:
+        if not c.get("valuation"):
+            continue
+        price, price_date = latest_price(db, c["ticker"])
+        if price and price_date and price_date != c["valuation"].get("price_date"):
+            db.update("companies", {"cik": c["cik"]}, {"valuation": reprice(c["valuation"], price, price_date)})
+            n += 1
+    return n
+
+
 def refresh_all(settings: Settings) -> dict[str, Any]:
     """Daily refresh, doing only what changed:
     - prices: one request per ticker, and only when the market had a new trading day (checked with SPY);
@@ -330,7 +363,6 @@ def refresh_all(settings: Settings) -> dict[str, Any]:
       that filed a new 10-K / 10-Q (or foreign equivalent); new Form 4s go straight to insider trades.
     """
     from ei.insiders import run_company as run_insiders
-    from ei.xbrl.derive import reprice
 
     db, sec = Db(settings.supabase_url, settings.supabase_secret_key), SecClient(settings.sec_user_agent)
     tiingo = TiingoProvider(settings.tiingo_api_key)
@@ -347,13 +379,16 @@ def refresh_all(settings: Settings) -> dict[str, Any]:
         companies = db.select("companies", {"select": "cik,ticker,sector_etf,valuation", "order": "ticker"})
         etfs = {c["sector_etf"] for c in companies if c.get("sector_etf")} | set(COMPARE_ETFS)
         # 1. Prices, only if there was a trading day since the last run
-        n_spy, note = load_prices(db, tiingo, "SPY")
+        n_spy, _ = load_prices(db, tiingo, "SPY")
         out["new_trading_day"] = n_spy > 0
         if n_spy > 0:
-            for t in sorted(etfs - {"SPY"}) + [c["ticker"] for c in companies if c["ticker"] not in etfs]:
-                _, note = load_prices(db, tiingo, t)
-                if note not in ("ok", "no new prices", "up to date"):
-                    out["price_notes"].append(f"{t}: {note}")
+            _, behind = catch_up_prices(
+                db, tiingo, sorted(etfs - {"SPY"}) + [c["ticker"] for c in companies if c["ticker"] not in etfs]
+            )
+            if behind:
+                out["price_notes"].append(
+                    f"{len(behind)} tickers wait for the hourly price limit; the retry run catches them up"
+                )
         # 2. What did each company file?
         for c in companies:
             if c["ticker"] in etfs:
@@ -378,10 +413,8 @@ def refresh_all(settings: Settings) -> dict[str, Any]:
                     continue
                 ins = run_insiders(db, sec, c, subs=subs)  # no request unless there are new Form 4s
                 out["insider_filings"] += ins.get("new", 0)
-                if out["new_trading_day"] and c.get("valuation"):
-                    price, price_date = latest_price(db, c["ticker"])
-                    if price and price_date and price_date != c["valuation"].get("price_date"):
-                        db.update("companies", {"cik": cik}, {"valuation": reprice(c["valuation"], price, price_date)})
+                if out["new_trading_day"]:
+                    reprice_companies(db, [c])
             except Exception:
                 log.exception("refresh check failed for %s", c["ticker"])
     finally:
@@ -426,7 +459,26 @@ def mark_daily(settings: Settings, status: str, job_id: int | None) -> dict[str,
 
 
 def retry_deferred(settings: Settings) -> list[str]:
-    """Re-run companies whose most recent load was paused by a free-tier limit (every few hours)."""
+    """Every few hours: re-run loads paused by a free-tier limit, then bring any stock or comparison
+    fund that fell behind on prices up to the latest close."""
+    out = _retry_jobs(settings)
+    db = Db(settings.supabase_url, settings.supabase_secret_key)
+    tiingo = TiingoProvider(settings.tiingo_api_key)
+    try:
+        companies = db.select("companies", {"select": "cik,ticker,sector_etf,valuation", "order": "ticker"})
+        etfs = {c["sector_etf"] for c in companies if c.get("sector_etf")} | set(COMPARE_ETFS)
+        updated, behind = catch_up_prices(
+            db, tiingo, sorted(etfs) + [c["ticker"] for c in companies if c["ticker"] not in etfs]
+        )
+        reprice_companies(db, [c for c in companies if c["ticker"] in updated])
+        out.append(f"prices: {len(updated)} caught up" + (f", {len(behind)} still waiting" if behind else ""))
+    finally:
+        tiingo.close()
+        db.close()
+    return out
+
+
+def _retry_jobs(settings: Settings) -> list[str]:
     db = Db(settings.supabase_url, settings.supabase_secret_key)
     try:
         recent = db.select(

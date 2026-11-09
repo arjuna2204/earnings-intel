@@ -32,6 +32,7 @@ import QuickTake from "@/components/QuickTake";
 import WatchButton from "@/components/WatchButton";
 import Term, { AboutNumbers } from "@/components/Term";
 import { COMPARE_ETFS, etfName } from "@/lib/etfs";
+import { comparablePeerPe } from "@/lib/peer-check";
 import { getQuickTake } from "@/lib/quicktake";
 import { getHolders, getInsiderTrades, summarizeInsiders } from "@/lib/ownership";
 
@@ -192,7 +193,8 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
 }
 
 async function QuickTakeSection({ company, events, asOf }: { company: Company; events: Awaited<ReturnType<typeof getEvents>>; asOf: string }) {
-  return <QuickTake signals={await getQuickTake(company, events, asOf)} />;
+  const q = await getQuickTake(company, events, asOf);
+  return <QuickTake signals={q.signals} bottomLine={q.bottomLine} />;
 }
 
 async function RiskTab({ company }: { company: Company }) {
@@ -360,7 +362,10 @@ async function BriefTab({ company, events, a, b, mode = "brief" }: { company: Co
     getCases(company.cik),
   ]);
   const v = company.valuation;
-  const valuation = v?.price && v?.eps_ntm && v.eps_ntm > 0 ? { price: v.price, epsNtm: v.eps_ntm, peerMedianPe: peerCmp?.result.medians.pe_fwd_ntm ?? null } : null;
+  const valuation =
+    v?.price && v?.eps_ntm && v.eps_ntm > 0
+      ? { price: v.price, epsNtm: v.eps_ntm, peerMedianPe: comparablePeerPe(peerCmp?.result.medians.pe_fwd_ntm, null, v.pe_fwd_ntm, company.ticker).pe }
+      : null;
   const kv = (m: string, q: [number, number]) => kpis.find((r) => r.metric === m && r.fiscal_year === q[0] && r.fiscal_period === `Q${q[1]}`)?.value;
   const extras = buildExtras({
     brief,
@@ -546,7 +551,8 @@ async function StreetTab({ company, events, prices }: { company: Company; events
     field.push({ label: "Analyst EPS range", sub: `Low–high estimate × today's ${v.pe_fwd_ntm.toFixed(1)}x`, lo: eps.eps_low * v.pe_fwd_ntm, hi: eps.eps_high * v.pe_fwd_ntm, mid: price });
   if (nb?.pe && eps?.eps_avg)
     field.push({ label: "Own forward P/E range", sub: `${nb.pe.p20.toFixed(1)}x–${nb.pe.p80.toFixed(1)}x × consensus EPS`, lo: nb.pe.p20 * eps.eps_avg, hi: nb.pe.p80 * eps.eps_avg, mid: nb.pe.p50 * eps.eps_avg });
-  const peerPe = peers?.result.medians.pe_fwd_ntm;
+  const peerCheck = comparablePeerPe(peers?.result.medians.pe_fwd_ntm, nb?.pe?.p50, v?.pe_fwd_ntm, company.ticker);
+  const peerPe = peerCheck.pe;
   if (peerPe && eps?.eps_low && eps.eps_high)
     field.push({ label: "Peer median multiple", sub: `${peerPe.toFixed(1)}x × low–high EPS`, lo: eps.eps_low * peerPe, hi: eps.eps_high * peerPe, mid: eps.eps_avg ? eps.eps_avg * peerPe : null });
   const sc = nb?.scenarios;
@@ -577,7 +583,8 @@ async function StreetTab({ company, events, prices }: { company: Company; events
         peFwd: v?.pe_fwd_ntm ?? null,
         peAdjLtm: v?.pe_adj_ltm ?? null,
         adjEpsLtm: v?.adj_eps_ltm ?? null,
-        peerMedianPe: peers?.result.medians.pe_fwd_ntm ?? null,
+        peerMedianPe: peerPe ?? null,
+        peerNote: peerCheck.note,
         estimates,
         streak,
         guidance: analysis?.extraction?.guidance?.length && lb ? { label: lb, items: analysis.extraction.guidance } : null,

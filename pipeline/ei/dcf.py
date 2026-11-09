@@ -183,6 +183,13 @@ def defaults(
             [],
             {},
         )
+    if not (company.get("valuation") or {}).get("price"):
+        return (
+            "not_applicable",
+            "Waiting for price history — the DCF needs today's share price and market value. It fills in automatically once prices load.",
+            [],
+            {},
+        )
     if (company.get("currency") or "USD") != "USD":
         return (
             "not_applicable",
