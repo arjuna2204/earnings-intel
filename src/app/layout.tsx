@@ -4,6 +4,7 @@ import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import ThemeToggle from "@/components/ThemeToggle";
 import HeaderSearch from "@/components/HeaderSearch";
+import WatchAlerts from "@/components/WatchAlerts";
 import { APP_NAME } from "@/lib/app";
 import "./globals.css";
 
@@ -49,6 +50,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 Status
               </Link>
               <ThemeToggle />
+              <WatchAlerts />
               <HeaderSearch />
             </nav>
           </div>

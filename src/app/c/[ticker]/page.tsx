@@ -24,6 +24,11 @@ import { figureText, releaseFigure, type StreetRow } from "@/lib/figures";
 import FilingsView from "@/components/FilingsView";
 import { getBrief, getCases, getDodges, getLatestBriefJob, getRiskChanges, getTakes, type Brief } from "@/lib/filings";
 import { select, selectAll } from "@/lib/db";
+import OwnershipView from "@/components/OwnershipView";
+import QuickTake from "@/components/QuickTake";
+import WatchButton from "@/components/WatchButton";
+import { getQuickTake } from "@/lib/quicktake";
+import { getHolders, getInsiderTrades, summarizeInsiders } from "@/lib/ownership";
 
 export default function CompanyPage(props: PageProps<"/c/[ticker]">) {
   return (
@@ -100,7 +105,8 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
           </p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">{company.name}</h1>
         </div>
-        <div className="flex items-start gap-2">
+        <div className="flex flex-wrap items-start gap-2">
+          <WatchButton ticker={company.ticker} />
           <Link
             href={`/compare?a=${encodeURIComponent(company.ticker)}`}
             className="rounded-full border border-border px-4 py-2 text-sm font-medium hover:bg-card"
@@ -116,6 +122,10 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
           <b>Sector check:</b> {company.sector_note}. Using general metrics for now — tell Claude if a sector pack should apply.
         </p>
       )}
+
+      <Suspense fallback={<div className="mt-5 h-24 animate-pulse rounded-xl bg-card" />}>
+        <QuickTakeSection company={company} events={events} asOf={prices.at(-1)?.date ?? company.valuation?.price_date ?? "2026-01-01"} />
+      </Suspense>
 
       <div className="mt-4">
         <CompanyTabs defaultTab="street" />
@@ -146,10 +156,21 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
         {tab === "call" && <CallTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />}
         {tab === "filings" && <BriefTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} mode="filings" />}
         {tab === "peers" && <PeersTab company={company} prices={prices} />}
+        {tab === "ownership" && <OwnershipTab company={company} asOf={prices.at(-1)?.date ?? company.valuation?.price_date ?? "2026-01-01"} />}
         </Suspense>
       </div>
     </>
   );
+}
+
+async function QuickTakeSection({ company, events, asOf }: { company: Company; events: Awaited<ReturnType<typeof getEvents>>; asOf: string }) {
+  return <QuickTake signals={await getQuickTake(company, events, asOf)} />;
+}
+
+async function OwnershipTab({ company, asOf }: { company: Company; asOf: string }) {
+  const since = `${Number(asOf.slice(0, 4)) - 2}${asOf.slice(4)}`;
+  const [trades, holders] = await Promise.all([getInsiderTrades(company.cik, since), getHolders(company.cik)]);
+  return <OwnershipView ticker={company.ticker} trades={trades} summary={summarizeInsiders(trades, asOf)} holders={holders} asOf={asOf} />;
 }
 
 async function CallTab({

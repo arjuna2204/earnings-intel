@@ -2,6 +2,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import Link from "next/link";
 import SearchBox from "@/components/SearchBox";
+import WatchlistPanel from "@/components/WatchlistPanel";
 import { select } from "@/lib/db";
 import type { Company } from "@/lib/types";
 
@@ -26,6 +27,9 @@ export default function Home() {
           See which companies are ready to explore
         </Link>
       </p>
+      <div id="watchlist" className="scroll-mt-20">
+        <WatchlistPanel />
+      </div>
       <Suspense fallback={<RecentSkeleton />}>
         <Recent />
       </Suspense>
