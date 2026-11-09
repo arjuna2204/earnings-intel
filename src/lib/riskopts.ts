@@ -49,7 +49,7 @@ export type Options = {
   iv_rank: Num;
   iv_history_days: number;
   term: { exp: string; dte: number; strike: number; straddle: number; move: number; iv: Num }[];
-  earnings: { date: string; exp: string; move: number; straddle: number; strike: number } | null;
+  earnings: { date: string; exp: string; move: number; straddle: number; strike: number; day_move?: number | null; before_exp?: string } | null;
   month_exp: string;
   skew: { put_iv: number; call_iv: number; skew: number; put_strike: number; call_strike: number } | null;
   max_pain: Num;

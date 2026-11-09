@@ -28,8 +28,13 @@ function reading(t: string, o: Options, avgEarn: N): string[] {
   const near = o.term.find((x) => x.dte >= 20) ?? o.term[0];
   if (near) out.push(`Options are pricing roughly a ±${pct(near.move)} move in ${t} by ${day(near.exp)} (${near.dte} days), based on the at-the-money straddle.`);
   if (o.earnings) {
-    const cmp = avgEarn != null ? ` For comparison, the stock has moved ±${pct(avgEarn)} on an average earnings day — so options are pricing ${o.earnings.move > avgEarn * 1.15 ? "a bigger" : o.earnings.move < avgEarn * 0.85 ? "a smaller" : "a similar"} move than usual (the straddle also covers the other days until expiry).` : "";
-    out.push(`Earnings are expected ${day(o.earnings.date)}. The ${day(o.earnings.exp)} straddle prices a ±${pct(o.earnings.move)} move through the report.${cmp}`);
+    const dm = o.earnings.day_move;
+    if (dm != null) {
+      const cmp = avgEarn != null ? ` The stock has actually moved ±${pct(avgEarn)} on an average earnings day, so options expect ${dm > avgEarn * 1.15 ? "a bigger" : dm < avgEarn * 0.85 ? "a smaller" : "a similar"} reaction than usual.` : "";
+      out.push(`Earnings are expected ${day(o.earnings.date)}. Separating out ordinary day-to-day movement, options imply about a ±${pct(dm)} move on the report itself.${cmp}`);
+    } else {
+      out.push(`Earnings are expected ${day(o.earnings.date)}. The ${day(o.earnings.exp)} straddle prices a ±${pct(o.earnings.move)} move through the report (including the ordinary days before it).`);
+    }
   }
   if (o.iv30 != null && o.realized30 != null && o.realized30 > 0) {
     const r = o.iv30 / o.realized30;
@@ -123,11 +128,24 @@ export default function OptionsView({ ticker, o, asOf, avgEarningsMove }: { tick
         {o.earnings && (
           <div className="mt-4 rounded-2xl border border-border p-4">
             <p className="text-xs text-muted">Earnings {day(o.earnings.date)}</p>
-            <p className="mt-1 text-2xl font-semibold tabular-nums">±{pct(o.earnings.move)}</p>
-            <p className="text-sm text-muted">
-              move priced by the {day(o.earnings.exp)} ${o.earnings.strike} straddle (${o.earnings.straddle.toFixed(2)})
-              {avgEarningsMove != null && ` · past earnings days averaged ±${pct(avgEarningsMove)}`}
-            </p>
+            {o.earnings.day_move != null ? (
+              <>
+                <p className="mt-1 text-2xl font-semibold tabular-nums">±{pct(o.earnings.day_move)}</p>
+                <p className="text-sm text-muted">
+                  earnings-day move options imply — the {day(o.earnings.exp)} straddle (±{pct(o.earnings.move)}) minus the ordinary movement priced by the{" "}
+                  {day(o.earnings.before_exp ?? o.earnings.exp)} expiry
+                  {avgEarningsMove != null && ` · past earnings days averaged ±${pct(avgEarningsMove)}`}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="mt-1 text-2xl font-semibold tabular-nums">±{pct(o.earnings.move)}</p>
+                <p className="text-sm text-muted">
+                  move priced through {day(o.earnings.exp)} by the ${o.earnings.strike} straddle (${o.earnings.straddle.toFixed(2)}), including the ordinary days before the report
+                  {avgEarningsMove != null && ` · past earnings days averaged ±${pct(avgEarningsMove)}`}
+                </p>
+              </>
+            )}
           </div>
         )}
         <ul className="mt-4 space-y-2 rounded-xl bg-card px-4 py-3 text-sm leading-relaxed">

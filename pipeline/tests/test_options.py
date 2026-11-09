@@ -36,6 +36,8 @@ def test_summarize_expected_move_earnings_and_skew():
     assert [t["dte"] for t in s["term"]] == [11, 39]
     assert abs(s["term"][0]["move"] - 0.041) < 1e-9  # (2.1 + 2.0) / 100
     assert s["earnings"]["exp"] == "2026-12-18" and abs(s["earnings"]["move"] - 0.082) < 1e-9
+    # day move = sqrt(0.082² − 0.041² × 39/11)
+    assert abs(s["earnings"]["day_move"] - (0.082**2 - 0.041**2 * 39 / 11) ** 0.5) < 1e-9
     assert abs(s["skew"]["skew"] - (0.41 - 0.33)) < 1e-9  # 25-delta put IV minus call IV
     assert s["month_exp"] == "2026-12-18"
     assert abs(s["put_call_volume"] - 390 / 450) < 1e-9

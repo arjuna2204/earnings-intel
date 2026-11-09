@@ -183,7 +183,7 @@ export async function getQuickTake(company: Company, events: EarningsEvent[], as
     out.push({
       key: "options",
       title: "Options",
-      text: `Pricing ±${pct(em.move)} move for earnings`,
+      text: em.day_move != null ? `Imply ±${pct(em.day_move)} move on earnings day` : `Pricing ±${pct(em.move)} through earnings week`,
       detail: `Report ${em.date}${avg != null ? ` · past earnings days averaged ±${pct(avg)}` : ""}`,
       tone: "neutral",
       href: tab("options"),

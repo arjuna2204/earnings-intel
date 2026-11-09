@@ -168,6 +168,15 @@ def summarize(
                 "straddle": t["straddle"],
                 "strike": t["strike"],
             }
+            # Earnings-day move alone: variance through the post-report expiry minus the ordinary
+            # variance priced by the expiry just before the report, scaled to the same number of days.
+            before = [b for b in term if b["exp"] < next_earnings.isoformat() and b["dte"] > 0]
+            if before:
+                b = before[-1]
+                ordinary = b["move"] ** 2 * (t["dte"] / b["dte"])
+                extra = t["move"] ** 2 - ordinary
+                earn["day_move"] = extra**0.5 if extra > 0 else None
+                earn["before_exp"] = b["exp"]
     rank = None
     if iv30 is not None and len(iv_hist) >= 60:
         lo, hi = min([*iv_hist, iv30]), max([*iv_hist, iv30])
