@@ -53,6 +53,7 @@ def test_read_quarter_share_classes_and_latest_filing(tmp_path):
         ["a2", "ALPHABET INC CL C", "02079K107", "50", "5", "SH", ""],  # other class, different name: still counted
         ["a2", "ALPHABET INC", "02079K305", "500", "50", "SH", "Call"],  # options excluded
         ["b1", "ALPHABET INC", "02079K305", "300", "30", "SH", ""],
+        ["b1", "ALPHABET INC", "02079K305", "300", "3000", "SH", ""],  # typo: implied price 0.1 vs ~10, dropped
     ]
     p = tmp_path / "q.zip"
     p.write_bytes(_zip(sub, cover, info).read())
