@@ -10,7 +10,7 @@ import { useThemeColors } from "@/components/useThemeColors";
 import type { CompareSide } from "@/lib/compare";
 
 type Ok = Extract<CompareSide, { status: "ok" }>;
-type Fmt = "money" | "pct" | "x" | "usd";
+type Fmt = "money" | "pct" | "x" | "usd" | "spct";
 type Better = "high" | "low" | null;
 
 const BLUE = { dark: "#5b9dff", light: "#2563eb" };
@@ -18,6 +18,7 @@ const BLUE = { dark: "#5b9dff", light: "#2563eb" };
 function fmt(v: number | null | undefined, f: Fmt): string | null {
   if (v == null || !Number.isFinite(v)) return null;
   if (f === "pct") return `${(v * 100).toFixed(1)}%`;
+  if (f === "spct") return `${v >= 0 ? "+" : "−"}${Math.abs(v * 100).toFixed(1)}%`;
   if (f === "x") return `${v.toFixed(1)}×`;
   if (f === "usd") return `$${v.toFixed(2)}`;
   const a = Math.abs(v);
@@ -145,7 +146,16 @@ function Slot({ side, onPick, label }: { side: CompareSide; onPick: (t: string) 
 
 // ---------------------------------------------------------------- comparison body
 
-type Row = { label: string; a: number | null | undefined; b: number | null | undefined; f: Fmt; better: Better; sub?: [string | null, string | null] };
+type Row = {
+  label: string;
+  a: number | null | undefined;
+  b: number | null | undefined;
+  f: Fmt;
+  better: Better;
+  sub?: [string | null, string | null];
+  /** valuation multiple: a negative value means losses, which never counts as "cheaper" */
+  multiple?: boolean;
+};
 
 function Comparison({ a, b }: { a: Ok; b: Ok }) {
   const theme = useThemeColors();
@@ -157,10 +167,10 @@ function Comparison({ a, b }: { a: Ok; b: Ok }) {
 
   const valuation: Row[] = [
     { label: "Market cap", a: va?.market_cap, b: vb?.market_cap, f: "money", better: null },
-    { label: "P/E (TTM)", a: va?.pe, b: vb?.pe, f: "x", better: "low" },
-    { label: "Forward P/E (next 12 mo.)", a: va?.pe_fwd_ntm, b: vb?.pe_fwd_ntm, f: "x", better: "low" },
-    { label: "EV / EBITDA (TTM)", a: va?.ev_ebitda, b: vb?.ev_ebitda, f: "x", better: "low" },
-    { label: "EV / Revenue (TTM)", a: va?.ev_revenue, b: vb?.ev_revenue, f: "x", better: "low" },
+    { label: "P/E (TTM)", multiple: true, a: va?.pe, b: vb?.pe, f: "x", better: "low" },
+    { label: "Forward P/E (next 12 mo.)", multiple: true, a: va?.pe_fwd_ntm, b: vb?.pe_fwd_ntm, f: "x", better: "low" },
+    { label: "EV / EBITDA (TTM)", multiple: true, a: va?.ev_ebitda, b: vb?.ev_ebitda, f: "x", better: "low" },
+    { label: "EV / Revenue (TTM)", multiple: true, a: va?.ev_revenue, b: vb?.ev_revenue, f: "x", better: "low" },
     { label: "Free-cash-flow yield (TTM)", a: va?.fcf_yield, b: vb?.fcf_yield, f: "pct", better: "high" },
   ];
 
@@ -175,10 +185,10 @@ function Comparison({ a, b }: { a: Ok; b: Ok }) {
       better: null,
       sub: [a.dcf?.upside != null ? `${signed(a.dcf.upside)} vs price` : a.dcf?.note ? "Not applicable" : null, b.dcf?.upside != null ? `${signed(b.dcf.upside)} vs price` : b.dcf?.note ? "Not applicable" : null],
     },
-    { label: "DCF upside", a: a.dcf?.upside, b: b.dcf?.upside, f: "pct", better: "high" },
+    { label: "DCF upside", a: a.dcf?.upside, b: b.dcf?.upside, f: "spct", better: "high" },
     { label: "Base case (12 mo.)", a: a.cases?.base, b: b.cases?.base, f: "usd", better: null, sub: [caseSub(a), caseSub(b)] },
-    { label: "Base case upside", a: vs(a.cases?.base, a.cases?.price), b: vs(b.cases?.base, b.cases?.price), f: "pct", better: "high" },
-    { label: "Bear case downside", a: vs(a.cases?.bear, a.cases?.price), b: vs(b.cases?.bear, b.cases?.price), f: "pct", better: "high" },
+    { label: "Base case vs price", a: vs(a.cases?.base, a.cases?.price), b: vs(b.cases?.base, b.cases?.price), f: "spct", better: "high" },
+    { label: "Bear case vs price", a: vs(a.cases?.bear, a.cases?.price), b: vs(b.cases?.bear, b.cases?.price), f: "spct", better: "high" },
   ];
 
   const fundamentals: Row[] = [
@@ -221,7 +231,7 @@ function Comparison({ a, b }: { a: Ok; b: Ok }) {
       <Performance a={a} b={b} colors={colors} />
 
       <Table title="Valuation" note="Lower multiples and a higher cash-flow yield mean you pay less for each dollar of earnings or cash. Cheaper isn't always better — fast growers usually cost more." rows={valuation} a={a.ticker} b={b.ticker} winLabel="cheaper" />
-      <Table title="Street & models" note="DCF = this app's 10-year discounted-cash-flow model from SEC financials. Cases = analysts' low / consensus / high EPS × the stock's own forward P/E history." rows={street} a={a.ticker} b={b.ticker} winLabel="more upside" />
+      <Table title="Street & models" note="DCF = this app's 10-year discounted-cash-flow model from SEC financials. Cases = analysts' low / consensus / high EPS × the stock's own forward P/E history." rows={street} a={a.ticker} b={b.ticker} winLabel="better" />
       <Table
         title="Fundamentals"
         note={`Latest fiscal year from SEC filings (${a.ticker} FY${fyOf(a) ?? "—"}, ${b.ticker} FY${fyOf(b) ?? "—"}). Fiscal years can end in different months.`}
@@ -257,7 +267,7 @@ function caseSub(s: Ok): string | null {
 
 function winner(r: Row): "a" | "b" | null {
   if (!r.better || r.a == null || r.b == null || r.a === r.b) return null;
-  if (r.f === "x" && r.better === "low") {
+  if (r.multiple) {
     // a negative P/E or EV/EBITDA means losses — never "cheaper"
     if (r.a <= 0 && r.b <= 0) return null;
     if (r.a <= 0) return "b";
