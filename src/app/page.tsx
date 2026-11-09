@@ -20,6 +20,12 @@ export default function Home() {
       <div className="mt-8">
         <SearchBox autoFocus large />
       </div>
+      <p className="mt-4 text-sm text-muted">
+        New here?{" "}
+        <Link href="/coverage" className="font-semibold text-accent hover:underline">
+          See which companies are ready to explore
+        </Link>
+      </p>
       <Suspense fallback={<RecentSkeleton />}>
         <Recent />
       </Suspense>

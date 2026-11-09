@@ -39,6 +39,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <Link href="/compare" className="rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground">
                 Compare
               </Link>
+              <Link href="/coverage" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground sm:block">
+                What&apos;s ready
+              </Link>
               <Link href="/backtest" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground sm:block">
                 Backtest
               </Link>
