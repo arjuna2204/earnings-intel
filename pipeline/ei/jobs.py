@@ -312,6 +312,12 @@ def analyze(
         db.close()
 
 
+# Funds people can add to any price chart (kept current on trading days; one price request each).
+COMPARE_ETFS = [
+    "SPY", "QQQ", "DIA", "IWM", "VTI", "SMH", "GLD", "TLT",
+    "XLK", "XLF", "XLV", "XLY", "XLP", "XLE", "XLI", "XLB", "XLU", "XLRE", "XLC",
+]  # fmt: skip
+
 # Filings that change the financial statements; anything else needs no re-read of the financials.
 FINANCIAL_FORMS = {"10-K", "10-K/A", "10-Q", "10-Q/A", "20-F", "20-F/A", "40-F", "40-F/A", "6-K"}
 
@@ -339,7 +345,7 @@ def refresh_all(settings: Settings) -> dict[str, Any]:
     }
     try:
         companies = db.select("companies", {"select": "cik,ticker,sector_etf,valuation", "order": "ticker"})
-        etfs = {c["sector_etf"] for c in companies if c.get("sector_etf")} | {"SPY"}
+        etfs = {c["sector_etf"] for c in companies if c.get("sector_etf")} | set(COMPARE_ETFS)
         # 1. Prices, only if there was a trading day since the last run
         n_spy, note = load_prices(db, tiingo, "SPY")
         out["new_trading_day"] = n_spy > 0

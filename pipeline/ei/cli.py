@@ -41,6 +41,8 @@ def main(argv: list[str] | None = None) -> int:
     hd.add_argument("--force", action="store_true")
     sub.add_parser("earnings-calendar")
     sub.add_parser("universe")
+    lp = sub.add_parser("load-prices", help="price history for tickers (default: the chart-comparison ETFs)")
+    lp.add_argument("tickers", nargs="*")
     dm = sub.add_parser("daily-mark")
     dm.add_argument("status", choices=["running", "done"])
     dm.add_argument("job_id", nargs="?", default=None)
@@ -111,6 +113,17 @@ def main(argv: list[str] | None = None) -> int:
         from ei.jobs import mark_daily
 
         print(json.dumps(mark_daily(settings, args.status, int(args.job_id) if args.job_id else None)))
+    elif args.cmd == "load-prices":
+        from ei.db import Db
+        from ei.jobs import COMPARE_ETFS, load_prices
+        from ei.prices import TiingoProvider
+
+        db = Db(settings.supabase_url, settings.supabase_secret_key)
+        tp = TiingoProvider(settings.tiingo_api_key)
+        try:
+            print(json.dumps({t: load_prices(db, tp, t) for t in (args.tickers or COMPARE_ETFS)}))
+        finally:
+            tp.close()
     elif args.cmd == "universe":
         from ei.universe import refresh_universe
 
