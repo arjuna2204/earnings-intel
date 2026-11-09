@@ -592,10 +592,14 @@ def valuation_snapshot(
         pv = latest_period(nc, metric)
         return pv.value if pv else None
 
-    shares = nc.shares_outstanding_cover[1] if nc.shares_outstanding_cover else lv("diluted_shares")
-    snap["shares_source"] = (
-        "Cover page shares outstanding" if nc.shares_outstanding_cover else "Latest diluted weighted shares"
-    )
+    cover = nc.shares_outstanding_cover[1] if nc.shares_outstanding_cover else None
+    diluted = lv("diluted_shares")
+    if cover and diluted and not 0.7 <= cover / diluted <= 1.4:
+        # Companies with several share classes (Visa, Alphabet, Berkshire) sometimes put only one class on
+        # the cover page; the diluted count covers every class converted to common, so trust it instead.
+        cover = None
+    shares = cover or diluted
+    snap["shares_source"] = "Cover page shares outstanding" if cover else "Latest diluted weighted shares"
     mcap = price * shares if shares else None
     snap["market_cap"] = mcap
     debt, cash = lv("total_debt"), lv("cash")
@@ -626,10 +630,26 @@ def valuation_snapshot(
         snap["fy_fallback"] = fy_fallback
     snap["pe"] = price / eps if eps and eps > 0 else None
     snap["fcf_yield"] = _div(fcf, mcap)
-    dps, div_paid, bb = lv("dividends_per_share_ttm"), lv("dividends_paid_ttm"), lv("buybacks_ttm")
-    if dps is None:  # no quarterly history: latest fiscal year
-        fy_dps = [pv for (m, _, fp), pv in nc.values.items() if m == "dividends_per_share" and fp == "FY"]
-        dps = max(fy_dps, key=lambda pv: pv.period_end).value if fy_dps else None
+    latest_end = max((pv.period_end for pv in nc.values.values()), default=None)
+
+    def recent(metric: str) -> float | None:
+        """Last-twelve-months figure, or the latest fiscal year, but only if it is from the past ~15 months
+        (a TTM from years ago would silently understate a company that changed its payout)."""
+        cands = [latest_period(nc, f"{metric}_ttm")]
+        fy_rows = [pv for (m, _, fp), pv in nc.values.items() if m == metric and fp == "FY"]
+        if fy_rows:
+            cands.append(max(fy_rows, key=lambda pv: pv.period_end))
+        cands = [c for c in cands if c]
+        if not cands:
+            return None
+        best = max(cands, key=lambda pv: pv.period_end)
+        if latest_end and (latest_end - best.period_end).days > 460:
+            return None
+        return best.value
+
+    dps, div_paid, bb = recent("dividends_per_share"), recent("dividends_paid"), recent("buybacks")
+    if dps and div_paid and shares and not 0.6 <= dps * shares / div_paid <= 1.6:
+        dps = None  # per-share tags disagree with the cash actually paid; use the cash figure
     # payers tag their dividends in filings; nothing tagged = no dividend
     snap["dividend_yield"] = dps / price if dps and dps > 0 else ((_div(div_paid, mcap) or 0.0) if div_paid else 0.0)
     snap["dividend_per_share_ttm"] = dps

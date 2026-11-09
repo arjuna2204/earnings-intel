@@ -25,7 +25,11 @@ def main(argv: list[str] | None = None) -> int:
     a = sub.add_parser("analyze")
     a.add_argument("ticker")
     a.add_argument("--job-id", type=int, default=None)
-    a.add_argument("--background", action="store_true", help="re-read without marking it as a user's company or calling Alpha Vantage")
+    a.add_argument(
+        "--background",
+        action="store_true",
+        help="re-read without marking it as a user's company or calling Alpha Vantage",
+    )
     sub.add_parser("refresh")
     sub.add_parser("retry-deferred")
     sub.add_parser("backfill-calls")

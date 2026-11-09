@@ -435,6 +435,11 @@ def _place_durations(out: NormalizedCompany, m: MetricDef, facts: Any, cal: Fisc
         # add up to the year; flag when the full year was restated after those quarters were filed.
         if out.get(m.name, fy, "Q4") is None and fy in annual:
             a = annual[fy]
+            if m.name in NONNEGATIVE and q1 and q2 and q3 and a.value < 0.95 * (q1.value + q2.value + q3.value):
+                # The "full year" figure is smaller than three quarters added up, so it is really one
+                # quarter's amount tagged as the year (Visa does this for dividends per share). Drop it.
+                out.values.pop((m.name, fy, "FY"), None)
+                continue
             if q1 and q2 and q3:
                 how = f"Full year minus Q1–Q3{approx}"
                 if (fy, 3) in ytd:
@@ -446,6 +451,15 @@ def _place_durations(out: NormalizedCompany, m: MetricDef, facts: Any, cal: Fisc
             elif (fy, 3) in ytd:
                 n = ytd[(fy, 3)]
                 out.put(_derived(m, fy, "Q4", a, a.value - n.value, f"Full year minus 9-month YTD{approx}", n.end))
+        if m.name in NONNEGATIVE:
+            for fp in ("Q2", "Q3", "Q4"):
+                pv = out.get(m.name, fy, fp)
+                if pv is not None and pv.source == "derived" and pv.value < 0:
+                    out.values.pop((m.name, fy, fp), None)
+
+
+# Amounts that can never be below zero; a negative derived quarter means the inputs disagree.
+NONNEGATIVE = {"dividends_paid", "dividends_per_share", "buybacks"}
 
 
 def _derived(m: MetricDef, fy: int, fp: str, src: Fact, value: float, how: str, prev_end: date | None) -> PeriodValue:

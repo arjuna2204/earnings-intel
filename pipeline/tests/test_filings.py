@@ -127,3 +127,26 @@ def test_exact_derived_q4_eps():
     # Q4 shares = 4 × 14,700 − (14,800 + 14,750 + 14,700) = 14,550 → 30,700 / 14,550 = 2.11; check the formula
     assert nc.get("eps_diluted", 2026, "Q4").value == round(30_700 / 14_550, 2)
     assert "Net income ÷ diluted shares" in nc.get("eps_diluted", 2026, "Q4").derivation
+
+
+def test_one_quarter_dividend_tagged_as_full_year_is_dropped():
+    """Visa tags the quarterly dividend per share on the 10-K's full-year period; Q4 would come out negative."""
+    from datetime import date
+
+    from ei.xbrl.mapping import BY_NAME
+    from ei.xbrl.normalize import Fact, FiscalCalendar, NormalizedCompany, _place_durations
+
+    def f(start, end, v):
+        return Fact("CommonStockDividendsPerShareDeclared", start, end, v, "USD/shares", "a", "10-Q", end)
+
+    facts = [
+        f(date(2025, 10, 1), date(2025, 12, 31), 0.67),
+        f(date(2026, 1, 1), date(2026, 3, 31), 0.67),
+        f(date(2026, 4, 1), date(2026, 6, 30), 0.67),
+        f(date(2025, 10, 1), date(2026, 9, 30), 0.67),
+    ]
+    nc = NormalizedCompany()
+    _place_durations(nc, BY_NAME["dividends_per_share"], facts, FiscalCalendar.from_mmdd("0930"))
+    assert nc.get("dividends_per_share", 2026, "Q1").value == 0.67
+    assert nc.get("dividends_per_share", 2026, "Q4") is None
+    assert nc.get("dividends_per_share", 2026, "FY") is None
