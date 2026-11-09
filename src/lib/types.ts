@@ -41,6 +41,9 @@ export type Valuation = {
   eps_ntm?: number | null;
   eps_ntm_method?: string;
   pe_fwd_ntm?: number | null;
+  dividend_yield?: number | null;
+  dividend_per_share_ttm?: number | null;
+  shareholder_yield?: number | null;
 };
 
 export type MetricValue = {

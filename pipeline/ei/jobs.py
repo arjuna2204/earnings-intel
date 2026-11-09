@@ -87,11 +87,20 @@ def _price_quota_left(db: Db, provider: PriceProvider) -> int:
     return provider.daily_limit - used
 
 
+def _prev_business_day() -> date:
+    d = _today_et() - timedelta(days=1)
+    while d.weekday() >= 5:
+        d -= timedelta(days=1)
+    return d
+
+
 def load_prices(db: Db, provider: PriceProvider, ticker: str) -> tuple[int, str]:
     """Fetch only the days we don't already have. Returns (rows written, note)."""
     if _price_quota_left(db, provider) <= 0:
         return 0, f"{provider.name} daily limit reached; queued for tomorrow"
     last = db.select("prices", {"ticker": f"eq.{ticker}", "select": "date", "order": "date.desc", "limit": "1"})
+    if last and last[0]["date"] >= _prev_business_day().isoformat():
+        return 0, "up to date"  # already have the most recent weekday's close
     if last and ticker != "SPY":
         # already have the market's latest close (SPY is refreshed first each day): no request needed
         spy = db.select("prices", {"ticker": "eq.SPY", "select": "date", "order": "date.desc", "limit": "1"})

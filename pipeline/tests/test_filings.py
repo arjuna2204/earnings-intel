@@ -109,7 +109,9 @@ def test_exact_derived_q4_eps():
     from ei.xbrl.normalize import NormalizedCompany, PeriodValue, _exact_derived_eps
 
     def pv(metric, fp, value, source="reported"):
-        return PeriodValue(metric, 2026, fp, None, date(2026, 9, 26), value, "USD", source, "tag", "acc", date(2026, 10, 30))
+        return PeriodValue(
+            metric, 2026, fp, None, date(2026, 9, 26), value, "USD", source, "tag", "acc", date(2026, 10, 30)
+        )
 
     nc = NormalizedCompany(currency="USD")
     for p in (

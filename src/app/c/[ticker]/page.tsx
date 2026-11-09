@@ -637,6 +637,11 @@ function ValuationStrip({ company }: { company: Company }) {
     items.push(["EV/Revenue (TTM)", v.ev_revenue != null ? `${v.ev_revenue.toFixed(2)}×` : null, "ev_revenue"]);
   }
   items.push(["FCF yield (TTM)", v.fcf_yield != null ? `${(v.fcf_yield * 100).toFixed(1)}%` : null, "fcf_yield"]);
+  items.push([
+    "Dividend yield",
+    v.dividend_yield != null ? (v.dividend_yield > 0 ? `${(v.dividend_yield * 100).toFixed(2)}%` : "None") : null,
+    "dividend_yield",
+  ]);
   const x = (n: number | null | undefined) => (n != null ? `${n.toFixed(1)}×` : null);
   const street: [string, string | null, string, string][] = v.street_source
     ? [
@@ -652,7 +657,7 @@ function ValuationStrip({ company }: { company: Company }) {
         <p className="rounded-xl bg-card px-4 py-3 text-sm text-muted">{v.note}</p>
       ) : (
         <>
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-6">
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4 lg:grid-cols-7">
             {items.map(([label, val, k]) => (
               <div key={label}>
                 <dt className="flex items-center text-xs text-muted">
@@ -684,7 +689,7 @@ function ValuationStrip({ company }: { company: Company }) {
           <div className="mt-1">
             <AboutNumbers
               title="About these valuation numbers"
-              keys={["market_cap", "enterprise_value", "pe", "ev_ebitda", "ev_revenue", "fcf_yield", "p_tbv", "p_b", "pe_adj_ltm", "pe_adj_run_rate", "pe_fwd_ntm"]}
+              keys={["market_cap", "enterprise_value", "pe", "ev_ebitda", "ev_revenue", "fcf_yield", "dividend_yield", "shareholder_yield", "p_tbv", "p_b", "pe_adj_ltm", "pe_adj_run_rate", "pe_fwd_ntm"]}
             />
           </div>
           {v.street_source && (

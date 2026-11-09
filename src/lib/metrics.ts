@@ -33,6 +33,17 @@ export const GENERAL_GROUPS: MetricGroup[] = [
     ],
   },
   {
+    title: "Dividends & buybacks",
+    metrics: [
+      m("dividends_per_share", "Dividends per share", "per_share"),
+      m("dividends_paid", "Dividends paid", "money"),
+      m("buybacks", "Share buybacks", "money"),
+      m("shareholder_returns", "Total returned to shareholders", "money"),
+      m("payout_ratio", "Dividend payout ratio", "pct"),
+      m("returns_to_fcf", "Returned ÷ free cash flow", "pct"),
+    ],
+  },
+  {
     title: "Balance sheet & returns",
     metrics: [
       m("cash", "Cash & equivalents", "money"),

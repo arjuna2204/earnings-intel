@@ -19,6 +19,9 @@ from ei.xbrl.normalize import NormalizedCompany, PeriodValue
 
 PERIODS = ("Q1", "Q2", "Q3", "Q4")
 TTM_FLOWS = (
+    "dividends_paid",
+    "dividends_per_share",
+    "buybacks",
     "revenue",
     "cost_of_revenue",
     "gross_profit",
@@ -225,6 +228,15 @@ def derive_all(nc: NormalizedCompany, pack: str) -> NormalizedCompany:
             "Free cash flow ÷ revenue",
         )
         c.put("capex_to_revenue", fy, fp, _div(c.v("capex", fy, fp), rev), "ratio", "Capex ÷ revenue")
+        div, bb = c.v("dividends_paid", fy, fp), c.v("buybacks", fy, fp)
+        ni, fcf = c.v("net_income", fy, fp), c.v("free_cash_flow", fy, fp)
+        if div is not None and ni and ni > 0:
+            c.put("payout_ratio", fy, fp, div / ni, "ratio", "Dividends paid ÷ net income")
+        returned = _sum(div, bb) if (div is not None or bb is not None) else None
+        if returned is not None:
+            c.put("shareholder_returns", fy, fp, returned, cur, "Dividends paid + share buybacks")
+            if fcf and fcf > 0:
+                c.put("returns_to_fcf", fy, fp, returned / fcf, "ratio", "(Dividends + buybacks) ÷ free cash flow")
         c.put(
             "current_ratio",
             fy,
@@ -614,6 +626,16 @@ def valuation_snapshot(
         snap["fy_fallback"] = fy_fallback
     snap["pe"] = price / eps if eps and eps > 0 else None
     snap["fcf_yield"] = _div(fcf, mcap)
+    dps, div_paid, bb = lv("dividends_per_share_ttm"), lv("dividends_paid_ttm"), lv("buybacks_ttm")
+    if dps is None:  # no quarterly history: latest fiscal year
+        fy_dps = [pv for (m, _, fp), pv in nc.values.items() if m == "dividends_per_share" and fp == "FY"]
+        dps = max(fy_dps, key=lambda pv: pv.period_end).value if fy_dps else None
+    # payers tag their dividends in filings; nothing tagged = no dividend
+    snap["dividend_yield"] = dps / price if dps and dps > 0 else ((_div(div_paid, mcap) or 0.0) if div_paid else 0.0)
+    snap["dividend_per_share_ttm"] = dps
+    snap["shareholder_yield"] = (
+        _div((div_paid or 0) + (bb or 0), mcap) if (div_paid is not None or bb is not None) else None
+    )
     if pack == "bank":
         snap["p_tbv"] = _div(mcap, lv("tangible_common_equity"))
     elif pack == "insurer":
@@ -647,9 +669,10 @@ def reprice(snap: dict[str, object], price: float, price_date: str) -> dict[str,
         v = snap.get(k)
         if isinstance(v, (int, float)):
             out[k] = v * s
-    fy = snap.get("fcf_yield")
-    if isinstance(fy, (int, float)):
-        out["fcf_yield"] = fy / s
+    for k in ("fcf_yield", "dividend_yield", "shareholder_yield"):
+        y = snap.get(k)
+        if isinstance(y, (int, float)):
+            out[k] = y / s
     return out
 
 

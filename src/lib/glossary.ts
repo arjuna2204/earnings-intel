@@ -194,6 +194,40 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   book_value_per_share: { term: "Book value per share", what: "Shareholders' equity ÷ shares.", why: "Insurers often trade around a multiple of book value." },
   premiums_earned: { term: "Premiums earned", what: "Insurance premiums recognized as revenue in the period.", why: "Insurers' top line." },
 
+  dividends_per_share: { term: "Dividends per share", what: "Cash paid to shareholders for each share they own, as declared by the company.", how: "From SEC filings (dividends declared per common share).", why: "The income an investor actually receives." },
+  dividends_paid: { term: "Dividends paid", what: "Total cash paid out as dividends, from the cash-flow statement." },
+  buybacks: {
+    term: "Share buybacks",
+    what: "Cash spent buying back the company's own stock.",
+    why: "Reduces the share count, so each remaining share owns more of the profits. An alternative to dividends.",
+    read: "Watch whether buybacks shrink the share count (see Share count) or just offset stock-based pay.",
+  },
+  shareholder_returns: { term: "Total returned to shareholders", what: "Dividends paid plus share buybacks.", why: "The full picture of cash the company hands back to owners." },
+  payout_ratio: {
+    term: "Dividend payout ratio",
+    what: "Share of profit paid out as dividends.",
+    how: "Dividends paid ÷ net income.",
+    why: "Shows how safe and how fast-growing the dividend can be.",
+    read: "Under ~60% leaves room to keep raising it; near or above 100% means the dividend relies on more than current profit.",
+  },
+  returns_to_fcf: {
+    term: "Returned ÷ free cash flow",
+    what: "Dividends plus buybacks as a share of free cash flow.",
+    read: "Above 100% means the company is returning more cash than it generates — funded by cash on hand or borrowing, which can't last forever.",
+  },
+  dividend_yield: {
+    term: "Dividend yield",
+    what: "A year of dividends as a percentage of the share price.",
+    how: "Dividends per share over the last four quarters ÷ today's price.",
+    why: "The cash income from owning the stock, before any price change.",
+    read: "S&P 500 averages around 1.5%. A very high yield can signal the market expects a cut.",
+  },
+  shareholder_yield: {
+    term: "Shareholder yield",
+    what: "Dividends plus buybacks over the last year as a percentage of market cap.",
+    why: "Many companies return more cash through buybacks than dividends; this captures both.",
+  },
+
   // ------------------------------------------------------------------ trends (Historical)
   trend_margins: { term: "Margins over time", what: "Gross, operating and free-cash-flow margins by fiscal year.", why: "Steady or rising margins signal a durable business; a slide often precedes trouble." },
   trend_sales_eps: { term: "Sales vs EPS growth", what: "Year-over-year growth in revenue and in earnings per share.", why: "EPS growing faster than sales means rising margins or buybacks; slower means costs or dilution." },
