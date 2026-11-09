@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ei.segments import build_rows, humanize, parse_instance, parse_labels
+from ei.segments import build_rows, humanize, parse_instance, parse_labels, subtotal_members
 
 INSTANCE = b"""<?xml version="1.0"?>
 <xbrli:xbrl xmlns:xbrli="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi"
@@ -59,3 +59,32 @@ def test_labels_and_q4() -> None:
 def test_humanize_fallback() -> None:
     assert humanize("DataCenterSegmentMember") == "Data Center"
     assert humanize("AmericasMember") == "Americas"
+
+
+def test_subtotal_lines_dropped() -> None:
+    apple = {"Product": 355.5, "iPhone": 254.1, "Service": 123.3, "Mac": 37.9, "Wearables": 35.6, "iPad": 27.9}
+    assert subtotal_members(apple, 478.8) == ({"Product"}, True)
+    amazon = {
+        "Service": 420.7,
+        "Product": 296.3,
+        "Online": 269.3,
+        "3P": 172.2,
+        "AWS": 128.7,
+        "Ads": 68.6,
+        "Subs": 49.6,
+        "Stores": 22.6,
+        "Other": 5.9,
+    }
+    assert subtotal_members(amazon, 716.9) == ({"Service", "Product"}, True)
+    nvidia = {
+        "DataCenter": 193.7,
+        "Compute": 162.4,
+        "Networking": 31.4,
+        "Gaming": 16.0,
+        "ProViz": 3.2,
+        "Auto": 2.3,
+        "OEM": 0.6,
+    }
+    assert subtotal_members(nvidia, 215.9) == ({"DataCenter"}, True)
+    partial = {"US": 100.0, "China": 30.0}  # rest of world not broken out
+    assert subtotal_members(partial, 200.0) == (set(), False)

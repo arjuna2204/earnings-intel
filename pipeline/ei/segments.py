@@ -16,6 +16,7 @@ import re
 from collections import Counter
 from dataclasses import dataclass
 from datetime import date
+from itertools import combinations
 from typing import Any
 
 from lxml import etree
@@ -112,24 +113,26 @@ def parse_labels(xml: bytes) -> dict[str, str]:
         href = el.get(f"{XLINK}href", "")
         frag = href.split("#", 1)[-1]
         loc[el.get(f"{XLINK}label", "")] = frag.split("_", 1)[-1] if "_" in frag else frag
-    text: dict[str, tuple[str, str]] = {}
+    # one element's labels (standard, terse, documentation...) usually share a single xlink:label
+    text: dict[str, list[tuple[str, str]]] = {}
     for el in root.iter("{*}label"):
         if el.get(f"{XLINK}type") != "resource":
             continue
-        role = el.get(f"{XLINK}role", "")
-        text[el.get(f"{XLINK}label", "")] = (role, (el.text or "").strip())
+        text.setdefault(el.get(f"{XLINK}label", ""), []).append((el.get(f"{XLINK}role", ""), (el.text or "").strip()))
     out: dict[str, str] = {}
     terse: dict[str, str] = {}
     for arc in root.iter("{*}labelArc"):
         name = loc.get(arc.get(f"{XLINK}from", ""))
-        lab = text.get(arc.get(f"{XLINK}to", ""))
-        if not name or not lab or not lab[1]:
+        if not name:
             continue
-        clean = re.sub(r"\s*\[(Member|Domain)\]\s*$", "", lab[1]).strip()
-        if lab[0].endswith("/role/label"):
-            out[name] = clean
-        elif lab[0].endswith("/role/terseLabel"):
-            terse[name] = clean
+        for role, raw in text.get(arc.get(f"{XLINK}to", ""), []):
+            if not raw:
+                continue
+            clean = re.sub(r"\s*\[(Member|Domain)\]\s*$", "", raw).strip()
+            if role.endswith("/role/label"):
+                out[name] = clean
+            elif role.endswith("/role/terseLabel"):
+                terse[name] = clean
     return {**out, **terse}  # a terse label, when given, is what the company shows in its tables
 
 
@@ -150,8 +153,13 @@ def _kind(start: date, end: date) -> str | None:
 
 
 def build_rows(
-    cik: int, facts_by_filing: list[tuple[str, list[SegFact]]], labels: dict[str, str], fye: str
+    cik: int,
+    facts_by_filing: list[tuple[str, list[SegFact]]],
+    labels: dict[str, str],
+    fye: str,
+    revenue_fy: dict[int, float] | None = None,
 ) -> list[dict[str, Any]]:
+    """`revenue_fy`: company total revenue by fiscal year, to spot subtotal lines (see subtotal_members)."""
     """Rows for the segment_values table. `facts_by_filing` oldest first (later filings win)."""
     cal = FiscalCalendar.from_mmdd(fye)
     # per axis and measure, use the single concept with the most data so two revenue tags never mix
@@ -189,6 +197,7 @@ def build_rows(
                 "value": f.value,
                 "source": "reported",
                 "accession": acc,
+                "adds_up": None,
             }
     # Q4 = FY − Q1..Q3 for the same line
     for (axis, measure, member, fy, fp), row in list(vals.items()):
@@ -205,7 +214,62 @@ def build_rows(
                 "value": row["value"] - sum(q["value"] for q in qs if q),
                 "source": "derived",
             }
-    return list(vals.values())
+    # drop subtotal lines, judged on the latest full year that has a breakdown and a company total
+    rows = list(vals.values())
+    revenue_fy = revenue_fy or {}
+    for axis in {r["axis"] for r in rows if r["measure"] == "revenue"}:
+        years = sorted(
+            {
+                r["fiscal_year"]
+                for r in rows
+                if r["axis"] == axis and r["measure"] == "revenue" and r["fiscal_period"] == "FY"
+            },
+            reverse=True,
+        )
+        year = next((y for y in years if y in revenue_fy), None)
+        if year is None:
+            continue
+        members = {
+            r["member"]: r["value"]
+            for r in rows
+            if r["axis"] == axis
+            and r["measure"] == "revenue"
+            and r["fiscal_period"] == "FY"
+            and r["fiscal_year"] == year
+        }
+        drop, adds_up = subtotal_members(members, revenue_fy[year])
+        rows = [r for r in rows if not (r["axis"] == axis and r["member"] in drop)]
+        for r in rows:
+            if r["axis"] == axis and r["measure"] == "revenue":
+                r["adds_up"] = adds_up
+    return rows
+
+
+def subtotal_members(members: dict[str, float], total: float | None, tol: float = 0.02) -> tuple[set[str], bool]:
+    """Lines to drop so one year's breakdown adds up to total revenue, and whether it then adds up.
+
+    Companies often tag subtotals on the same axis as their parts (Apple: "Products" next to iPhone,
+    Mac, iPad; NVIDIA: "Data Center" next to Compute and Networking), which would double count.
+    Try dropping no line, then one, then two, and keep the smallest fix (ties: drop the bigger lines,
+    since subtotals are bigger than their parts)."""
+    if not total or total <= 0 or len(members) < 2:
+        return set(), True
+    names = list(members)
+    full = sum(members.values())
+
+    def ok(drop: tuple[str, ...]) -> bool:
+        return abs(full - sum(members[d] for d in drop) - total) <= tol * total
+
+    if ok(()):
+        return set(), True
+    if full < total:  # some revenue isn't broken out (an "other" bucket left untagged): nothing overlaps
+        return set(), False
+    for size in (1, 2):
+        fixes = [c for c in combinations(names, size) if ok(c)]
+        if fixes:
+            best = max(fixes, key=lambda c: sum(members[d] for d in c))
+            return set(best), True
+    return set(), False
 
 
 def _pick_filings(db: Db, cik: int) -> list[dict[str, Any]]:
@@ -246,7 +310,14 @@ def run_company(db: Db, sec: SecClient, company: dict[str, Any]) -> dict[str, An
                 labels.update(parse_labels(sec.text(archive_url(cik, f["accession"], f"{base}_lab.xml")).encode()))
             except Exception as exc:
                 log.info("no label file for %s: %s", f["accession"], exc)
-    rows = build_rows(cik, by_filing, labels, fye)
+    revenue_fy = {
+        int(r["fiscal_year"]): float(r["value"])
+        for r in db.select(
+            "metric_values",
+            {"cik": f"eq.{cik}", "metric": "eq.revenue", "fiscal_period": "eq.FY", "select": "fiscal_year,value"},
+        )
+    }
+    rows = build_rows(cik, by_filing, labels, fye, revenue_fy)
     db.replace_rows(
         "segment_values", {"cik": cik}, rows, on_conflict="cik,axis,measure,member,fiscal_year,fiscal_period"
     )
