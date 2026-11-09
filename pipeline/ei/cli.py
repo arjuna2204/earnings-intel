@@ -39,6 +39,8 @@ def main(argv: list[str] | None = None) -> int:
     hd = sub.add_parser("holders")
     hd.add_argument("--force", action="store_true")
     sub.add_parser("earnings-calendar")
+    hdd = sub.add_parser("holders-debug")
+    hdd.add_argument("ticker")
     sg = sub.add_parser("sector-growth")
     sg.add_argument("--force", action="store_true")
     dc = sub.add_parser("dcf")
@@ -83,6 +85,10 @@ def main(argv: list[str] | None = None) -> int:
         from ei.holders import refresh as refresh_holders
 
         print(json.dumps(refresh_holders(settings, force=args.force), default=str))
+    elif args.cmd == "holders-debug":
+        from ei.holders_debug import debug
+
+        print(json.dumps(debug(settings, args.ticker.upper()), default=str))
     elif args.cmd == "earnings-calendar":
         from ei.earnings_calendar import refresh as refresh_calendar
 
