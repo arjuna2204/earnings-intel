@@ -100,7 +100,7 @@ jobs:
             FASTEMBED_CACHE_PATH=$HOME/.cache/fastembed python -m ei.cli $CMD $ARGS
           elif [ "$CMD" = "analyze" ]; then
             for T in $(python -c "import json;d=json.load(open('../ops/run.json'));print(' '.join(d.get('tickers') or [d['ticker']]))"); do
-              python -m ei.cli analyze "$T" || echo "::warning::analyze $T failed"
+              python -m ei.cli analyze "$T" $(python -c "import json;print(' '.join(json.load(open('../ops/run.json')).get('args', [])))") || echo "::warning::analyze $T failed"
             done
           else
             TICKERS=$(python -c "import json;d=json.load(open('../ops/run.json'));print(' '.join(d.get('tickers') or [d.get('ticker') or '-']))")

@@ -25,6 +25,7 @@ def main(argv: list[str] | None = None) -> int:
     a = sub.add_parser("analyze")
     a.add_argument("ticker")
     a.add_argument("--job-id", type=int, default=None)
+    a.add_argument("--background", action="store_true", help="re-read without marking it as a user's company or calling Alpha Vantage")
     sub.add_parser("refresh")
     sub.add_parser("retry-deferred")
     sub.add_parser("backfill-calls")
@@ -80,7 +81,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "tickers":
         print(json.dumps({"tickers": refresh_tickers(settings)}))
     elif args.cmd == "analyze":
-        print(json.dumps(analyze(settings, args.ticker, job_id=args.job_id)))
+        print(json.dumps(analyze(settings, args.ticker, job_id=args.job_id, primary=not args.background)))
     elif args.cmd == "refresh":
         res = refresh_all(settings)
         print(json.dumps(res))
