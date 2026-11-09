@@ -3,6 +3,7 @@ import type { DcfModel } from "@/lib/dcf";
 
 const M = 1e6;
 const N = 10; // forecast years
+const GROWTH_DECAY = 0.7; // must match pipeline/ei/dcf.py
 const YRS = Array.from({ length: N }, (_, i) => i + 1);
 const COLS = YRS.map((i) => String.fromCharCode(66 + i)); // C..L
 const LAST = COLS[N - 1];
@@ -32,22 +33,38 @@ export function buildDcfWorkbook(company: { name: string; ticker: string; cik: n
   as.getRow(4).values = ["Assumption", "Value", "Default source", "Footnotes"];
   as.getRow(4).font = BOLD;
   const ref: Record<string, string> = {};
-  const pctKeys = new Set(["tax_rate", "da_pct", "capex_pct", "nwc_pct", "risk_free", "erp", "cost_of_debt", "equity_weight", "terminal_growth"]);
+  const pctKeys = new Set(["sector_growth", "growth_decay", "tax_rate", "da_pct", "capex_pct", "nwc_pct", "risk_free", "erp", "cost_of_debt", "equity_weight", "terminal_growth"]);
   const order = [
-    ...YRS.map((t) => `growth_${t}`),
+    "growth_1", "growth_2", "sector_growth", "growth_decay",
+    ...YRS.slice(2).map((t) => `growth_${t}`),
     ...YRS.map((t) => `margin_${t}`),
     ...YRS.map((t) => `capex_${t}`),
     "tax_rate", "da_pct", "capex_pct", "nwc_pct",
     "risk_free", "beta", "erp", "cost_of_debt", "equity_weight", "terminal_growth",
     "price", "shares", "net_debt",
   ];
+  // Years 3–N growth is a live formula driven by these two inputs (same rule as the website's model)
+  const extra: Record<string, { value: number; label: string; source: string; notes?: string[] }> = {
+    growth_decay: {
+      value: GROWTH_DECAY,
+      label: "Growth fade: share of the gap kept each year",
+      source: "Each year from year 3, growth keeps this share of its gap to the target (70% = the gap shrinks 30% a year). Higher = growth stays high longer.",
+    },
+  };
+  if (!a.sector_growth && a.terminal_growth) {
+    extra.sector_growth = {
+      value: a.terminal_growth.value,
+      label: "Sector revenue growth",
+      source: "No sector growth rate for this company: set equal to terminal growth. Type a rate to make years 3–10 fade toward it.",
+    };
+  }
   let r = 5;
   for (const k of order) {
-    const x = a[k];
+    const x = a[k] ?? extra[k];
     if (!x) continue;
     const row = as.getRow(r);
     const isMoney = k === "net_debt" || k === "shares";
-    row.getCell(1).value = x.label + (isMoney ? " (millions)" : "");
+    row.getCell(1).value = (k === "sector_growth" ? "Sector revenue growth" : x.label) + (isMoney ? " (millions)" : "");
     const c = row.getCell(2);
     c.value = isMoney ? x.value / M : x.value;
     c.numFmt = k.startsWith("growth") || k.startsWith("margin") || k.startsWith("capex") || pctKeys.has(k) ? PCT : k === "price" ? USD : k === "beta" ? "0.00" : USDM;
@@ -57,6 +74,18 @@ export function buildDcfWorkbook(company: { name: string; ticker: string; cik: n
     if (x.notes?.length) row.getCell(4).value = x.notes.map((n) => `[${n}]`).join(" ");
     ref[k] = `Assumptions!$B$${r}`;
     r++;
+  }
+  // years 3–N: fade toward a target that starts at sector growth and glides to terminal growth by year N
+  for (const t of YRS.slice(2)) {
+    const k = `growth_${t}`;
+    if (!ref[k] || !ref.growth_2 || !ref.sector_growth || !ref.terminal_growth) continue;
+    const c = as.getCell(ref[k].replace("Assumptions!", "").replaceAll("$", ""));
+    const mid = `(${ref.sector_growth}+(${ref.terminal_growth}-${ref.sector_growth})*${t - 3}/${N - 3})`;
+    c.value = { formula: `${mid}+(${ref.growth_2}-${mid})*${ref.growth_decay}^${t - 2}`, result: a[k].value };
+    c.font = {};
+    c.fill = { type: "pattern", pattern: "none" };
+    const src = as.getCell(ref[k].replace("Assumptions!", "").replaceAll("$", "").replace("B", "C"));
+    src.value = "Formula: fades from year-2 growth toward sector growth, which glides to terminal growth by year 10. Change the sector rate, fade or terminal growth above — or type over this cell to set your own.";
   }
   r++;
   const ke = r;
