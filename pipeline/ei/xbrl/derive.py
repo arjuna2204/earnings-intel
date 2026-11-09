@@ -635,11 +635,13 @@ def valuation_snapshot(
     def recent(metric: str) -> float | None:
         """Last-twelve-months figure, or the latest fiscal year, but only if it is from the past ~15 months
         (a TTM from years ago would silently understate a company that changed its payout)."""
-        cands = [latest_period(nc, f"{metric}_ttm")]
+        cands: list[PeriodValue] = []
+        ttm = latest_period(nc, f"{metric}_ttm")
+        if ttm is not None:
+            cands.append(ttm)
         fy_rows = [pv for (m, _, fp), pv in nc.values.items() if m == metric and fp == "FY"]
         if fy_rows:
             cands.append(max(fy_rows, key=lambda pv: pv.period_end))
-        cands = [c for c in cands if c]
         if not cands:
             return None
         best = max(cands, key=lambda pv: pv.period_end)
