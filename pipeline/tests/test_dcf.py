@@ -59,3 +59,26 @@ def test_per_year_capex_overrides_flat() -> None:
     assert build(hist, a2)["rows"][0]["fcf"] < build(hist, a)["rows"][0]["fcf"]
     assert abs(build(hist, a2)["rows"][9]["fcf"] - build(hist, a)["rows"][9]["fcf"]) < 1e-9
     assert len(build(hist, a)["rows"]) == 10
+
+
+def test_sector_terminal_bounds():
+    from ei.dcf import TERMINAL_GROWTH, TERMINAL_MAX, sector_terminal
+
+    assert sector_terminal(None) == TERMINAL_GROWTH
+    assert sector_terminal(0.01) == TERMINAL_GROWTH  # slow sectors never go below GDP-like growth
+    assert abs(sector_terminal(0.085) - 0.034) < 1e-9
+    assert sector_terminal(0.15) == TERMINAL_MAX
+
+
+def test_growth_path_follows_sector():
+    from ei.dcf import YEARS, growth_path, sector_terminal
+
+    t = sector_terminal(0.12)
+    hot = growth_path(0.30, 0.12, t, YEARS)
+    flat = growth_path(0.30, None, 0.025, YEARS)
+    assert len(hot) == YEARS - 2
+    assert all(h > f for h, f in zip(hot, flat, strict=True))  # hot sector keeps more growth every year
+    assert hot[3] > 0.12  # mid-forecast still above the sector rate for a fast grower
+    assert abs(hot[-1] - t) < 0.02  # lands near terminal growth by year 10
+    slow = growth_path(0.02, 0.12, t, YEARS)
+    assert slow[2] > slow[0]  # a laggard in a hot sector is pulled up toward the sector rate

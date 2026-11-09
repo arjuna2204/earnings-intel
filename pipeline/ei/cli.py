@@ -34,6 +34,8 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("period_a")
     c.add_argument("period_b")
     c.add_argument("--job-id", type=int, default=None)
+    sg = sub.add_parser("sector-growth")
+    sg.add_argument("--force", action="store_true")
     dc = sub.add_parser("dcf")
     dc.add_argument("ticker", nargs="?", default=None)
     cs = sub.add_parser("cases")
@@ -64,6 +66,10 @@ def main(argv: list[str] | None = None) -> int:
         from ei.calls.run import compare_calls
 
         print(json.dumps(compare_calls(settings, args.ticker, args.period_a, args.period_b, job_id=args.job_id)))
+    elif args.cmd == "sector-growth":
+        from ei.sector_growth import refresh
+
+        print(json.dumps(refresh(settings, only_stale=not args.force)))
     elif args.cmd == "dcf":
         from ei.dcf import run_all
 

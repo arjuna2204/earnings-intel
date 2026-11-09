@@ -83,7 +83,7 @@ export default function DcfView({ ticker, dcf }: { ticker: string; dcf: DcfModel
   const fy0 = Number(dcf.history[dcf.history.length - 1].fiscal_year);
   const s = r.sensitivity;
   const keys = Object.keys(a).filter((k) => !/^(growth|margin|capex)_([2-9]|1\d)$/.test(k));
-  const shown = all ? keys : keys.filter((k) => ["growth_1", "margin_1", "capex_1", "wacc", "terminal_growth", "beta"].includes(k));
+  const shown = all ? keys : keys.filter((k) => ["growth_1", "sector_growth", "margin_1", "capex_1", "wacc", "terminal_growth", "beta"].includes(k));
   const fmtA = (k: string, v: number) =>
     k === "price" ? `$${v.toFixed(2)}` : k === "shares" ? `${(v / 1e6).toFixed(0)}M` : k === "net_debt" ? bn(v) : k === "beta" ? v.toFixed(2) : PCT_KEYS.test(k) ? pct(v) : v.toFixed(2);
   return (
@@ -198,7 +198,9 @@ export default function DcfView({ ticker, dcf }: { ticker: string; dcf: DcfModel
             <li key={k} className="flex items-baseline justify-between gap-4 py-2.5 text-sm">
               <span className="min-w-0">
                 {k === "growth_1"
-                  ? "Revenue growth, years 1–2 (fades to terminal by year 10)"
+                  ? a.sector_growth
+                    ? `Revenue growth, years 1–2 (fades toward sector growth, then to ${pct(a.terminal_growth.value)} by year 10)`
+                    : "Revenue growth, years 1–2 (fades to terminal by year 10)"
                   : k === "margin_1"
                     ? "Operating margin (all years)"
                     : k === "capex_1"

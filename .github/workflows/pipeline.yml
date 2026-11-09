@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       command:
-        description: "analyze | calls | brief | peers | backtest | tickers | refresh | retry-deferred"
+        description: "analyze | calls | brief | peers | backtest | dcf | tickers | refresh | retry-deferred"
         required: true
         default: analyze
       ticker:
@@ -128,6 +128,12 @@ jobs:
         env:
           FASTEMBED_CACHE_PATH: /home/runner/.cache/fastembed
         run: python -m ei.cli backfill-calls
+      - name: Refresh sector growth rates and DCFs (free, no AI)
+        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'dcf'
+        working-directory: pipeline
+        run: |
+          python -m ei.cli sector-growth || echo "::warning::sector growth refresh failed; DCFs use the last saved rates"
+          python -m ei.cli dcf
       - name: Grow backtest history and re-run the backtest (free, no AI)
         if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'backtest'
         working-directory: pipeline

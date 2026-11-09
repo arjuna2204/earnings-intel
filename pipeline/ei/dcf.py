@@ -15,13 +15,36 @@ from datetime import date, timedelta
 from typing import Any
 
 from ei.db import Db
+from ei.sector_growth import SECTOR_NAMES
 
-VERSION = "dcf-v6"
+VERSION = "dcf-v7"
 YEARS = 10
 GROWTH_DECAY = 0.7  # each year after year 2, growth keeps 70% of its gap to terminal growth
 RISK_FREE = 0.0425  # 10-year US Treasury yield assumption (editable in the Excel model)
 EQUITY_RISK_PREMIUM = 0.05
-TERMINAL_GROWTH = 0.025
+TERMINAL_GROWTH = 0.025  # base long-run growth (about nominal GDP); nudged up for fast-growing sectors
+TERMINAL_MAX = 0.035
+SECTOR_GROWTH_RANGE = (0.02, 0.15)
+
+
+def sector_terminal(sector_g: float | None) -> float:
+    """Terminal growth: 2.5%, plus 15% of how far the sector grows above that, capped at 3.5%
+    (growing faster than the economy forever isn't possible, and values balloon past ~4%)."""
+    if sector_g is None:
+        return TERMINAL_GROWTH
+    return max(TERMINAL_GROWTH, min(TERMINAL_MAX, TERMINAL_GROWTH + 0.15 * (sector_g - TERMINAL_GROWTH)))
+
+
+def growth_path(g2: float, sector_g: float | None, terminal: float, years: int) -> list[float]:
+    """Years 3..N. Growth closes 30% of its gap each year to a moving target that starts at the
+    sector's current growth and glides to terminal growth by the last year."""
+    out = []
+    for t in range(3, years + 1):
+        mid = terminal if sector_g is None else sector_g + (terminal - sector_g) * (t - 3) / (years - 3)
+        out.append(mid + (g2 - mid) * GROWTH_DECAY ** (t - 2))
+    return out
+
+
 DEFAULT_TAX = 0.21
 NOT_APPLICABLE = {"bank": "Banks", "insurer": "Insurers", "reit": "REITs"}
 
@@ -200,7 +223,19 @@ def defaults(
     def put(key: str, value: float, label: str, source: str) -> None:
         a[key] = {"value": value, "label": label, "source": source}
 
-    # growth: analysts' revenue consensus for the next two fiscal years, then fade to terminal growth
+    # sector growth: median revenue growth of the company's sector last year (ei.sector_growth)
+    sg_row = (
+        db.select("sector_growth", {"etf": f"eq.{company.get('sector_etf')}", "select": "*"})
+        if company.get("sector_etf")
+        else []
+    )
+    sector_g = (
+        clamp(float(sg_row[0]["median"]), *SECTOR_GROWTH_RANGE)
+        if sg_row and sg_row[0].get("median") is not None
+        else None
+    )
+    terminal = sector_terminal(sector_g)
+    # growth: analysts' revenue consensus for the next two fiscal years, then fade toward sector growth and on to terminal growth
     est = db.select(
         "eps_estimates",
         {
@@ -234,7 +269,7 @@ def defaults(
         g1, src1 = fallback, "3-year historical revenue growth rate (SEC), capped at 25%"
     if g2 is None:
         g2, src2 = (
-            (g1 + TERMINAL_GROWTH) / 2 if future else fallback,
+            (g1 + terminal) / 2 if future else fallback,
             "Halfway between year-1 growth and terminal growth"
             if future
             else "3-year historical revenue growth rate (SEC)",
@@ -242,15 +277,20 @@ def defaults(
     g1, g2 = clamp(g1, -0.3, 0.6), clamp(g2, -0.3, 0.6)
     put("growth_1", g1, "Revenue growth, year 1", src1)
     put("growth_2", g2, "Revenue growth, year 2", src2)
-    for t in range(3, YEARS + 1):
-        # the gap to terminal growth shrinks 30% a year, so fast growers slow quickly, then level off
-        g = TERMINAL_GROWTH + (g2 - TERMINAL_GROWTH) * GROWTH_DECAY ** (t - 2)
+    if sector_g is not None:
         put(
-            f"growth_{t}",
-            g,
-            f"Revenue growth, year {t}",
-            "Fades from year-2 growth toward terminal growth: the gap shrinks 30% each year",
+            "sector_growth",
+            sector_g,
+            "Sector revenue growth (reference)",
+            sg_row[0]["method"] + " — already built into years 3–10",
         )
+    path_src = (
+        "Fades from year-2 growth toward the sector's current growth, which glides to terminal growth by year 10 (the gap shrinks 30% a year)"
+        if sector_g is not None
+        else "Fades from year-2 growth toward terminal growth: the gap shrinks 30% each year"
+    )
+    for t, g in zip(range(3, YEARS + 1), growth_path(g2, sector_g, terminal, YEARS), strict=True):
+        put(f"growth_{t}", g, f"Revenue growth, year {t}", path_src)
     # margin: trailing-twelve-months operating margin, held flat
     ttm = db.select(
         "metric_values",
@@ -399,7 +439,17 @@ def defaults(
         "WACC (discount rate)",
         f"Cost of equity {ke:.1%} (risk-free + beta × premium) and after-tax cost of debt, weighted by market value",
     )
-    put("terminal_growth", TERMINAL_GROWTH, "Terminal growth", "Long-run growth after year 10 (about nominal GDP)")
+    put(
+        "terminal_growth",
+        terminal,
+        "Terminal growth",
+        "Long-run growth after year 10: 2.5% (about nominal GDP)"
+        + (
+            f", plus 15% of the sector's excess growth, capped at 3.5% ({SECTOR_NAMES.get(str(company.get('sector_etf')), 'sector')} grows {sector_g:.1%})"
+            if sector_g is not None
+            else ""
+        ),
+    )
     note = None
     if m <= 0:
         note = "Operating margin is negative, so the DCF value isn't meaningful until the company is profitable."
@@ -408,11 +458,12 @@ def defaults(
 
 METHODS = {
     "model": "Free cash flow to the firm = EBIT × (1 − tax rate) + depreciation & amortization − capital expenditures − increase in operating working capital. Ten forecast years, end-of-year discounting at WACC, terminal value = year-10 free cash flow × (1 + g) ÷ (WACC − g).",
-    "fade": "Years 3–10 revenue growth fades toward the terminal growth rate: each year the gap shrinks by 30%, so fast growers slow quickly and then level off.",
+    "fade": "Years 3–10 revenue growth fades toward a target: each year it closes 30% of the gap. The target starts at the sector's current growth rate and glides to terminal growth by year 10, so companies in fast-growing sectors keep above-GDP growth for longer.",
+    "sector": "Sector growth = median last-calendar-year revenue growth of US-listed companies with $1B+ revenue in the same sector (SEC industry codes mapped to S&P sectors; SEC XBRL frames). Refreshed monthly. Terminal growth = 2.5% + 15% of the sector's growth above 2.5%, capped at 3.5%.",
     "capex": "When capex is well above depreciation (a build-out phase), it fades in equal steps to 1.2× D&A by year 10; otherwise it is held at the latest 2-year average.",
     "beta": "Beta from weekly returns over 5 years vs. SPY (S&P 500 ETF), adjusted toward 1 (0.67 × measured + 0.33), kept between 0.5 and 2.0.",
     "wacc": "WACC = equity weight × (risk-free + beta × equity risk premium) + debt weight × pre-tax cost of debt × (1 − tax rate); weights from market value of equity and book value of debt.",
-    "macro": "Market assumptions (not from company filings): 10-year Treasury yield 4.25%, equity risk premium 5.0%, long-run growth 2.5% (about nominal GDP). Update them in the Excel model.",
+    "macro": "Market assumptions (not from company filings): 10-year Treasury yield 4.25%, equity risk premium 5.0%, base long-run growth 2.5% (about nominal GDP). Update them in the Excel model.",
     "nwc": "Operating working capital = (current assets − cash) − (current liabilities − short-term debt − current portion of long-term debt).",
 }
 _DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
@@ -500,8 +551,14 @@ def footnotes(
             ids = [i for i in (filing(d) for d in dates) if i] or last
         elif k == "beta":
             ids = [tiingo, add("m:beta", METHODS["beta"])]
-        elif k in {"risk_free", "erp", "terminal_growth"}:
+        elif k in {"risk_free", "erp"}:
             ids = [add("m:macro", METHODS["macro"])]
+        elif k == "terminal_growth":
+            ids = [add("m:macro", METHODS["macro"])] + (
+                [add("m:sector", METHODS["sector"])] if "sector_growth" in a else []
+            )
+        elif k == "sector_growth":
+            ids = [add("m:sector", METHODS["sector"])]
         elif k == "cost_of_debt":
             ids = last if "SEC" in src else [add("m:macro", METHODS["macro"])]
         elif k in {"equity_weight", "wacc"}:
