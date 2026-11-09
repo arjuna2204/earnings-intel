@@ -16,8 +16,9 @@ from typing import Any
 
 from ei.db import Db
 
-VERSION = "dcf-v5"
+VERSION = "dcf-v6"
 YEARS = 10
+GROWTH_DECAY = 0.7  # each year after year 2, growth keeps 70% of its gap to terminal growth
 RISK_FREE = 0.0425  # 10-year US Treasury yield assumption (editable in the Excel model)
 EQUITY_RISK_PREMIUM = 0.05
 TERMINAL_GROWTH = 0.025
@@ -242,12 +243,13 @@ def defaults(
     put("growth_1", g1, "Revenue growth, year 1", src1)
     put("growth_2", g2, "Revenue growth, year 2", src2)
     for t in range(3, YEARS + 1):
-        g = g2 + (TERMINAL_GROWTH - g2) * (t - 2) / (YEARS - 2)
+        # the gap to terminal growth shrinks 30% a year, so fast growers slow quickly, then level off
+        g = TERMINAL_GROWTH + (g2 - TERMINAL_GROWTH) * GROWTH_DECAY ** (t - 2)
         put(
             f"growth_{t}",
             g,
             f"Revenue growth, year {t}",
-            "Straight-line fade from year-2 growth toward terminal growth",
+            "Fades from year-2 growth toward terminal growth: the gap shrinks 30% each year",
         )
     # margin: trailing-twelve-months operating margin, held flat
     ttm = db.select(
@@ -406,7 +408,7 @@ def defaults(
 
 METHODS = {
     "model": "Free cash flow to the firm = EBIT × (1 − tax rate) + depreciation & amortization − capital expenditures − increase in operating working capital. Ten forecast years, end-of-year discounting at WACC, terminal value = year-10 free cash flow × (1 + g) ÷ (WACC − g).",
-    "fade": "Years 3–10 revenue growth moves in equal steps from year-2 growth to the terminal growth rate.",
+    "fade": "Years 3–10 revenue growth fades toward the terminal growth rate: each year the gap shrinks by 30%, so fast growers slow quickly and then level off.",
     "capex": "When capex is well above depreciation (a build-out phase), it fades in equal steps to 1.2× D&A by year 10; otherwise it is held at the latest 2-year average.",
     "beta": "Beta from weekly returns over 5 years vs. SPY (S&P 500 ETF), adjusted toward 1 (0.67 × measured + 0.33), kept between 0.5 and 2.0.",
     "wacc": "WACC = equity weight × (risk-free + beta × equity risk premium) + debt weight × pre-tax cost of debt × (1 − tax rate); weights from market value of equity and book value of debt.",
