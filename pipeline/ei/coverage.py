@@ -29,7 +29,12 @@ MISS_RETRY_DAYS = 14  # provider had no transcript: look again after two weeks
 def ordered_companies(db: Db) -> list[dict[str, Any]]:
     etfs = {r["sector_etf"] for r in db.select("companies", {"select": "sector_etf"}) if r.get("sector_etf")} | {"SPY"}
     comps = [c for c in db.select("companies", {"select": "*"}) if c["ticker"] not in etfs]
-    rank = {int(r["cik"]): int(r["rank"]) for r in db.select("universe", {"select": "cik,rank", "limit": "5000"})}
+    # only the loaded companies' ranks (the API returns at most 1,000 rows per request)
+    rank: dict[int, int] = {}
+    ciks = [str(c["cik"]) for c in comps]
+    for i in range(0, len(ciks), 200):
+        part = db.select("universe", {"cik": f"in.({','.join(ciks[i : i + 200])})", "select": "cik,rank"})
+        rank.update({int(r["cik"]): int(r["rank"]) for r in part})
 
     def key(c: dict[str, Any]) -> tuple[int, float]:
         cap = (c.get("valuation") or {}).get("market_cap") or 0
