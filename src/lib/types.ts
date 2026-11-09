@@ -21,6 +21,7 @@ export type Valuation = {
   price_date: string | null;
   currency: string;
   note?: string;
+  shares_note?: string;
   shares_source?: string;
   market_cap?: number | null;
   enterprise_value?: number | null;

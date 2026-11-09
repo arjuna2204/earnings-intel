@@ -270,7 +270,22 @@ def analyze(
 
         # 5. Valuation snapshot (needs prices)
         price, price_date = latest_price(db, ticker)
-        snap = valuation_snapshot(nc, sector.pack, price, price_date)
+        street_eps = None
+        if not any(k[0] == "diluted_shares" for k in nc.values):
+            from ei.street import ltm_adjusted_eps
+
+            street_eps, _ = ltm_adjusted_eps(
+                db.select(
+                    "earnings_events",
+                    {
+                        "cik": f"eq.{cik}",
+                        "select": "eps_reported,report_date,fiscal_year,fiscal_quarter",
+                        "order": "report_date.desc",
+                        "limit": "8",
+                    },
+                )
+            )
+        snap = valuation_snapshot(nc, sector.pack, price, price_date, street_eps)
         try:
             from ei.calls.run import street_snapshot
 

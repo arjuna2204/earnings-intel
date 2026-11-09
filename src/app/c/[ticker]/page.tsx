@@ -667,6 +667,7 @@ function ValuationStrip({ company }: { company: Company }) {
               </div>
             ))}
           </dl>
+          {v.shares_note && <p className="mt-2 text-xs text-muted">{v.shares_note}</p>}
           {street.length > 0 && (
             <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-border pt-4 sm:grid-cols-3">
               {street.map(([label, val, sub, k]) => (

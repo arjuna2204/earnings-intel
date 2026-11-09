@@ -575,7 +575,11 @@ def latest_period(nc: NormalizedCompany, metric: str) -> PeriodValue | None:
 
 
 def valuation_snapshot(
-    nc: NormalizedCompany, pack: str, price: float | None, price_date: str | None
+    nc: NormalizedCompany,
+    pack: str,
+    price: float | None,
+    price_date: str | None,
+    street_eps_ltm: float | None = None,
 ) -> dict[str, object]:
     """Current multiples from the latest price and latest reported figures (all code math)."""
     snap: dict[str, object] = {"price": price, "price_date": price_date, "currency": nc.currency}
@@ -594,12 +598,35 @@ def valuation_snapshot(
 
     cover = nc.shares_outstanding_cover[1] if nc.shares_outstanding_cover else None
     diluted = lv("diluted_shares")
+    if diluted is None:
+        # Some multi-class companies (Visa) report diluted shares only per class; back them out of
+        # earnings instead: net income ÷ diluted EPS = shares the earnings are spread over.
+        ni, e = lv("net_income_ttm"), lv("eps_diluted_ttm") or street_eps_ltm
+        diluted = ni / e if ni and e and e > 0 and ni > 0 else None
+    has = {k[0] for k in nc.values}
+    if diluted is None and "net_income" in has and "eps_diluted" not in has:
+        # No company-wide share count or EPS at all: the filings only break shares out by class, so the
+        # cover-page number can't be checked and is often one class only. Better blank than wrong.
+        cover = None
+        snap["shares_note"] = "Market value not shown: this company reports shares only by share class."
     if cover and diluted and not 0.7 <= cover / diluted <= 1.4:
         # Companies with several share classes (Visa, Alphabet, Berkshire) sometimes put only one class on
         # the cover page; the diluted count covers every class converted to common, so trust it instead.
         cover = None
     shares = cover or diluted
-    snap["shares_source"] = "Cover page shares outstanding" if cover else "Latest diluted weighted shares"
+    snap["shares_source"] = (
+        "Cover page shares outstanding"
+        if cover
+        else (
+            "Latest diluted weighted shares"
+            if lv("diluted_shares")
+            else (
+                "Net income ÷ diluted EPS"
+                if lv("eps_diluted_ttm")
+                else "Estimated: net income ÷ last four quarters' Street EPS (filings give shares only by class)"
+            )
+        )
+    )
     mcap = price * shares if shares else None
     snap["market_cap"] = mcap
     debt, cash = lv("total_debt"), lv("cash")

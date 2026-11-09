@@ -198,7 +198,9 @@ def test_valuation_snapshot_uses_cover_shares() -> None:
             }
         }
     }
-    nc = derive_all(normalize(cf(SEPT, dei), "0928", "general"), "general")
+    us = dict(SEPT)
+    us["EarningsPerShareDiluted"] = [fact("2023-10-01", "2024-09-28", 1.0, "2024-11-01", "0000-K", "10-K")]
+    nc = derive_all(normalize(cf(us, dei), "0928", "general"), "general")
     snap = valuation_snapshot(nc, "general", 10.0, "2024-11-05")
     assert snap["market_cap"] == pytest.approx(1000)
     assert snap["enterprise_value"] == pytest.approx(1000 + 100 - 40)
@@ -218,3 +220,19 @@ def test_non_usd_reporter_skips_usd_multiples() -> None:
     assert nc.get("revenue", 2024, "FY").unit == "TWD"
     snap = valuation_snapshot(nc, "general", 150.0, "2025-04-02")
     assert "note" in snap and "market_cap" not in snap
+
+
+def test_valuation_snapshot_blanks_market_value_when_shares_are_only_by_class() -> None:
+    """Visa: net income but no company-wide EPS or diluted shares; the cover lists one class only."""
+    dei = {
+        "EntityCommonStockSharesOutstanding": {
+            "units": {"shares": [{"end": "2024-10-18", "val": 10, "filed": "2024-11-01", "accn": "k"}]}
+        }
+    }
+    us = dict(SEPT)
+    us["NetIncomeLoss"] = [fact("2023-10-01", "2024-09-28", 50, "2024-11-01", "0000-K", "10-K")]
+    us.pop("EarningsPerShareDiluted", None)
+    nc = derive_all(normalize(cf(us, dei), "0928", "general"), "general")
+    snap = valuation_snapshot(nc, "general", 10.0, "2024-11-05")
+    assert snap["market_cap"] is None
+    assert "share class" in str(snap["shares_note"])
