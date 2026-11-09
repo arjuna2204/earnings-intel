@@ -5,6 +5,50 @@ import type { DcfModel } from "@/lib/dcf";
 
 const pct = (v: number | null | undefined, d = 1) => (v == null ? "—" : `${(v * 100).toFixed(d)}%`);
 const bn = (v: number) => (Math.abs(v) >= 1e9 ? `$${(v / 1e9).toFixed(1)}B` : `$${(v / 1e6).toFixed(0)}M`);
+/** Cell tint: green above today's price, orange below, stronger the further away (capped at ±50%). */
+function heat(diff: number): string {
+  const a = Math.min(Math.abs(diff) / 0.5, 1) * 0.35;
+  return diff >= 0 ? `rgba(0,200,5,${a})` : `rgba(255,80,0,${a})`;
+}
+
+function Bridge({ r, netDebt, shares }: { r: NonNullable<DcfModel["result"]>; netDebt: number; shares: number }) {
+  const steps: { label: string; from: number; to: number; kind: "add" | "sub" | "total" }[] = [];
+  let run = 0;
+  steps.push({ label: "PV of 10 years of free cash flow", from: 0, to: r.sum_pv, kind: "add" });
+  run = r.sum_pv;
+  steps.push({ label: "PV of terminal value (after year 10)", from: run, to: run + (r.pv_terminal ?? 0), kind: "add" });
+  run += r.pv_terminal ?? 0;
+  steps.push({ label: "Enterprise value", from: 0, to: run, kind: "total" });
+  steps.push({ label: netDebt >= 0 ? "− Net debt" : "+ Net cash", from: run, to: run - netDebt, kind: netDebt >= 0 ? "sub" : "add" });
+  steps.push({ label: "Equity value", from: 0, to: run - netDebt, kind: "total" });
+  const hi = Math.max(...steps.map((x) => Math.max(x.from, x.to)), 1);
+  const pos = (v: number) => (Math.max(v, 0) / hi) * 100;
+  return (
+    <div>
+      <div className="font-semibold">Where the value comes from</div>
+      <p className="mt-0.5 text-sm text-muted">
+        {r.terminal_share != null && `${Math.round(r.terminal_share * 100)}% of enterprise value comes after year 10 — the further out, the more the result depends on assumptions. `}
+        Equity value ÷ {(shares / 1e6).toLocaleString(undefined, { maximumFractionDigits: 0 })}M shares = {r.per_share != null ? `$${r.per_share.toFixed(2)}` : "—"} per share.
+      </p>
+      <div className="mt-3 divide-y divide-border">
+        {steps.map((x) => {
+          const left = pos(Math.min(x.from, x.to));
+          const width = Math.max(pos(Math.max(x.from, x.to)) - left, 0.6);
+          return (
+            <div key={x.label} className="grid grid-cols-[minmax(0,12rem)_1fr_5.5rem] items-center gap-4 py-2.5 text-sm sm:grid-cols-[16rem_1fr_6rem]">
+              <span className={x.kind === "total" ? "font-semibold" : "text-muted"}>{x.label}</span>
+              <div className="relative h-2">
+                <div className={`absolute top-0 h-2 rounded-full ${x.kind === "total" ? "bg-foreground" : x.kind === "add" ? "bg-up" : "bg-down"}`} style={{ left: `${left}%`, width: `${width}%` }} />
+              </div>
+              <span className={`text-right tabular-nums ${x.kind === "total" ? "font-semibold" : ""}`}>{bn(Math.abs(x.to - (x.kind === "total" ? 0 : x.from)))}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 const PCT_KEYS = /growth|margin|capex|tax|pct|risk_free|erp|cost_of_debt|weight|wacc/;
 
 /** DCF summary with sensitivity and assumptions; the Excel download has the same model with live formulas. */
@@ -110,6 +154,8 @@ export default function DcfView({ ticker, dcf }: { ticker: string; dcf: DcfModel
         </table>
       </div>
 
+      <Bridge r={r} netDebt={a.net_debt.value} shares={a.shares.value} />
+
       <div>
         <div className="font-semibold">Sensitivity</div>
         <p className="mt-0.5 text-sm text-muted">Value per share as the discount rate (down) and terminal growth (across) change. Green = above today&apos;s price.</p>
@@ -130,7 +176,11 @@ export default function DcfView({ ticker, dcf }: { ticker: string; dcf: DcfModel
                 <tr key={w}>
                   <td className="py-2.5 pr-3 text-muted">{pct(w)}</td>
                   {s.values[i].map((v, j) => (
-                    <td key={j} className={`py-2.5 pl-3 text-right ${v == null ? "text-muted" : v >= price ? "text-up" : "text-down"} ${i === 2 && j === 2 ? "font-bold" : ""}`}>
+                    <td
+                      key={j}
+                      className={`py-2.5 pl-3 pr-2 text-right ${v == null ? "text-muted" : v >= price ? "text-up" : "text-down"} ${i === 2 && j === 2 ? "font-bold outline outline-1 outline-foreground/40" : ""}`}
+                      style={v == null ? undefined : { background: heat(v / price - 1) }}
+                    >
                       {v == null ? "—" : `$${v.toFixed(0)}`}
                     </td>
                   ))}

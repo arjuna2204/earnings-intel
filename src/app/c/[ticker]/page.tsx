@@ -16,13 +16,14 @@ import type { Company, Filing, PricePoint } from "@/lib/types";
 import BriefView from "@/components/BriefView";
 import PeersView from "@/components/PeersView";
 import TrendsView, { type TrendRow } from "@/components/TrendsView";
+import type { RiskYear } from "@/components/RiskTrend";
 import { getDcf } from "@/lib/dcf";
 import { getLatestPeersJob, getPeerComparison, getPeerSet } from "@/lib/peers";
 import { buildExtras } from "@/lib/brief-extras";
 import { figureText, releaseFigure, type StreetRow } from "@/lib/figures";
 import FilingsView from "@/components/FilingsView";
 import { getBrief, getCases, getDodges, getLatestBriefJob, getRiskChanges, getTakes, type Brief } from "@/lib/filings";
-import { select } from "@/lib/db";
+import { select, selectAll } from "@/lib/db";
 
 export default function CompanyPage(props: PageProps<"/c/[ticker]">) {
   return (
@@ -136,7 +137,7 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
         {tab === "brief" && <BriefTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />}
         {tab === "call" && <CallTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />}
         {tab === "filings" && <BriefTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} mode="filings" />}
-        {tab === "peers" && <PeersTab company={company} />}
+        {tab === "peers" && <PeersTab company={company} prices={prices} />}
         </Suspense>
       </div>
     </>
@@ -243,11 +244,24 @@ async function BriefTab({ company, events, a, b, mode = "brief" }: { company: Co
     );
   }
   if (mode === "filings") {
-    const risks = brief.inputs.risk ? await getRiskChanges(company.cik, brief.inputs.risk.accession_new, brief.inputs.risk.accession_old) : [];
+    const [risks, riskHist] = await Promise.all([
+      brief.inputs.risk ? getRiskChanges(company.cik, brief.inputs.risk.accession_new, brief.inputs.risk.accession_old) : Promise.resolve([]),
+      select<{ summary: { counts: Record<string, number>; escalated: number; factors_new: number; words_new: number; report_new: string } }>("risk_comparisons", {
+        cik: `eq.${company.cik}`,
+        select: "summary",
+      }),
+    ]);
+    const byYear = new Map<string, RiskYear>();
+    for (const r of riskHist) {
+      const y = String(r.summary.report_new ?? "").slice(0, 4);
+      if (!y) continue;
+      byYear.set(y, { year: y, factors: r.summary.factors_new, added: r.summary.counts.added ?? 0, removed: r.summary.counts.removed ?? 0, escalated: r.summary.escalated, words: r.summary.words_new });
+    }
+    const riskYears = [...byYear.values()].sort((a, b) => a.year.localeCompare(b.year));
     return (
       <div className="space-y-8">
         {panel}
-        <FilingsView inputs={brief.inputs} risks={risks} la={la} lb={lb} />
+        <FilingsView inputs={brief.inputs} risks={risks} la={la} lb={lb} riskYears={riskYears} />
       </div>
     );
   }
@@ -354,9 +368,31 @@ async function streetRows(company: Company, events: Events, brief: Brief, ea: [n
   return rows;
 }
 
-async function PeersTab({ company }: { company: Company }) {
+async function PeersTab({ company, prices }: { company: Company; prices: PricePoint[] }) {
   const [peerSet, comparison, job] = await Promise.all([getPeerSet(company.cik), getPeerComparison(company.cik), getLatestPeersJob(company.ticker)]);
-  return <PeersView ticker={company.ticker} peerSet={peerSet} comparison={comparison} initialJob={job} />;
+  // 1-year performance, rebased to 100, sampled weekly
+  const tickers = [company.ticker, ...(comparison?.result.rows.map((r) => r.ticker).filter((t) => t !== company.ticker) ?? [])];
+  const lastDate = prices.length ? prices[prices.length - 1].date : null;
+  let perf: { ticker: string; points: [string, number][] }[] = [];
+  if (lastDate && tickers.length > 1) {
+    const since = `${Number(lastDate.slice(0, 4)) - 1}${lastDate.slice(4)}`;
+    const rows = await selectAll<{ ticker: string; date: string; adj_close: number }>("prices", {
+      ticker: `in.(${tickers.join(",")})`,
+      date: `gte.${since}`,
+      select: "ticker,date,adj_close",
+      order: "date",
+    });
+    perf = tickers
+      .map((t) => {
+        const pts = rows.filter((r) => r.ticker === t && r.adj_close);
+        if (pts.length < 100) return null;
+        const base = pts[0].adj_close;
+        const sampled = pts.filter((_, i) => i % 5 === 0 || i === pts.length - 1);
+        return { ticker: t, points: sampled.map((r) => [r.date, Number(((r.adj_close / base) * 100).toFixed(2))] as [string, number]) };
+      })
+      .filter((x): x is { ticker: string; points: [string, number][] } => x !== null);
+  }
+  return <PeersView ticker={company.ticker} peerSet={peerSet} comparison={comparison} initialJob={job} perf={perf} />;
 }
 
 function fallbackQuarters(): [number, number][] {
@@ -391,6 +427,17 @@ async function StreetTab({ company, events, prices }: { company: Company; events
     getPeerComparison(company.cik),
   ]);
   const lb = lastReported ? `FY${lastReported.fiscal_year}Q${lastReported.fiscal_quarter}` : null;
+  const reactRows = await select<{ label: string; event_date: string; value: number; reaction: number | null }>("backtest_events", {
+    cik: `eq.${company.cik}`,
+    signal: "eq.eps_surprise",
+    select: "label,event_date,value,reaction",
+    order: "event_date.desc",
+    limit: "12",
+  });
+  const reactions = reactRows
+    .filter((r) => r.reaction != null)
+    .reverse()
+    .map((r) => ({ label: r.label, date: r.event_date, surprise: r.value, reaction: r.reaction as number }));
   // weekly consensus snapshots for the next quarter and next fiscal year
   const hist = await select<{ snapshot_date: string; horizon: string; period_end: string; eps_avg: number | null }>("eps_estimate_history", {
     cik: `eq.${company.cik}`,
@@ -462,27 +509,29 @@ async function StreetTab({ company, events, prices }: { company: Company; events
         field,
         revisions,
         firstSnapshot: hist[0]?.snapshot_date ?? null,
+        reactions,
       }}
     />
   );
 }
 
 async function FinancialsTab({ company, filings }: { company: Company; filings: Filing[] }) {
-  const [data, trends] = await Promise.all([
+  const [data, trends, dcf] = await Promise.all([
     getFinancials(company, filings),
     select<TrendRow>("metric_values", {
       cik: `eq.${company.cik}`,
       fiscal_period: "eq.FY",
-      metric: "in.(gross_margin,operating_margin,fcf_margin,diluted_shares)",
+      metric: "in.(gross_margin,operating_margin,fcf_margin,diluted_shares,roic,revenue,eps_diluted)",
       select: "fiscal_year,metric,value",
       order: "fiscal_year",
-      limit: "200",
+      limit: "400",
     }),
+    getDcf(company.cik),
   ]);
   const groups = [...GENERAL_GROUPS, ...(company.sector_pack !== "general" ? [PACK_GROUPS[company.sector_pack]] : [])];
   return (
     <div className="space-y-12">
-      <TrendsView rows={trends} />
+      <TrendsView rows={trends} wacc={dcf?.status === "ok" ? (dcf.assumptions.wacc?.value ?? null) : null} />
       <FinancialsView data={data} groups={groups} />
     </div>
   );

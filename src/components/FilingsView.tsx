@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import SourcePanel from "@/components/SourcePanel";
+import RiskTrend, { type RiskYear } from "@/components/RiskTrend";
 import { quoteLink } from "@/lib/links";
 import { figureText } from "@/lib/figures";
 import type { BriefInputs, Driver, Release, RiskChange } from "@/lib/filings";
@@ -9,7 +10,7 @@ import type { BriefInputs, Driver, Release, RiskChange } from "@/lib/filings";
 type Panel = { title: string; quote: string; link?: string | null; label?: string } | null;
 
 /** Filings tab: company-reported (non-GAAP) figures, MD&A drivers, and the risk-factor redline. */
-export default function FilingsView({ inputs, risks, la, lb }: { inputs: BriefInputs; risks: RiskChange[]; la: string; lb: string }) {
+export default function FilingsView({ inputs, risks, la, lb, riskYears = [] }: { inputs: BriefInputs; risks: RiskChange[]; la: string; lb: string; riskYears?: RiskYear[] }) {
   const [panel, setPanel] = useState<Panel>(null);
   const rb = inputs.results[lb]?.release;
   const ra = inputs.results[la]?.release;
@@ -73,6 +74,8 @@ export default function FilingsView({ inputs, risks, la, lb }: { inputs: BriefIn
       )}
 
       <RiskSection inputs={inputs} risks={risks} />
+
+      <RiskTrend years={riskYears} />
 
       {panel && (
         <SourcePanel title={panel.title} onClose={() => setPanel(null)}>
@@ -238,6 +241,7 @@ function RiskSection({ inputs, risks }: { inputs: BriefInputs; risks: RiskChange
           </div>
         ))}
       </div>
+      <StatusBar counts={s.counts} />
       <div className="mb-3 flex gap-2 text-sm">
         {(["changed", "escalated", "all"] as const).map((f) => (
           <button key={f} onClick={() => setFilter(f)} className={`rounded-full px-3.5 py-1.5 font-semibold ${filter === f ? "bg-foreground text-background" : "text-muted hover:text-foreground"}`}>
@@ -278,6 +282,32 @@ function RiskSection({ inputs, risks }: { inputs: BriefInputs; risks: RiskChange
         ))}
       </ul>
     </section>
+  );
+}
+
+function StatusBar({ counts }: { counts: Record<string, number> }) {
+  const parts: [string, number, string][] = [
+    ["Added", counts.added ?? 0, "bg-up"],
+    ["Reworded", counts.modified ?? 0, "bg-foreground/70"],
+    ["Removed", counts.removed ?? 0, "bg-down"],
+    ["Unchanged", counts.unchanged ?? 0, "bg-border"],
+  ];
+  const total = parts.reduce((t, p) => t + p[1], 0);
+  if (!total) return null;
+  return (
+    <div className="mb-5">
+      <div className="flex h-2.5 overflow-hidden rounded-full">
+        {parts.map(([k, n, c]) => (n ? <div key={k} className={c} style={{ width: `${(n / total) * 100}%` }} title={`${k}: ${n}`} /> : null))}
+      </div>
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
+        {parts.map(([k, n, c]) => (
+          <span key={k} className="flex items-center gap-1.5">
+            <span className={`inline-block h-2 w-2 rounded-full ${c}`} />
+            {k} {n}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 

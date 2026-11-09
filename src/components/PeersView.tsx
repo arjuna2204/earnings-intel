@@ -31,11 +31,13 @@ export default function PeersView({
   peerSet,
   comparison,
   initialJob,
+  perf = [],
 }: {
   ticker: string;
   peerSet: PeerSet | null;
   comparison: PeerComparison | null;
   initialJob: Job | null;
+  perf?: { ticker: string; points: [string, number][] }[];
 }) {
   const router = useRouter();
   const [job, setJob] = useState<Job | null>(initialJob && ["queued", "running"].includes(initialJob.status) ? initialJob : null);
@@ -142,6 +144,7 @@ export default function PeersView({
             </section>
           )}
           <RankTable comparison={comparison} ticker={ticker} />
+          {perf.length > 1 && <Performance perf={perf} ticker={ticker} />}
           <Scatter comparison={comparison} ticker={ticker} />
           <p className="text-xs leading-relaxed text-muted">
             All values and ranks are calculated by the app from SEC filings (trailing twelve months), market prices and Alpha Vantage consensus. The
@@ -423,6 +426,51 @@ function RankStrips({ cols, rows, ticker }: { cols: PeerColumn[]; rows: PeerComp
         );
       })}
     </ul>
+  );
+}
+
+function Performance({ perf, ticker }: { perf: { ticker: string; points: [string, number][] }[]; ticker: string }) {
+  const theme = useThemeColors();
+  const last = (p: { points: [string, number][] }) => p.points[p.points.length - 1][1];
+  const sorted = [...perf].sort((a, b) => last(b) - last(a));
+  const option = useMemo(
+    () => ({
+      animation: false,
+      grid: { left: 8, right: 56, top: 16, bottom: 8, containLabel: true },
+      tooltip: { trigger: "axis", valueFormatter: (v: number) => `${(v - 100).toFixed(1)}%` },
+      xAxis: { type: "time", axisLabel: { color: theme.muted }, splitLine: { show: false } },
+      yAxis: { type: "value", scale: true, axisLabel: { color: theme.muted, formatter: (v: number) => `${v - 100 >= 0 ? "+" : ""}${v - 100}%` }, splitLine: { lineStyle: { color: theme.grid } } },
+      series: perf.map((p) => {
+        const me = p.ticker === ticker;
+        return {
+          type: "line",
+          name: p.ticker,
+          data: p.points,
+          showSymbol: false,
+          z: me ? 10 : 1,
+          lineStyle: { width: me ? 3 : 1.5, color: me ? theme.up : theme.muted, opacity: me ? 1 : 0.6 },
+          itemStyle: { color: me ? theme.up : theme.muted },
+          endLabel: { show: true, formatter: "{a}", color: me ? theme.up : theme.muted, fontWeight: me ? 700 : 400 },
+          emphasis: { focus: "series" },
+        };
+      }),
+    }),
+    [perf, ticker, theme],
+  );
+  return (
+    <section>
+      <h3 className="mb-1 border-b border-border pb-3 text-xl font-semibold tracking-tight">1-year performance</h3>
+      <p className="mt-2 text-sm text-muted">
+        Total return including dividends, starting from the same point.{" "}
+        {sorted.map((p, i) => (
+          <span key={p.ticker} className={p.ticker === ticker ? "font-semibold text-foreground" : ""}>
+            {p.ticker} {last(p) - 100 >= 0 ? "+" : ""}
+            {(last(p) - 100).toFixed(0)}%{i < sorted.length - 1 ? " · " : ""}
+          </span>
+        ))}
+      </p>
+      <EChart option={option} className="mt-3 h-72 w-full" ariaLabel={`One-year return of ${ticker} versus peers`} />
+    </section>
   );
 }
 

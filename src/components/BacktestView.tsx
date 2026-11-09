@@ -76,6 +76,8 @@ export default function BacktestView({ data }: { data: BacktestData }) {
         </div>
       </div>
 
+      <Forest data={data} order={order} h={h} />
+
       <div className="divide-y divide-border border-t border-border">
         {order.map((k) => (
           <SignalRow key={k} meta={c.signals[k]} stat={data.summary[k][h]} total={data.summary[k]} horizon={h} />
@@ -101,6 +103,50 @@ export default function BacktestView({ data }: { data: BacktestData }) {
         </p>
         <p className="text-xs">Updated {new Date(data.created_at).toLocaleString()}.</p>
       </section>
+    </div>
+  );
+}
+
+/** All signals on one chart: the gap between high- and low-signal events, with its likely range. */
+function Forest({ data, order, h }: { data: BacktestData; order: string[]; h: Horizon }) {
+  const rows = order
+    .map((k) => ({ k, meta: data.coverage.signals[k], st: data.summary[k][h] }))
+    .filter((r) => r.st?.enough && r.st.ci && r.st.spread != null);
+  if (!rows.length) return null;
+  const ext = Math.max(0.02, ...rows.flatMap((r) => [Math.abs(r.st.ci![0]), Math.abs(r.st.ci![1])])) * 1.1;
+  const pos = (v: number) => ((v + ext) / (2 * ext)) * 100;
+  return (
+    <div>
+      <div className="font-semibold">All signals at a glance</div>
+      <p className="mt-0.5 text-sm text-muted">Dot = difference in return between high- and low-signal events. Line = likely range. Crossing the middle line means it could be luck.</p>
+      <div className="mt-4 space-y-3">
+        {rows.map(({ k, meta, st }) => {
+          const sig = st.significant;
+          const color = !sig ? "bg-muted" : st.spread! > 0 ? "bg-up" : "bg-down";
+          return (
+            <div key={k} className="grid grid-cols-[minmax(0,9rem)_1fr_4.5rem] items-center gap-3 text-sm sm:grid-cols-[14rem_1fr_5rem]">
+              <span className="truncate" title={meta.title}>
+                {meta.title}
+              </span>
+              <div className="relative h-5">
+                <div className="absolute inset-y-0 left-1/2 w-px bg-border" />
+                <div className={`absolute top-2 h-1 rounded-full ${color} opacity-60`} style={{ left: `${pos(st.ci![0])}%`, width: `${pos(st.ci![1]) - pos(st.ci![0])}%` }} />
+                <div className={`absolute top-1 h-3 w-3 -translate-x-1/2 rounded-full ${color}`} style={{ left: `${pos(st.spread!)}%` }} />
+              </div>
+              <span className={`text-right font-semibold tabular-nums ${!sig ? "text-muted" : st.spread! > 0 ? "text-up" : "text-down"}`}>{pct(st.spread)}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-1 grid grid-cols-[minmax(0,9rem)_1fr_4.5rem] gap-3 text-[11px] text-muted sm:grid-cols-[14rem_1fr_5rem]">
+        <span />
+        <span className="flex justify-between">
+          <span>{pct(-ext)}</span>
+          <span>0</span>
+          <span>{pct(ext)}</span>
+        </span>
+        <span />
+      </div>
     </div>
   );
 }

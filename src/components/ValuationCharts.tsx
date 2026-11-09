@@ -130,3 +130,49 @@ export function RevisionsChart({ lines, firstDate }: { lines: { name: string; po
     </div>
   );
 }
+
+export type ReactionPoint = { label: string; date: string; surprise: number; reaction: number };
+
+/** How the stock moved (vs. its sector) the day after each earnings report, next to the EPS surprise. */
+export function ReactionChart({ points }: { points: ReactionPoint[] }) {
+  const t = useThemeColors();
+  const pct = (v: number) => `${v >= 0 ? "+" : ""}${(v * 100).toFixed(1)}%`;
+  const option = useMemo(
+    () => ({
+      animation: false,
+      grid: { left: 8, right: 16, top: 30, bottom: 8, containLabel: true },
+      legend: { top: 0, textStyle: { color: t.muted }, data: ["Next-day move vs. sector", "EPS surprise"] },
+      tooltip: {
+        trigger: "axis",
+        formatter: (ps: { dataIndex: number }[]) => {
+          const p = points[ps[0].dataIndex];
+          return `<b>${p.label}</b> (reported ${p.date})<br/>EPS surprise ${pct(p.surprise)}<br/>Next-day move vs. sector ${pct(p.reaction)}`;
+        },
+      },
+      xAxis: { type: "category", data: points.map((p) => p.label.replace(/^FY\d{2}(\d{2})Q(\d)/, "Q$2 ’$1")), axisLabel: { color: t.muted }, axisLine: { lineStyle: { color: t.grid } } },
+      yAxis: { type: "value", axisLabel: { color: t.muted, formatter: (v: number) => `${Math.round(v * 100)}%` }, splitLine: { lineStyle: { color: t.grid } } },
+      series: [
+        {
+          type: "bar",
+          name: "Next-day move vs. sector",
+          data: points.map((p) => ({ value: p.reaction, itemStyle: { color: p.reaction >= 0 ? t.up : t.down, borderRadius: 3 } })),
+          barMaxWidth: 26,
+        },
+        { type: "line", name: "EPS surprise", data: points.map((p) => p.surprise), symbolSize: 7, lineStyle: { color: t.muted, type: "dashed" }, itemStyle: { color: t.fg } },
+      ],
+    }),
+    [points, t],
+  );
+  const beatsUp = points.filter((p) => p.surprise > 0 && p.reaction > 0).length;
+  const beats = points.filter((p) => p.surprise > 0).length;
+  return (
+    <div>
+      <div className="font-semibold">How the stock reacts to earnings</div>
+      <p className="mt-0.5 text-sm text-muted">
+        Stock return minus its sector ETF on the first trading day after each report.
+        {beats > 0 && ` After ${beats} beats, the stock outperformed ${beatsUp} times.`}
+      </p>
+      <EChart option={option} className="mt-3 h-60 w-full" ariaLabel="Next-day stock move versus earnings surprise for recent quarters" />
+    </div>
+  );
+}

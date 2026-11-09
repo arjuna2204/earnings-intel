@@ -9,7 +9,7 @@ import type { StreakItem } from "@/lib/brief-extras";
 import type { DcfModel } from "@/lib/dcf";
 import type { Claim, StockCases } from "@/lib/filings";
 import type { GuidanceItem } from "@/lib/types";
-import { FootballField, PeHistoryChart, RevisionsChart, type FieldRow, type RevisionPoint } from "@/components/ValuationCharts";
+import { FootballField, PeHistoryChart, ReactionChart, RevisionsChart, type FieldRow, type ReactionPoint, type RevisionPoint } from "@/components/ValuationCharts";
 
 export type EstimateRow = { horizon: string; period_end: string; eps_low: number | null; eps_avg: number | null; eps_high: number | null; revenue_avg: number | null; analysts: number | null };
 export type StreetData = {
@@ -30,6 +30,7 @@ export type StreetData = {
   field: FieldRow[];
   revisions: { name: string; points: RevisionPoint[] }[];
   firstSnapshot: string | null;
+  reactions: ReactionPoint[];
 };
 
 const money = (v: number | null | undefined) =>
@@ -89,6 +90,8 @@ export default function StreetView({ d }: { d: StreetData }) {
       )}
 
       {d.streak.length > 1 && <Streak items={d.streak} />}
+
+      {d.reactions.length >= 4 && <ReactionChart points={d.reactions} />}
 
       <section id="sv-estimates" className="scroll-mt-28">
         <Head title="What analysts expect" sub={d.epsNtmMethod ? `Next 12 months = ${d.epsNtmMethod}` : undefined} />
