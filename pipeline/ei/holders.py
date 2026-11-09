@@ -174,7 +174,8 @@ def read_quarter(path: str, companies: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "period": period,
         "by_company": {
-            cik: {"cusip6": next(k for k, v in chosen.items() if v == cik), "filers": f} for cik, f in filers.items()
+            cik: {"cusip6": next(k for k, v in chosen.items() if v == cik), "filers": f, "dropped_rows": dropped[cik]}
+            for cik, f in filers.items()
         },
     }
 
