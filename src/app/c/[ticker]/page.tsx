@@ -85,7 +85,9 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
     );
   }
 
-  const sectorEtf = company.sector_etf && company.sector_etf !== company.ticker ? company.sector_etf : null;
+  // chart comparison fund: the sector fund, except tech stocks compare with the Nasdaq-100 (QQQ)
+  const chartFund = company.sector_etf === "XLK" ? "QQQ" : company.sector_etf;
+  const sectorEtf = chartFund && chartFund !== company.ticker ? chartFund : null;
   const [prices, filings, job, events, spy, sectorPx, loaded] = await Promise.all([
     getPrices(company.ticker),
     getFilings(company.cik),
