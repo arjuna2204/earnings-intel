@@ -239,6 +239,11 @@ def build_rows(
             and r["fiscal_year"] == year
         }
         drop, adds_up = subtotal_members(members, revenue_fy[year])
+        if not adds_up and sum(members.values()) > 1.02 * revenue_fy[year]:
+            # lines overlap in ways we can't untangle (Tesla tags totals at several levels): showing them
+            # stacked would overstate revenue, so this breakdown is left out
+            rows = [r for r in rows if not (r["axis"] == axis and r["measure"] == "revenue")]
+            continue
         rows = [r for r in rows if not (r["axis"] == axis and r["member"] in drop)]
         for r in rows:
             if r["axis"] == axis and r["measure"] == "revenue":
@@ -329,7 +334,15 @@ def run_company(db: Db, sec: SecClient, company: dict[str, Any]) -> dict[str, An
         "segment_values", {"cik": cik}, rows, on_conflict="cik,axis,measure,member,fiscal_year,fiscal_period"
     )
     axes = sorted({r["axis"] for r in rows})
-    return {"filings": len(by_filing), "rows": len(rows), "axes": axes}
+    members = {r["member"] for r in rows}
+    unnamed = sorted(m for m in members if m not in labels)
+    return {
+        "filings": len(by_filing),
+        "rows": len(rows),
+        "axes": axes,
+        "unnamed": unnamed[:5],
+        "label_sample": sorted(labels)[:3] if unnamed else [],
+    }
 
 
 def run_all(settings: Any, tickers: list[str] | None = None) -> dict[str, Any]:
