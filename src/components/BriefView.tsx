@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import SourcePanel from "@/components/SourcePanel";
 import type { StreetRow } from "@/lib/figures";
+import { quoteLink } from "@/lib/links";
 import type { Brief, Claim, Dodge, Fact, StockCases, Take } from "@/lib/filings";
 import type { Bridge, BriefExtras, StreakItem, Tile, Tone } from "@/lib/brief-extras";
 import type { GuidanceChange, GuidanceItem } from "@/lib/types";
@@ -70,7 +71,15 @@ export default function BriefView({
         )}
       </section>
 
-      {more.cases && <Cases cases={more.cases} refs={refs} />}
+      {more.cases?.numbers.scenarios && (
+        <Link href={`?tab=street`} className="flex items-center justify-between border-y border-border py-4 hover:text-accent">
+          <span>
+            <span className="block font-semibold">Bull, base &amp; bear · DCF · estimates</span>
+            <span className="text-sm text-muted">Forward-looking views live in StreetView</span>
+          </span>
+          <span aria-hidden>→</span>
+        </Link>
+      )}
 
       <Section id="street" title="The Street view">
         {extras.tiles.length > 0 && (
@@ -83,7 +92,6 @@ export default function BriefView({
         {extras.streak.length > 1 && <Streak items={extras.streak} />}
         {extras.bridge && <BridgeChart bridge={extras.bridge} lb={lb} />}
         <ClaimRows claims={claims("street")} refs={refs} />
-        {more.valuation && <ValuationSlider {...more.valuation} ticker={more.ticker} />}
         {street.length > 0 && <Scorecard rows={street} la={la} lb={lb} onSource={setOpen} />}
       </Section>
 
@@ -153,7 +161,7 @@ export default function BriefView({
 
 const CASE_LABEL = { bear: "Bear", base: "Base", bull: "Bull" } as const;
 
-function Cases({ cases, refs }: { cases: StockCases; refs: (c: Claim) => React.ReactNode }) {
+export function Cases({ cases, refs }: { cases: StockCases; refs: (c: Claim) => React.ReactNode }) {
   const [pick, setPick] = useState<"bear" | "base" | "bull">("base");
   const n = cases.numbers;
   const sc = n.scenarios;
@@ -264,7 +272,7 @@ function Cases({ cases, refs }: { cases: StockCases; refs: (c: Claim) => React.R
   );
 }
 
-function ValuationSlider({ price, epsNtm, peerMedianPe, ticker }: { price: number; epsNtm: number; peerMedianPe: number | null; ticker: string }) {
+export function ValuationSlider({ price, epsNtm, peerMedianPe, ticker }: { price: number; epsNtm: number; peerMedianPe: number | null; ticker: string }) {
   const [pct, setPct] = useState(0); // % change vs consensus
   const eps = epsNtm * (1 + pct / 100);
   const pe = eps > 0 ? price / eps : null;
@@ -441,7 +449,7 @@ function Section({
   );
 }
 
-function Refs({ refs, note, onOpen }: { refs: string[]; note: (r: string) => number; onOpen: (id: string) => void }) {
+export function Refs({ refs, note, onOpen }: { refs: string[]; note: (r: string) => number; onOpen: (id: string) => void }) {
   return (
     <sup className="ml-0.5 whitespace-nowrap">
       {refs.map((r, i) => (
@@ -495,7 +503,7 @@ function StatTile({ tile }: { tile: Tile }) {
   );
 }
 
-function Streak({ items }: { items: StreakItem[] }) {
+export function Streak({ items }: { items: StreakItem[] }) {
   const [hover, setHover] = useState<number | null>(null);
   const max = Math.max(...items.map((i) => Math.abs(i.surprisePct)), 1);
   const beats = items.filter((i) => i.surprisePct >= 0).length;
@@ -744,7 +752,7 @@ function Sources({ order, facts, onOpen }: { order: string[]; facts: Record<stri
   );
 }
 
-function FactDetail({ fact }: { fact: Fact }) {
+export function FactDetail({ fact }: { fact: Fact }) {
   const quote = fact.quote && !fact.text.includes(fact.quote) ? fact.quote : null;
   return (
     <>
@@ -759,7 +767,7 @@ function FactDetail({ fact }: { fact: Fact }) {
                 {fact.link_label}
               </Link>
             ) : (
-              <a href={fact.link} target="_blank" rel="noreferrer" className="text-accent underline">
+              <a href={quoteLink(fact.link, fact.quote) ?? fact.link} target="_blank" rel="noreferrer" className="text-accent underline">
                 {fact.link_label} ↗
               </a>
             )

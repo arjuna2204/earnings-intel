@@ -26,7 +26,7 @@ async function LoginForm({ searchParams }: { searchParams: PageProps<"/login">["
         className="w-full max-w-sm rounded-2xl border border-black/10 p-8 shadow-sm dark:border-white/10"
       >
         <h1 className="text-2xl font-semibold tracking-tight">Earnings Intel</h1>
-        <p className="mt-1 text-sm opacity-60">Private research tool</p>
+        <p className="mt-1 text-sm opacity-60">Equity Research for the everyday investor</p>
         <input type="hidden" name="next" value={next} />
         <label htmlFor="password" className="mt-8 block text-sm font-medium">
           Password

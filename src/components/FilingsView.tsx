@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import SourcePanel from "@/components/SourcePanel";
+import { quoteLink } from "@/lib/links";
 import { figureText } from "@/lib/figures";
 import type { BriefInputs, Driver, Release, RiskChange } from "@/lib/filings";
 
@@ -14,7 +15,9 @@ export default function FilingsView({ inputs, risks, la, lb }: { inputs: BriefIn
   const ra = inputs.results[la]?.release;
   const mdna = inputs.results[lb]?.mdna;
   const fb = inputs.filings[lb];
-  const relLink = (lbl: string) => inputs.filings[lbl]?.release?.url;
+  // The press release is an exhibit to the 8-K; its own URL is on the release facts.
+  const relLink = (lbl: string) =>
+    Object.values(inputs.facts).find((f) => f.type.startsWith("release") && f.period === lbl && f.link)?.link ?? inputs.filings[lbl]?.release?.url;
 
   return (
     <div className="space-y-10">
@@ -75,8 +78,8 @@ export default function FilingsView({ inputs, risks, la, lb }: { inputs: BriefIn
         <SourcePanel title={panel.title} onClose={() => setPanel(null)}>
           <blockquote className="border-l-2 border-accent pl-3 italic leading-relaxed">“{panel.quote}”</blockquote>
           {panel.link && (
-            <a href={panel.link} target="_blank" rel="noreferrer" className="text-accent underline">
-              Open {panel.label ?? "filing"} ↗
+            <a href={quoteLink(panel.link, panel.quote) ?? panel.link} target="_blank" rel="noreferrer" className="text-accent underline">
+              Open {panel.label ?? "filing"} at this passage ↗
             </a>
           )}
           <p className="text-xs text-muted">Quoted exactly; the app checked this text appears word-for-word in the document.</p>

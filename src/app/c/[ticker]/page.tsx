@@ -1,7 +1,8 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import AnalyzePanel from "@/components/AnalyzePanel";
-import CompanyTabs, { type TabKey } from "@/components/CompanyTabs";
+import CompanyTabs, { normalizeTab } from "@/components/CompanyTabs";
+import StreetView, { type EstimateRow } from "@/components/StreetView";
 import FinancialsView from "@/components/FinancialsView";
 import PriceChart from "@/components/PriceChart";
 import { getCompanyByTicker, getFilings, getFinancials, getLatestJob, getPrices, getTicker } from "@/lib/company";
@@ -12,7 +13,6 @@ import { compact, filingIndexFromDocUrl, GENERAL_GROUPS, PACK_GROUPS } from "@/l
 import type { Company, Filing } from "@/lib/types";
 import BriefView from "@/components/BriefView";
 import PeersView from "@/components/PeersView";
-import DcfView from "@/components/DcfView";
 import { getDcf } from "@/lib/dcf";
 import { getLatestPeersJob, getPeerComparison, getPeerSet } from "@/lib/peers";
 import { buildExtras } from "@/lib/brief-extras";
@@ -23,7 +23,7 @@ import { select } from "@/lib/db";
 
 export default function CompanyPage(props: PageProps<"/c/[ticker]">) {
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-24 pt-6 sm:pb-12">
+    <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-16 pt-6">
       <Suspense fallback={<CompanySkeleton />}>
         <CompanyContent {...props} />
       </Suspense>
@@ -37,7 +37,7 @@ const SYMBOL: Record<string, string> = { USD: "$", TWD: "NT$", EUR: "€", GBP: 
 async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">) {
   const ticker = decodeURIComponent((await params).ticker).toUpperCase();
   const sp = await searchParams;
-  const tab = (typeof sp.tab === "string" ? sp.tab : "financials") as TabKey;
+  const tab = normalizeTab(typeof sp.tab === "string" ? sp.tab : null, "street");
 
   const company = await getCompanyByTicker(ticker);
   if (!company) {
@@ -122,11 +122,12 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
       <ValuationStrip company={company} />
 
       <div className="mt-6">
-        <CompanyTabs defaultTab="financials" />
+        <CompanyTabs defaultTab="street" />
       </div>
       <div className="mt-6">
         <Suspense key={`${tab}-${sp.a ?? ""}-${sp.b ?? ""}`} fallback={<TabSkeleton />}>
-        {tab === "financials" && <FinancialsTab company={company} filings={filings} />}
+        {tab === "historical" && <FinancialsTab company={company} filings={filings} />}
+        {tab === "street" && <StreetTab company={company} events={events} />}
         {tab === "sources" && <SourcesTab company={company} filings={filings} />}
         {tab === "brief" && <BriefTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />}
         {tab === "call" && <CallTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />}
@@ -370,15 +371,60 @@ function fallbackQuarters(): [number, number][] {
   return out;
 }
 
-async function FinancialsTab({ company, filings }: { company: Company; filings: Filing[] }) {
-  const [data, dcf] = await Promise.all([getFinancials(company, filings), getDcf(company.cik)]);
-  const groups = [...GENERAL_GROUPS, ...(company.sector_pack !== "general" ? [PACK_GROUPS[company.sector_pack]] : [])];
+async function StreetTab({ company, events }: { company: Company; events: Events }) {
+  const v = company.valuation;
+  const lastReported = [...events].filter((e) => e.eps_reported != null).sort((a, b) => b.period_end.localeCompare(a.period_end))[0];
+  const [estimates, cases, dcf, peers] = await Promise.all([
+    select<EstimateRow>("eps_estimates", {
+      cik: `eq.${company.cik}`,
+      period_end: `gt.${lastReported?.period_end ?? "1900-01-01"}`,
+      select: "horizon,period_end,eps_low,eps_avg,eps_high,revenue_avg,analysts",
+      order: "period_end",
+      limit: "12",
+    }),
+    getCases(company.cik),
+    getDcf(company.cik),
+    getPeerComparison(company.cik),
+  ]);
+  const lb = lastReported ? `FY${lastReported.fiscal_year}Q${lastReported.fiscal_quarter}` : null;
+  const analysis = lastReported ? await getAnalysis(company.cik, lastReported.fiscal_year, lastReported.fiscal_quarter) : null;
+  const streak = [...events]
+    .filter((e) => e.eps_reported != null && e.eps_estimated != null && e.eps_estimated !== 0)
+    .sort((a, b) => b.period_end.localeCompare(a.period_end))
+    .slice(0, 8)
+    .reverse()
+    .map((e) => ({
+      label: `FY${e.fiscal_year}Q${e.fiscal_quarter}`,
+      reported: e.eps_reported as number,
+      estimated: e.eps_estimated as number,
+      surprisePct: ((e.eps_reported as number) / (e.eps_estimated as number) - 1) * 100,
+    }));
   return (
-    <div className="space-y-12">
-      {dcf && <DcfView ticker={company.ticker} dcf={dcf} />}
-      <FinancialsView data={data} groups={groups} />
-    </div>
+    <StreetView
+      d={{
+        ticker: company.ticker,
+        price: v?.price ?? null,
+        priceDate: v?.price_date ?? null,
+        epsNtm: v?.eps_ntm ?? null,
+        epsNtmMethod: v?.eps_ntm_method ?? null,
+        peFwd: v?.pe_fwd_ntm ?? null,
+        peAdjLtm: v?.pe_adj_ltm ?? null,
+        adjEpsLtm: v?.adj_eps_ltm ?? null,
+        peerMedianPe: peers?.result.medians.pe_fwd_ntm ?? null,
+        estimates,
+        streak,
+        guidance: analysis?.extraction?.guidance?.length && lb ? { label: lb, items: analysis.extraction.guidance } : null,
+        cases,
+        dcf,
+      }}
+    />
   );
+}
+
+async function FinancialsTab({ company, filings }: { company: Company; filings: Filing[] }) {
+  const data = await getFinancials(company, filings);
+  const groups = [...GENERAL_GROUPS, ...(company.sector_pack !== "general" ? [PACK_GROUPS[company.sector_pack]] : [])];
+  return <FinancialsView data={data} groups={groups} />;
 }
 
 function ValuationStrip({ company }: { company: Company }) {

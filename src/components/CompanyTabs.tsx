@@ -2,64 +2,51 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect, useRef } from "react";
 
 export const TABS = [
-  { key: "brief", label: "Brief", icon: "◆" },
-  { key: "call", label: "Call", icon: "☏" },
-  { key: "filings", label: "Filings", icon: "▤" },
-  { key: "financials", label: "Financials", icon: "▥" },
-  { key: "peers", label: "Peers", icon: "⧉" },
-  { key: "sources", label: "Sources", icon: "⛬" },
+  { key: "brief", label: "Brief" },
+  { key: "street", label: "StreetView" },
+  { key: "historical", label: "Historical" },
+  { key: "call", label: "Call" },
+  { key: "filings", label: "Filings" },
+  { key: "peers", label: "Peers" },
+  { key: "sources", label: "Sources" },
 ] as const;
 
 export type TabKey = (typeof TABS)[number]["key"];
+const ALIASES: Record<string, TabKey> = { financials: "historical", streetview: "street" };
+export const normalizeTab = (t: string | null | undefined, fallback: TabKey): TabKey =>
+  (t && (ALIASES[t] ?? (TABS.some((x) => x.key === t) ? (t as TabKey) : undefined))) || fallback;
 
-/** Top tabs on desktop, bottom tab bar on mobile. */
+/** One sticky tab bar at the top on every screen size; scrolls sideways on phones. */
 export default function CompanyTabs({ defaultTab }: { defaultTab: TabKey }) {
   const path = usePathname();
   const params = useSearchParams();
-  const current = (params.get("tab") as TabKey) ?? defaultTab;
-  const href = (k: TabKey) => `${path}?tab=${k}`;
-
+  const current = normalizeTab(params.get("tab"), defaultTab);
+  const active = useRef<HTMLAnchorElement>(null);
+  useEffect(() => {
+    active.current?.scrollIntoView({ block: "nearest", inline: "center" });
+  }, [current]);
   return (
-    <>
-      <nav className="sticky top-14 z-20 -mx-4 hidden border-b border-border bg-background/90 px-4 backdrop-blur sm:block" aria-label="Company sections">
-        <ul className="flex gap-6">
-          {TABS.map((t) => (
-            <li key={t.key}>
-              <Link
-                href={href(t.key)}
-                scroll={false}
-                aria-current={current === t.key ? "page" : undefined}
-                className={`inline-block border-b-2 py-3 text-sm font-semibold transition ${
-                  current === t.key ? "border-accent text-foreground" : "border-transparent text-muted hover:text-foreground"
-                }`}
-              >
-                {t.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur sm:hidden" aria-label="Company sections">
-        <ul className="grid grid-cols-6">
-          {TABS.map((t) => (
-            <li key={t.key}>
-              <Link
-                href={href(t.key)}
-                scroll={false}
-                aria-current={current === t.key ? "page" : undefined}
-                className={`flex flex-col items-center gap-0.5 py-2 text-[11px] ${current === t.key ? "text-accent" : "text-muted"}`}
-              >
-                <span aria-hidden className="text-base">
-                  {t.icon}
-                </span>
-                {t.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
-    </>
+    <nav className="sticky top-14 z-20 -mx-4 border-b border-border bg-background/90 px-4 backdrop-blur" aria-label="Company sections">
+      <ul className="-mb-px flex gap-6 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {TABS.map((t) => (
+          <li key={t.key} className="shrink-0">
+            <Link
+              ref={current === t.key ? active : undefined}
+              href={`${path}?tab=${t.key}`}
+              scroll={false}
+              aria-current={current === t.key ? "page" : undefined}
+              className={`inline-block border-b-2 py-3 text-[15px] font-semibold transition ${
+                current === t.key ? "border-accent text-foreground" : "border-transparent text-muted hover:text-foreground"
+              }`}
+            >
+              {t.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
   );
 }
