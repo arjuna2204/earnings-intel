@@ -11,6 +11,7 @@ Q4 = full year minus Q1–Q3 for the same line, when all three are reported.
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 from collections import Counter
@@ -294,20 +295,26 @@ def run_company(db: Db, sec: SecClient, company: dict[str, Any]) -> dict[str, An
     by_filing: list[tuple[str, list[SegFact]]] = []
     labels: dict[str, str] = {}
     for f in _pick_filings(db, cik):
-        doc = f.get("primary_doc") or ""
-        if not doc.endswith((".htm", ".html")):
-            continue
-        base = re.sub(r"\.html?$", "", doc)
+        # file names vary (msft-10k_20260630.htm vs msft-20260630_lab.xml), so read the filing's index
         try:
-            xml = sec.text(archive_url(cik, f["accession"], f"{base}_htm.xml")).encode()
-        except Exception as exc:  # older, non-inline filings have no extracted instance
-            log.info("no XBRL instance for %s: %s", f["accession"], exc)
+            idx = sec.text(archive_url(cik, f["accession"], "index.json"))
+            names = [i["name"] for i in json.loads(idx)["directory"]["item"]]
+        except Exception as exc:
+            log.info("no index for %s: %s", f["accession"], exc)
             continue
-        facts = parse_instance(xml)
+        inst = next((n for n in names if n.endswith("_htm.xml")), None)
+        lab = next((n for n in names if n.endswith("_lab.xml")), None)
+        if not inst:  # older, non-inline filings have no extracted instance
+            continue
+        try:
+            facts = parse_instance(sec.text(archive_url(cik, f["accession"], inst)).encode())
+        except Exception as exc:
+            log.info("instance unreadable for %s: %s", f["accession"], exc)
+            continue
         by_filing.append((f["accession"], facts))
-        if facts:
+        if facts and lab:
             try:
-                labels.update(parse_labels(sec.text(archive_url(cik, f["accession"], f"{base}_lab.xml")).encode()))
+                labels.update(parse_labels(sec.text(archive_url(cik, f["accession"], lab)).encode()))
             except Exception as exc:
                 log.info("no label file for %s: %s", f["accession"], exc)
     revenue_fy = {
