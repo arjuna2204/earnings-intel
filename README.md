@@ -75,7 +75,7 @@ History grows every morning within the free limits (transcripts: Alpha Vantage, 
 ## What runs automatically
 
 - **Every day at 6:17am Eastern:** refreshes the list of US tickers, new filings, financials and prices for every company you've loaded, and continues building call history. No AI cost.
-- **Every 3 hours:** resumes anything paused by a free-tier limit (for example, prices when Tiingo's hourly limit was hit).
+- **Every 6 hours:** resumes anything paused by a free-tier limit (for example, prices when Tiingo's hourly limit was hit).
 
 ---
 
