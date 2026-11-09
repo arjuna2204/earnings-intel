@@ -53,9 +53,13 @@ def tokens(name: str) -> list[str]:
 
 def _abbrev(short: str, full: str) -> bool:
     """`short` abbreviates `full`: same first letter and its letters appear in order (MACHS→MACHINES, MFG→MANUFACTURING)."""
-    if short == full or full.startswith(short):
+    if short == full:
         return True
-    if not short or short[0] != full[0] or len(short) < 3:
+    if len(short) < 2 or len(full) < 2:
+        return False  # single letters ("M & T") only match exactly
+    if full.startswith(short):
+        return True
+    if short[0] != full[0] or len(short) < 3:
         return False
     it = iter(full)
     return all(ch in it for ch in short)
@@ -140,7 +144,7 @@ def read_quarter(path: str, companies: list[dict[str, Any]]) -> dict[str, Any]:
                     break
 
         # pass 2: every holder of the chosen issuers, whatever name the filer typed
-        filers: dict[int, dict[str, dict[str, Any]]] = defaultdict(dict)
+        raw: list[tuple[int, str, str, float, float]] = []  # company, accession, cusip, shares, value
         for r in _rows(z, "INFOTABLE.TSV"):
             acc = r["ACCESSION_NUMBER"]
             if acc not in keep or r.get("PUTCALL") or r.get("SSHPRNAMTTYPE") != "SH":
@@ -148,11 +152,25 @@ def read_quarter(path: str, companies: list[dict[str, Any]]) -> dict[str, Any]:
             co_hit = chosen.get(r["CUSIP"][:6].upper())
             if co_hit is None:
                 continue
-            f = filers[co_hit].setdefault(
-                keep[acc], {"name": managers.get(acc, "").strip(), "shares": 0.0, "value": 0.0}
-            )
-            f["shares"] += float(r.get("SSHPRNAMT") or 0)
-            f["value"] += float(r.get("VALUE") or 0)
+            raw.append((co_hit, acc, r["CUSIP"].upper(), float(r.get("SSHPRNAMT") or 0), float(r.get("VALUE") or 0)))
+
+    # Filers make typos (shares in the value column, an extra digit). Every row's implied price
+    # (value / shares) should be close to the quarter-end price, so drop rows far from the median.
+    implied: dict[str, list[float]] = defaultdict(list)
+    for _, _, cusip, sh, val in raw:
+        if sh > 0 and val > 0:
+            implied[cusip].append(val / sh)
+    median = {k: sorted(v)[len(v) // 2] for k, v in implied.items()}
+    filers: dict[int, dict[str, dict[str, Any]]] = defaultdict(dict)
+    dropped: Counter[int] = Counter()
+    for co, acc, cusip, sh, val in raw:
+        m = median.get(cusip)
+        if sh <= 0 or not m or not val or not 0.5 <= (val / sh) / m <= 2:
+            dropped[co] += 1
+            continue
+        f = filers[co].setdefault(keep[acc], {"name": managers.get(acc, "").strip(), "shares": 0.0, "value": 0.0})
+        f["shares"] += sh
+        f["value"] += val
     return {
         "period": period,
         "by_company": {
@@ -262,6 +280,7 @@ def refresh(settings: Any, force: bool = False) -> dict[str, Any]:
             p = prev["by_company"].get(cik)
             res = summarize(q["filers"], p["filers"] if p else None, shares_out)
             res["cusip6"] = q["cusip6"]
+            res["dropped_rows"] = q["dropped_rows"]
             db.upsert(
                 "institutional_holders",
                 [

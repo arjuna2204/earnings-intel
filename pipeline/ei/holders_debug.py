@@ -36,7 +36,7 @@ def debug(settings: Any, ticker: str) -> dict[str, Any]:
             out["periods"] = periods.most_common(5)
             out["submission_cols"] = list(next(iter(sub.values())).keys())
             rows = 0
-            by9: Counter[str] = Counter()
+            by9: defaultdict[str, float] = defaultdict(float)
             names: Counter[str] = Counter()
             per_acc: dict[str, float] = defaultdict(float)
             cols: list[str] = []
@@ -54,7 +54,7 @@ def debug(settings: Any, ticker: str) -> dict[str, Any]:
                         sample.append(r)
             out["infotable_cols"] = cols
             out["rows"] = rows
-            out["by_cusip"] = by9.most_common(5)
+            out["by_cusip"] = sorted(by9.items(), key=lambda kv: -kv[1])[:5]
             out["names"] = names.most_common(5)
             v = c.get("valuation") or {}
             out["shares_out"] = v["market_cap"] / v["price"] if v.get("market_cap") and v.get("price") else None

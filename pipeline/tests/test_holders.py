@@ -16,6 +16,7 @@ def test_names_match_sec_abbreviations():
     assert not names_match("APPLIED MATLS INC", "Apple Inc.")
     assert not names_match("H & R BLOCK INC", "Block, Inc.")
     assert not names_match("ORACLE FINL SVCS", "ORACLE CORP")
+    assert not names_match("M & T BK CORP", "MICRON TECHNOLOGY INC")
 
 
 def test_dataset_links_sorted_newest_first():
@@ -59,6 +60,7 @@ def test_read_quarter_share_classes_and_latest_filing(tmp_path):
     f = q["by_company"][1652044]["filers"]
     assert f["10"]["shares"] == 15 and f["20"]["shares"] == 30
     assert q["by_company"][1652044]["cusip6"] == "02079K"
+    assert q["by_company"][1652044]["dropped_rows"] == 1
 
 
 def test_summarize_changes():

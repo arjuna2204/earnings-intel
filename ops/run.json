@@ -1,1 +1,1 @@
-{"command":"holders-debug","ticker":"MU","nonce":"hd1-1794239692"}
+{"command":"holders","args":["--force"],"nonce":"h2-1794239890"}
