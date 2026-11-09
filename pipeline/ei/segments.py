@@ -309,7 +309,10 @@ def run_company(db: Db, sec: SecClient, company: dict[str, Any]) -> dict[str, An
             log.info("no index for %s: %s", f["accession"], exc)
             continue
         inst = next((n for n in names if n.endswith("_htm.xml")), None)
-        lab = next((n for n in names if n.endswith("_lab.xml")), None)
+        # the label linkbase is usually *_lab.xml; some filers name it differently or embed it in the schema
+        lab = next((n for n in names if n.lower().endswith("lab.xml")), None) or next(
+            (n for n in names if n.endswith(".xsd")), None
+        )
         if not inst:  # older, non-inline filings have no extracted instance
             continue
         try:
@@ -319,7 +322,7 @@ def run_company(db: Db, sec: SecClient, company: dict[str, Any]) -> dict[str, An
             continue
         by_filing.append((f["accession"], facts))
         if facts and not lab:
-            diag.append(f"no _lab.xml among {len(names)} files")
+            diag.append("no label file: " + ", ".join(n for n in names if n.endswith((".xml", ".xsd")))[:300])
         if facts and lab:
             try:
                 got = parse_labels(sec.text(archive_url(cik, f["accession"], lab)).encode())
