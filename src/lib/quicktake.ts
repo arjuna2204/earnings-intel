@@ -168,7 +168,7 @@ export async function getQuickTake(company: Company, events: EarningsEvent[], as
       key: "funds",
       title: "Funds (13F)",
       text: Math.abs(ch) < 0.01 ? "Fund holdings steady" : `Funds ${ch > 0 ? "added" : "cut"} ${pct(ch)} of holdings`,
-      detail: `${holders.result.holders.toLocaleString()} funds · quarter ended ${holders.period}`,
+      detail: `Funds filing both quarters · ${holders.result.holders.toLocaleString()} holders · quarter ended ${holders.period}`,
       tone: Math.abs(ch) < 0.01 ? "neutral" : ch > 0 ? "up" : "down",
       href: tab("ownership", "#institutions"),
     });

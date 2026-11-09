@@ -248,7 +248,7 @@ function Institutions({ ticker, h }: { ticker: string; h: Holders | null }) {
   const verdict =
     r.shares_change_pct == null
       ? null
-      : `Funds ${r.shares_change_pct >= 0 ? "added to" : "cut"} their ${ticker} holdings by ${pct(Math.abs(r.shares_change_pct))} in ${qLabel(h.period)}: ${r.new} opened new positions and ${r.added} added, while ${r.trimmed} trimmed and ${r.sold_out} sold out.`;
+      : `Funds that reported both quarters ${r.shares_change_pct >= 0 ? "added to" : "cut"} their ${ticker} holdings by ${pct(Math.abs(r.shares_change_pct))} in ${qLabel(h.period)}. Overall, ${r.new} opened new positions and ${r.added} added, while ${r.trimmed} trimmed and ${r.sold_out} sold out.`;
   return (
     <section id="institutions" className="scroll-mt-32">
       <h2 className="border-b border-border pb-3 text-xl font-semibold tracking-tight">Institutions (13F)</h2>
@@ -259,7 +259,7 @@ function Institutions({ ticker, h }: { ticker: string; h: Holders | null }) {
       <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
         <Stat label="Funds holding" value={r.holders.toLocaleString()} sub={r.prior_holders != null ? <Delta v={r.holders - r.prior_holders} fmt={(x) => `${x.toLocaleString()} funds`} /> : undefined} />
         <Stat label="Share of company held" value={pct(r.pct_out, 0)} sub="By 13F filers" />
-        <Stat label="Shares held, change" value={r.shares_change_pct == null ? "—" : ""} sub={<Delta v={r.shares_change_pct} fmt={(x) => pct(x)} />} />
+        <Stat label="Holdings change" value={r.shares_change_pct == null ? "—" : ""} sub={<Delta v={r.shares_change_pct} fmt={(x) => pct(x)} />} />
         <Stat label="Value held" value={money(r.value)} />
       </dl>
       {verdict && <p className="mt-4 rounded-xl bg-card px-4 py-3 text-sm">{verdict}</p>}
