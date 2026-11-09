@@ -17,7 +17,7 @@ type Row = {
   transcripts: number;
   call: { a: string; b: string } | null;
   updated: string; // latest timestamp across everything pulled
-  newest: Set<Feature | "loaded">; // what arrived in the last 24h
+  newest: Set<Feature | "loaded" | "transcripts">; // genuinely new in the last 24h (not daily refreshes)
 };
 
 const FEATURE_LABEL: Record<Feature, string> = {
@@ -82,15 +82,18 @@ async function Report() {
     if (r) {
       r.transcripts++;
       touch(r, t.fetched_at);
+      if (fresh(t.fetched_at)) r.newest.add("transcripts");
     }
   }
+  // DCF, cases and peers are re-run daily, so their timestamps don't mean "new"; briefs and call analyses are one-time
+  const ONE_TIME: Feature[] = ["brief", "call"];
   const mark = (list: { cik: number; created_at: string }[], f: Feature) => {
     for (const x of list) {
       const r = rows.get(x.cik);
       if (!r) continue;
       r.features.add(f);
       touch(r, x.created_at);
-      if (fresh(x.created_at)) r.newest.add(f);
+      if (ONE_TIME.includes(f) && fresh(x.created_at)) r.newest.add(f);
     }
   };
   mark(calls, "call");
@@ -110,7 +113,7 @@ async function Report() {
   const full = all.filter((r) => r.features.has("brief") || r.features.has("call")).sort(byDepth);
   const valuation = all.filter((r) => !full.includes(r) && (r.features.has("peers") || r.features.has("cases"))).sort(byDepth);
   const basic = all.filter((r) => !full.includes(r) && !valuation.includes(r)).sort((x, y) => x.ticker.localeCompare(y.ticker));
-  const recent = all.filter((r) => r.newest.size > 0).sort((x, y) => y.updated.localeCompare(x.updated));
+  const recent = all.filter((r) => r.newest.size > 0).sort(byDepth);
   const asOf = new Date(now).toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
   const shareText = [
@@ -136,7 +139,7 @@ async function Report() {
       </div>
 
       {recent.length > 0 && (
-        <Section title="New in the last day" note={`Up to ${asOf} ET.`}>
+        <Section title="New in the last day" note={`Newly loaded companies and new Briefs, call analyses or transcripts, up to ${asOf} ET.`}>
           {recent.map((r) => (
             <Item key={r.ticker} r={r} showNew />
           ))}
@@ -216,6 +219,9 @@ function Item({ r, showNew = false }: { r: Row; showNew?: boolean }) {
       </Link>
       <span className="min-w-0 flex-1 truncate text-sm text-muted">{r.name}</span>
       <span className="flex flex-wrap gap-1.5">
+        <Link href={`/c/${t}?tab=historical`} className="rounded-full border border-border px-2.5 py-0.5 text-xs text-muted hover:text-foreground">
+          Financials
+        </Link>
         {order
           .filter((f) => r.features.has(f))
           .map((f) => (
@@ -228,7 +234,9 @@ function Item({ r, showNew = false }: { r: Row; showNew?: boolean }) {
             </Link>
           ))}
         {showNew && r.newest.has("loaded") && <span className="rounded-full border border-foreground px-2.5 py-0.5 text-xs font-medium">Newly loaded</span>}
-        {r.transcripts > 0 && <span className="px-1 text-xs text-muted">{r.transcripts} call transcripts</span>}
+        {r.transcripts > 0 && (
+          <span className={`px-1 text-xs ${showNew && r.newest.has("transcripts") ? "font-medium" : "text-muted"}`}>{r.transcripts} call transcripts</span>
+        )}
       </span>
     </li>
   );
