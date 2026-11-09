@@ -70,7 +70,7 @@ export type Filing = {
   url: string;
 };
 
-export type PricePoint = { date: string; close: number; adj_close: number };
+export type PricePoint = { date: string; close: number; adj_close: number; volume?: number | null };
 
 export type Job = {
   id: number;

@@ -27,6 +27,32 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     why: "Tells you whether a move was about this company or the whole market/sector moving together.",
     read: "If the stock line is above a dashed line at the end, it outperformed it over that range.",
   },
+  moving_average_50: {
+    term: "50-day average",
+    what: "The average closing price over the last 50 trading days (about 10 weeks), drawn as a smooth line.",
+    how: "For each day: the mean of that day's and the previous 49 adjusted closes.",
+    why: "Smooths out daily noise to show the short-to-medium-term trend.",
+    read: "Price above a rising 50-day line = an uptrend. Many traders watch for the price crossing it.",
+  },
+  moving_average_200: {
+    term: "200-day average",
+    what: "The average closing price over the last 200 trading days (about 10 months).",
+    how: "For each day: the mean of that day's and the previous 199 adjusted closes.",
+    why: "The most-watched long-term trend line. Funds and media often call a stock below it \"in a downtrend.\"",
+    read: "When the 50-day crosses above the 200-day it's called a \"golden cross\"; below is a \"death cross.\" They are signals traders watch, not predictions.",
+  },
+  volume: {
+    term: "Volume",
+    what: "How many shares changed hands each day (the grey bars under the chart).",
+    how: "Daily share volume from Tiingo. Not adjusted for stock splits, so bars before a split can look small.",
+    why: "Big moves on heavy volume carry more conviction than moves on light volume. Spikes often line up with earnings or news.",
+    read: "Compare a day's bar with its neighbors rather than reading the number on its own.",
+  },
+  log_scale: {
+    term: "Log scale",
+    what: "Spaces the price axis by percentage instead of dollars, so a move from $10 to $20 looks as big as $100 to $200 (both +100%).",
+    why: "Over long ranges (5–15 years) a normal chart makes early years look flat. Log scale shows the growth rate evenly across the whole period.",
+  },
   earnings_marker: { term: "Earnings dots", what: "Each circle marks an earnings report. Tap one to open that quarter's call compared with the same quarter a year earlier." },
 
   // ------------------------------------------------------------------ valuation strip
@@ -503,7 +529,7 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
 
 /** Everyday terms most readers know: still tappable, but not underlined (keeps pages clean). */
 const EVERYDAY = new Set([
-  "market_cap", "revenue", "revenue_growth_yoy", "net_income", "eps_growth_yoy", "cash", "total_debt",
+  "market_cap", "volume", "revenue", "revenue_growth_yoy", "net_income", "eps_growth_yoy", "cash", "total_debt",
   "analysts_count", "revenue_estimate", "up_days", "diluted_shares", "funds_holding", "below_high",
   "earnings_marker", "consensus_eps", "operating_cash_flow", "capex", "gross_margin", "operating_margin",
 ]);

@@ -25,7 +25,7 @@ export async function getLatestJob(ticker: string): Promise<Job | null> {
 }
 
 export async function getPrices(ticker: string): Promise<PricePoint[]> {
-  return selectAll<PricePoint>("prices", { ticker: `eq.${ticker}`, select: "date,close,adj_close", order: "date.asc" });
+  return selectAll<PricePoint>("prices", { ticker: `eq.${ticker}`, select: "date,close,adj_close,volume", order: "date.asc" });
 }
 
 export async function getFilings(cik: number): Promise<Filing[]> {

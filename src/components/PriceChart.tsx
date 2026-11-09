@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import EChart from "@/components/EChart";
-import Term from "@/components/Term";
+import Term, { AboutNumbers } from "@/components/Term";
+import { GLOSSARY } from "@/lib/glossary";
 import { useThemeColors } from "@/components/useThemeColors";
 import type { PricePoint } from "@/lib/types";
 
@@ -18,6 +19,60 @@ const RANGES = [
 // comparison lines: dashed, never green/red (those mean up/down)
 const PALETTE = ["#9ca3af", "#5b9dff", "#a78bfa", "#f59e0b", "#22d3ee", "#f472b6", "#eab308", "#94a3b8"];
 const STORE = "ei.chartCompare";
+const OPTS = "ei.chartOpts";
+// moving averages: solid, thin, neutral (dashed lines are comparisons)
+const MA50 = "#60a5fa";
+const MA200 = "#c4b5fd";
+
+type Opts = { vol: boolean; ma50: boolean; ma200: boolean; log: boolean };
+const DEFAULT_OPTS: Opts = { vol: true, ma50: false, ma200: false, log: false };
+
+const optsListeners = new Set<() => void>();
+function subscribeOpts(cb: () => void) {
+  optsListeners.add(cb);
+  return () => optsListeners.delete(cb);
+}
+function readOptsRaw(): string {
+  try {
+    return localStorage.getItem(OPTS) ?? "{}";
+  } catch {
+    return "{}";
+  }
+}
+function parseOpts(raw: string): Opts {
+  try {
+    return { ...DEFAULT_OPTS, ...(JSON.parse(raw) as Partial<Opts>) };
+  } catch {
+    return DEFAULT_OPTS;
+  }
+}
+function writeOpts(o: Opts) {
+  try {
+    localStorage.setItem(OPTS, JSON.stringify(o));
+  } catch {
+    /* storage blocked */
+  }
+  optsListeners.forEach((cb) => cb());
+}
+
+/** Simple moving average of adjusted closes over the whole history (so short ranges still have values). */
+function sma(prices: PricePoint[], n: number): (number | null)[] {
+  const out: (number | null)[] = [];
+  let sum = 0;
+  for (let i = 0; i < prices.length; i++) {
+    sum += prices[i].adj_close;
+    if (i >= n) sum -= prices[i - n].adj_close;
+    out.push(i >= n - 1 ? sum / n : null);
+  }
+  return out;
+}
+
+function fmtVol(v: number): string {
+  if (v >= 1e9) return `${(v / 1e9).toFixed(2)}B`;
+  if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
+  if (v >= 1e3) return `${(v / 1e3).toFixed(0)}K`;
+  return String(v);
+}
 
 type Marker = { date: string; label: string; href?: string };
 type Price = Pick<PricePoint, "date" | "adj_close">;
@@ -82,6 +137,12 @@ export default function PriceChart({
   const [added, setAdded] = useState<CompareLine[]>([]);
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // chart options are remembered in this browser (read after hydration, so server and client match)
+  const optsRaw = useSyncExternalStore(subscribeOpts, readOptsRaw, () => "{}");
+  const opts = useMemo(() => parseOpts(optsRaw), [optsRaw]);
+  const toggle = (k: keyof Opts) => writeOpts({ ...opts, [k]: !opts[k] });
+  const ma50Full = useMemo(() => sma(prices, 50), [prices]);
+  const ma200Full = useMemo(() => sma(prices, 200), [prices]);
 
   // user-added comparisons are remembered in this browser and shown on every stock
   useEffect(() => {
@@ -103,6 +164,11 @@ export default function PriceChart({
     const cutoff = new Date(last.getTime() - days * 86400000).toISOString().slice(0, 10);
     return prices.filter((p) => p.date >= cutoff);
   }, [prices, range]);
+
+  const offset = prices.length - series.length;
+  const ma50 = ma50Full.slice(offset);
+  const ma200 = ma200Full.slice(offset);
+  const hasVolume = series.some((p) => p.volume);
 
   const lines = useMemo(() => {
     const all = [...defaults, ...added];
@@ -138,11 +204,43 @@ export default function PriceChart({
     })
     .filter((x): x is NonNullable<typeof x> => x !== null);
 
+  const showVol = opts.vol && hasVolume;
+  const compareSeries = lines
+    .filter((l) => !hidden.includes(l.ticker) && l.values[0])
+    .map((l) => ({
+      ...l,
+      scaled: l.values.map((v) => (v == null ? null : (first.adj_close * v) / (l.values[0] as number))),
+    }));
+  // a log axis needs explicit bounds: everything drawn on the price axis
+  const drawn = [
+    ...series.map((p) => p.adj_close),
+    ...compareSeries.flatMap((l) => l.scaled),
+    ...(opts.ma50 ? ma50 : []),
+    ...(opts.ma200 ? ma200 : []),
+  ].filter((v): v is number => v != null && v > 0);
+  const lo = Math.min(...drawn);
+  const hi = Math.max(...drawn);
+  const dates = series.map((p) => p.date);
+
   const option = {
     animationDuration: 300,
-    grid: { left: 0, right: 0, top: 8, bottom: 8 },
-    xAxis: { type: "category", data: series.map((p) => p.date), show: false, boundaryGap: false },
-    yAxis: { type: "value", show: false, scale: true },
+    grid: showVol
+      ? [
+          { left: 0, right: 0, top: 8, bottom: "22%" },
+          { left: 0, right: 0, height: "16%", bottom: 0 },
+        ]
+      : [{ left: 0, right: 0, top: 8, bottom: 8 }],
+    xAxis: [
+      { type: "category", data: dates, show: false, boundaryGap: false },
+      ...(showVol ? [{ type: "category", gridIndex: 1, data: dates, show: false }] : []),
+    ],
+    yAxis: [
+      opts.log
+        ? { type: "log", logBase: 10, show: false, min: lo * 0.97, max: hi * 1.03 }
+        : { type: "value", show: false, scale: true },
+      ...(showVol ? [{ type: "value", gridIndex: 1, show: false }] : []),
+    ],
+    axisPointer: { link: [{ xAxisIndex: "all" }] },
     tooltip: {
       trigger: "axis",
       axisPointer: { type: "line", lineStyle: { color: colors.muted, width: 1 } },
@@ -169,20 +267,38 @@ export default function PriceChart({
         },
       },
       // each comparison is drawn on the stock's scale: where the stock would be had it matched that fund
-      ...lines
-        .filter((l) => !hidden.includes(l.ticker) && l.values[0])
-        .map((l) => ({
-          type: "line",
-          name: l.ticker,
-          z: 2,
-          data: l.values.map((v) => (v == null ? null : (first.adj_close * v) / (l.values[0] as number))),
-          showSymbol: false,
-          connectNulls: true,
-          lineStyle: { color: l.color, width: 1.5, type: "dashed" },
-          itemStyle: { color: l.color },
-        })),
+      ...compareSeries.map((l) => ({
+        type: "line",
+        name: l.ticker,
+        z: 2,
+        data: l.scaled,
+        showSymbol: false,
+        connectNulls: true,
+        lineStyle: { color: l.color, width: 1.5, type: "dashed" },
+        itemStyle: { color: l.color },
+      })),
+      ...(opts.ma50
+        ? [{ type: "line", name: "50-day", z: 2, data: ma50, showSymbol: false, lineStyle: { color: MA50, width: 1.25 }, itemStyle: { color: MA50 } }]
+        : []),
+      ...(opts.ma200
+        ? [{ type: "line", name: "200-day", z: 2, data: ma200, showSymbol: false, lineStyle: { color: MA200, width: 1.25 }, itemStyle: { color: MA200 } }]
+        : []),
+      ...(showVol
+        ? [
+            {
+              type: "bar",
+              name: "Volume",
+              xAxisIndex: 1,
+              yAxisIndex: 1,
+              data: series.map((p) => p.volume ?? null),
+              itemStyle: { color: colors.muted, opacity: 0.45 },
+              barCategoryGap: "20%",
+            },
+          ]
+        : []),
     ],
   };
+  const fmtPx = (v: number | null | undefined) => (v == null ? "—" : `${currencySymbol}${v.toFixed(2)}`);
 
   const vs = lines.slice(0, 2).filter((l) => !hidden.includes(l.ticker));
 
@@ -247,6 +363,23 @@ export default function PriceChart({
             </div>
           )}
         </div>
+        {(opts.ma50 || opts.ma200 || showVol) && (
+          <div className="mb-1 flex flex-wrap gap-x-4 text-xs text-muted tabular-nums">
+            {opts.ma50 && (
+              <span>
+                <span className="mr-1 inline-block h-0.5 w-3 align-middle" style={{ background: MA50 }} aria-hidden />
+                50-day {fmtPx(ma50[idx])}
+              </span>
+            )}
+            {opts.ma200 && (
+              <span>
+                <span className="mr-1 inline-block h-0.5 w-3 align-middle" style={{ background: MA200 }} aria-hidden />
+                200-day {fmtPx(ma200[idx])}
+              </span>
+            )}
+            {showVol && shown.volume ? <span>Volume {fmtVol(shown.volume)}</span> : null}
+          </div>
+        )}
         <EChart
           onHoverIndex={setHover}
           onClick={(p) => {
@@ -277,7 +410,43 @@ export default function PriceChart({
               </button>
             ))}
           </div>
-          <span className="hidden text-xs text-muted sm:inline">{markerNote}</span>
+          <div className="flex flex-wrap justify-end gap-1" aria-label="Chart options">
+            {(
+              [
+                ["vol", "Volume", "volume"],
+                ["ma50", "50D", "moving_average_50"],
+                ["ma200", "200D", "moving_average_200"],
+                ["log", "Log", "log_scale"],
+              ] as const
+            ).map(([k, label, term]) =>
+              k === "vol" && !hasVolume ? null : (
+                <button
+                  key={k}
+                  type="button"
+                  aria-pressed={opts[k]}
+                  onClick={() => toggle(k)}
+                  title={GLOSSARY[term]?.what}
+                  className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${opts[k] ? "border-foreground text-foreground" : "border-border text-muted hover:text-foreground"}`}
+                >
+                  {label}
+                </button>
+              ),
+            )}
+          </div>
+        </div>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
+          <span className="hidden sm:inline">{markerNote}</span>
+          {(opts.ma50 || opts.ma200 || opts.log || showVol) && (
+            <AboutNumbers
+              title="About these chart lines"
+              keys={[
+                ...(showVol ? ["volume"] : []),
+                ...(opts.ma50 ? ["moving_average_50"] : []),
+                ...(opts.ma200 ? ["moving_average_200"] : []),
+                ...(opts.log ? ["log_scale"] : []),
+              ]}
+            />
+          )}
         </div>
       </div>
 

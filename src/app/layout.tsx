@@ -40,13 +40,19 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <Link href="/compare" className="rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground">
                 Compare
               </Link>
-              <Link href="/coverage" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground sm:block">
+              <Link href="/earnings" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground sm:block">
+                Earnings
+              </Link>
+              <Link href="/screener" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground sm:block">
+                Screener
+              </Link>
+              <Link href="/coverage" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground md:block">
                 What&apos;s ready
               </Link>
-              <Link href="/backtest" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground sm:block">
+              <Link href="/backtest" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground lg:block">
                 Backtest
               </Link>
-              <Link href="/status" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground sm:block">
+              <Link href="/status" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground lg:block">
                 Status
               </Link>
               <ThemeToggle />

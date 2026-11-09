@@ -27,6 +27,14 @@ export default function Home() {
           See which companies are ready to explore
         </Link>
       </p>
+      <div className="mt-3 flex flex-wrap gap-2 text-sm">
+        <Link href="/earnings" className="rounded-full bg-card px-3 py-1.5 font-medium hover:bg-border">
+          Earnings this week
+        </Link>
+        <Link href="/screener" className="rounded-full bg-card px-3 py-1.5 font-medium hover:bg-border">
+          Screener
+        </Link>
+      </div>
       <div id="watchlist" className="scroll-mt-20">
         <WatchlistPanel />
       </div>
