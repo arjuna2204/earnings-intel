@@ -42,6 +42,8 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--job-id", type=int, default=None)
     ins = sub.add_parser("insiders")
     ins.add_argument("ticker", nargs="?", default=None)
+    sg = sub.add_parser("segments")
+    sg.add_argument("ticker", nargs="?", default=None)
     hd = sub.add_parser("holders")
     hd.add_argument("--force", action="store_true")
     sub.add_parser("earnings-calendar")
@@ -106,6 +108,10 @@ def main(argv: list[str] | None = None) -> int:
         from ei.insiders import run_all as run_insiders
 
         print(json.dumps(run_insiders(settings, [args.ticker.upper()] if args.ticker else None), default=str))
+    elif args.cmd == "segments":
+        from ei.segments import run_all as run_segments
+
+        print(json.dumps(run_segments(settings, [args.ticker.upper()] if args.ticker else None), default=str))
     elif args.cmd == "holders":
         from ei.holders import refresh as refresh_holders
 

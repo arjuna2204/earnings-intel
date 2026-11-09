@@ -1,1 +1,1 @@
-{"command": "analyze", "tickers": ["V", "BRK-A"], "args": ["--background"], "nonce": "v-div-1794258382"}
+{"command": "segments", "tickers": ["AAPL", "NVDA", "MSFT", "AMZN", "JPM", "GOOG", "XOM", "V"], "nonce": "seg-1794265087"}

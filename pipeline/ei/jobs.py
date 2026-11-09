@@ -325,6 +325,13 @@ def analyze(
             job.step("insiders", "done", f"{ins['filings']} insider filings (Form 4) in the last 2 years")
         except Exception as exc:
             log.warning("insiders skipped: %s", exc)
+        try:  # 8. Revenue by segment, product and region (each filing's XBRL; SEC, free)
+            from ei.segments import run_company as run_segments
+
+            seg = run_segments(db, sec, {"cik": cik, "fiscal_year_end": nc.fiscal_year_end})
+            job.step("segments", "done", f"{seg['rows']} segment figures ({', '.join(seg['axes']) or 'none reported'})")
+        except Exception as exc:
+            log.warning("segments skipped: %s", exc)
         job.finish(
             "deferred" if deferred else "done",
             "Price download paused by the free-tier limit; retries automatically within 6 hours" if deferred else None,
