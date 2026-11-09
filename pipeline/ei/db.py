@@ -61,6 +61,10 @@ class Db:
         params = {k: f"eq.{v}" for k, v in match.items()}
         self._check(self._client.delete(f"/{table}", params=params))
 
+    def delete_where(self, table: str, params: dict[str, str]) -> None:
+        """Delete with raw PostgREST filters, e.g. {"report_date": "lt.2026-01-01"}."""
+        self._check(self._client.delete(f"/{table}", params=params))
+
     def select(self, table: str, params: dict[str, str]) -> list[dict[str, Any]]:
         data: list[dict[str, Any]] = self._check(self._client.get(f"/{table}", params=params)).json()
         return data

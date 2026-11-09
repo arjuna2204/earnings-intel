@@ -9,6 +9,7 @@ const STEP_LABELS: Record<string, string> = {
   filings: "List 15 years of filings",
   financials: "Read & normalize financials",
   prices: "Download price history",
+  insiders: "Read insider trades (Form 4)",
 };
 
 /** Starts (or follows) a background job that loads a company, and refreshes the page when done. */

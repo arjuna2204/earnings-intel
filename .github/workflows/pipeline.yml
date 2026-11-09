@@ -41,7 +41,7 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
     env:
       SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -122,12 +122,22 @@ jobs:
         if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'refresh'
         working-directory: pipeline
         run: python -m ei.cli refresh
+      - name: Upcoming earnings dates (1 Alpha Vantage request)
+        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'earnings-calendar'
+        working-directory: pipeline
+        run: python -m ei.cli earnings-calendar || echo "::warning::earnings calendar refresh failed"
       - name: Continue call-history backfill (free, no AI)
         if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'backfill-calls'
         working-directory: pipeline
         env:
           FASTEMBED_CACHE_PATH: /home/runner/.cache/fastembed
         run: python -m ei.cli backfill-calls
+      - name: Insider trades and institutional holders (SEC, free, no AI)
+        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'ownership'
+        working-directory: pipeline
+        run: |
+          python -m ei.cli insiders || echo "::warning::insider refresh failed"
+          python -m ei.cli holders || echo "::warning::13F holders refresh failed"
       - name: Refresh sector growth rates and DCFs (free, no AI)
         if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'dcf'
         working-directory: pipeline

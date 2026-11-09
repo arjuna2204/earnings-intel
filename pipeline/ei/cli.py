@@ -34,6 +34,11 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("period_a")
     c.add_argument("period_b")
     c.add_argument("--job-id", type=int, default=None)
+    ins = sub.add_parser("insiders")
+    ins.add_argument("ticker", nargs="?", default=None)
+    hd = sub.add_parser("holders")
+    hd.add_argument("--force", action="store_true")
+    sub.add_parser("earnings-calendar")
     sg = sub.add_parser("sector-growth")
     sg.add_argument("--force", action="store_true")
     dc = sub.add_parser("dcf")
@@ -70,6 +75,18 @@ def main(argv: list[str] | None = None) -> int:
         from ei.sector_growth import refresh
 
         print(json.dumps(refresh(settings, only_stale=not args.force)))
+    elif args.cmd == "insiders":
+        from ei.insiders import run_all as run_insiders
+
+        print(json.dumps(run_insiders(settings, [args.ticker.upper()] if args.ticker else None), default=str))
+    elif args.cmd == "holders":
+        from ei.holders import refresh as refresh_holders
+
+        print(json.dumps(refresh_holders(settings, force=args.force), default=str))
+    elif args.cmd == "earnings-calendar":
+        from ei.earnings_calendar import refresh as refresh_calendar
+
+        print(json.dumps(refresh_calendar(settings)))
     elif args.cmd == "dcf":
         from ei.dcf import run_all
 

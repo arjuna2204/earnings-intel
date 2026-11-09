@@ -283,6 +283,13 @@ def analyze(settings: Settings, ticker: str, job_id: int | None = None, primary:
                 job.step("dcf", "done", f"DCF value ${d['per_share']:.2f} per share")
         except Exception as exc:
             log.warning("dcf skipped: %s", exc)
+        try:  # 7. Insider trades from Form 4s (SEC, free)
+            from ei.insiders import run_company as run_insiders
+
+            ins = run_insiders(db, sec, {"cik": cik})
+            job.step("insiders", "done", f"{ins['filings']} insider filings (Form 4) in the last 2 years")
+        except Exception as exc:
+            log.warning("insiders skipped: %s", exc)
         job.finish(
             "deferred" if deferred else "done",
             "Price download paused by the free-tier limit; retries automatically within 3 hours" if deferred else None,

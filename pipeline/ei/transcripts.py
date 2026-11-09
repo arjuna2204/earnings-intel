@@ -6,6 +6,8 @@ in the api_usage table; when the day's quota is used up, work is deferred instea
 
 from __future__ import annotations
 
+import csv
+import io
 from dataclasses import dataclass
 from datetime import date
 from typing import Any, Protocol
@@ -121,6 +123,37 @@ class AlphaVantageProvider:
                     "revenue_avg": _num(e.get("revenue_estimate_average")),
                 }
             )
+        return out
+
+    def earnings_calendar(self) -> list[dict[str, Any]]:
+        """Upcoming report dates for every US company over the next 3 months (one request, CSV)."""
+        if self._quota_check:
+            self._quota_check()
+        resp = get_with_retries(
+            self._client,
+            self.URL,
+            limiter=self._limiter,
+            params={"function": "EARNINGS_CALENDAR", "horizon": "3month", "apikey": self._key},
+        )
+        resp.raise_for_status()
+        text = resp.text
+        if not text.lstrip().lower().startswith("symbol"):
+            if "25 requests" in text or "rate limit" in text.lower():
+                raise QuotaReached(f"Alpha Vantage limit: {text[:160]}")
+            raise RuntimeError(f"Alpha Vantage calendar: {text[:200]}")
+        out = []
+        for r in csv.DictReader(io.StringIO(text)):
+            try:
+                out.append(
+                    {
+                        "ticker": r["symbol"].strip().upper(),
+                        "report_date": date.fromisoformat(r["reportDate"]).isoformat(),
+                        "fiscal_date_ending": r.get("fiscalDateEnding") or None,
+                        "eps_estimate": _num(r.get("estimate")),
+                    }
+                )
+            except (KeyError, ValueError):
+                continue
         return out
 
     def earnings_events(self, ticker: str) -> list[EarningsEvent]:

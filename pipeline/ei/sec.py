@@ -52,6 +52,20 @@ class SecClient:
             if r.get("ticker") and r.get("exchange") in US_EXCHANGES
         ]
 
+    def text(self, url: str) -> str:
+        resp = get_with_retries(self._client, url, limiter=SEC_LIMITER)
+        resp.raise_for_status()
+        return resp.text
+
+    def download(self, url: str, path: str) -> None:
+        """Stream a large file (e.g. a 13F data-set zip) to disk."""
+        SEC_LIMITER.wait()
+        with self._client.stream("GET", url, timeout=600) as resp:
+            resp.raise_for_status()
+            with open(path, "wb") as fh:
+                for chunk in resp.iter_bytes(1 << 20):
+                    fh.write(chunk)
+
     def submissions(self, cik: int) -> dict[str, Any]:
         result: dict[str, Any] = self._json(SUBMISSIONS_URL.format(cik=cik))
         return result
