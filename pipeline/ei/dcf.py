@@ -1,7 +1,7 @@
 """Discounted cash flow model per company, from SEC financials. All math in code.
 
 Free cash flow to the firm = EBIT × (1 − tax rate) + D&A − capex − increase in net working capital.
-Five forecast years, then a Gordon-growth terminal value. Discounted at WACC (CAPM cost of equity with
+Ten forecast years, then a Gordon-growth terminal value. Discounted at WACC (CAPM cost of equity with
 a beta measured from 5 years of weekly returns vs. the S&P 500). Every default assumption records where
 it came from; the Excel download rebuilds the same model with live formulas so any input can be changed.
 """
@@ -16,8 +16,8 @@ from typing import Any
 
 from ei.db import Db
 
-VERSION = "dcf-v4"
-YEARS = 5
+VERSION = "dcf-v5"
+YEARS = 10
 RISK_FREE = 0.0425  # 10-year US Treasury yield assumption (editable in the Excel model)
 EQUITY_RISK_PREMIUM = 0.05
 TERMINAL_GROWTH = 0.025
@@ -117,7 +117,7 @@ def build(history: list[dict[str, Any]], a: dict[str, float]) -> dict[str, Any]:
     ev = sum(pv) + (pv_tv or 0)
     equity = ev - a["net_debt"]
     per_share = equity / a["shares"] if a["shares"] else None
-    ebitda_5 = rows[-1]["ebit"] + rows[-1]["da"]
+    ebitda_last = rows[-1]["ebit"] + rows[-1]["da"]
     return {
         "rows": rows,
         "sum_pv": sum(pv),
@@ -128,7 +128,7 @@ def build(history: list[dict[str, Any]], a: dict[str, float]) -> dict[str, Any]:
         "per_share": per_share,
         "upside": per_share / a["price"] - 1 if per_share and a.get("price") else None,
         "terminal_share": (pv_tv or 0) / ev if ev else None,
-        "implied_exit_ev_ebitda": tv / ebitda_5 if tv and ebitda_5 > 0 else None,
+        "implied_exit_ev_ebitda": tv / ebitda_last if tv and ebitda_last > 0 else None,
     }
 
 
@@ -241,8 +241,8 @@ def defaults(
     g1, g2 = clamp(g1, -0.3, 0.6), clamp(g2, -0.3, 0.6)
     put("growth_1", g1, "Revenue growth, year 1", src1)
     put("growth_2", g2, "Revenue growth, year 2", src2)
-    for t in (3, 4, 5):
-        g = g2 + (TERMINAL_GROWTH - g2) * (t - 2) / 4
+    for t in range(3, YEARS + 1):
+        g = g2 + (TERMINAL_GROWTH - g2) * (t - 2) / (YEARS - 2)
         put(
             f"growth_{t}",
             g,
@@ -303,7 +303,7 @@ def defaults(
                 f"capex_{t}",
                 capex0 + (target - capex0) * (t - 1) / (YEARS - 1),
                 f"Capex, % of revenue, year {t}",
-                "Latest 2-year average (SEC), fading by year 5 to 1.2× D&A as the build-out matures",
+                "Latest 2-year average (SEC), fading by year 10 to 1.2× D&A as the build-out matures",
             )
         else:
             put(f"capex_{t}", capex0, f"Capex, % of revenue, year {t}", "Latest 2-year average (SEC), held flat")
@@ -397,7 +397,7 @@ def defaults(
         "WACC (discount rate)",
         f"Cost of equity {ke:.1%} (risk-free + beta × premium) and after-tax cost of debt, weighted by market value",
     )
-    put("terminal_growth", TERMINAL_GROWTH, "Terminal growth", "Long-run growth after year 5 (about nominal GDP)")
+    put("terminal_growth", TERMINAL_GROWTH, "Terminal growth", "Long-run growth after year 10 (about nominal GDP)")
     note = None
     if m <= 0:
         note = "Operating margin is negative, so the DCF value isn't meaningful until the company is profitable."
@@ -405,9 +405,9 @@ def defaults(
 
 
 METHODS = {
-    "model": "Free cash flow to the firm = EBIT × (1 − tax rate) + depreciation & amortization − capital expenditures − increase in operating working capital. Five forecast years, end-of-year discounting at WACC, terminal value = year-5 free cash flow × (1 + g) ÷ (WACC − g).",
-    "fade": "Years 3–5 revenue growth moves in equal steps from year-2 growth to the terminal growth rate.",
-    "capex": "When capex is well above depreciation (a build-out phase), it fades in equal steps to 1.2× D&A by year 5; otherwise it is held at the latest 2-year average.",
+    "model": "Free cash flow to the firm = EBIT × (1 − tax rate) + depreciation & amortization − capital expenditures − increase in operating working capital. Ten forecast years, end-of-year discounting at WACC, terminal value = year-10 free cash flow × (1 + g) ÷ (WACC − g).",
+    "fade": "Years 3–10 revenue growth moves in equal steps from year-2 growth to the terminal growth rate.",
+    "capex": "When capex is well above depreciation (a build-out phase), it fades in equal steps to 1.2× D&A by year 10; otherwise it is held at the latest 2-year average.",
     "beta": "Beta from weekly returns over 5 years vs. SPY (S&P 500 ETF), adjusted toward 1 (0.67 × measured + 0.33), kept between 0.5 and 2.0.",
     "wacc": "WACC = equity weight × (risk-free + beta × equity risk premium) + debt weight × pre-tax cost of debt × (1 − tax rate); weights from market value of equity and book value of debt.",
     "macro": "Market assumptions (not from company filings): 10-year Treasury yield 4.25%, equity risk premium 5.0%, long-run growth 2.5% (about nominal GDP). Update them in the Excel model.",
@@ -481,7 +481,7 @@ def footnotes(
         ids: list[int] = []
         if k.startswith("growth_"):
             ids = ([av] if "Alpha Vantage" in src else []) + last
-            if k in {"growth_3", "growth_4", "growth_5"}:
+            if k not in {"growth_1", "growth_2"}:
                 ids.append(add("m:fade", METHODS["fade"]))
         elif k.startswith("margin_"):
             n = filing(dates[0]) if dates else None

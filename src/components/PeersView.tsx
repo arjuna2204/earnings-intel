@@ -311,7 +311,8 @@ function RankTable({ comparison, ticker }: { comparison: PeerComparison; ticker:
           ))}
         </div>
       </div>
-      <div className="-mx-4 overflow-x-auto px-4">
+      <RankStrips cols={cols} rows={rows} ticker={ticker} />
+      <div className="-mx-4 mt-6 overflow-x-auto px-4">
         <table className="w-full min-w-[520px] text-sm">
           <thead>
             <tr className="text-muted">
@@ -372,6 +373,56 @@ function RankTable({ comparison, ticker }: { comparison: PeerComparison; ticker:
       </div>
       <p className="mt-2 text-xs text-muted">Ranks count from the highest value. Tap a column to sort.</p>
     </section>
+  );
+}
+
+/** One line per metric: every company as a dot, this company highlighted — scan rank at a glance. */
+function RankStrips({ cols, rows, ticker }: { cols: PeerColumn[]; rows: PeerComparison["result"]["rows"]; ticker: string }) {
+  const [hover, setHover] = useState<string | null>(null);
+  const usable = cols.filter((c) => rows.filter((r) => typeof r.m[c.key] === "number").length >= 3);
+  if (!usable.length) return null;
+  return (
+    <ul className="divide-y divide-border" onMouseLeave={() => setHover(null)}>
+      {usable.map((c) => {
+        const pts = rows.filter((r) => typeof r.m[c.key] === "number").map((r) => ({ t: r.ticker, v: r.m[c.key] as number }));
+        const lo = Math.min(...pts.map((p) => p.v));
+        const hi = Math.max(...pts.map((p) => p.v));
+        const pos = (v: number) => (hi === lo ? 50 : ((v - lo) / (hi - lo)) * 100);
+        const me = pts.find((p) => p.t === ticker);
+        const rank = me ? [...pts].sort((a, b) => b.v - a.v).findIndex((p) => p.t === ticker) + 1 : null;
+        return (
+          <li key={c.key} className="grid items-center gap-x-4 gap-y-1 py-3 sm:grid-cols-[11rem_1fr_6rem]">
+            <span className="text-sm">
+              {c.label}
+              {rank && <span className="ml-2 text-xs text-muted">#{rank} of {pts.length}</span>}
+            </span>
+            <div className="relative mx-2 h-6">
+              <div className="absolute left-0 right-0 top-3 h-px bg-border" />
+              {pts.map((p) => {
+                const mine = p.t === ticker;
+                return (
+                  <button
+                    key={p.t}
+                    onMouseEnter={() => setHover(`${c.key}:${p.t}`)}
+                    onFocus={() => setHover(`${c.key}:${p.t}`)}
+                    aria-label={`${p.t} ${fmt(p.v, c.fmt)}`}
+                    className={`absolute top-3 -translate-x-1/2 -translate-y-1/2 rounded-full ${mine ? "z-10 h-3.5 w-3.5 bg-accent ring-2 ring-background" : "h-2.5 w-2.5 bg-muted/70 hover:bg-foreground"}`}
+                    style={{ left: `${pos(p.v)}%` }}
+                  >
+                    {(hover === `${c.key}:${p.t}`) && (
+                      <span className="absolute bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-1.5 py-0.5 text-[11px] font-semibold text-background">
+                        {p.t} {fmt(p.v, c.fmt)}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <span className="text-right text-sm font-semibold tabular-nums">{me ? fmt(me.v, c.fmt) : "—"}</span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

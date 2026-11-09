@@ -161,6 +161,7 @@ export type StockCases = {
     analysts: number;
     pe?: { p20: number; p50: number; p80: number };
     pe_samples: number;
+    pe_series?: [string, number][];
     scenarios: { bear: Scenario; base: Scenario; bull: Scenario } | null;
   };
   facts: Record<string, Fact>;

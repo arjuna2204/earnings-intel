@@ -38,7 +38,7 @@ export default function DcfView({ ticker, dcf }: { ticker: string; dcf: DcfModel
   const up = r.upside ?? 0;
   const fy0 = Number(dcf.history[dcf.history.length - 1].fiscal_year);
   const s = r.sensitivity;
-  const keys = Object.keys(a).filter((k) => !/^(growth|margin|capex)_[2-5]$/.test(k));
+  const keys = Object.keys(a).filter((k) => !/^(growth|margin|capex)_([2-9]|1\d)$/.test(k));
   const shown = all ? keys : keys.filter((k) => ["growth_1", "margin_1", "capex_1", "wacc", "terminal_growth", "beta"].includes(k));
   const fmtA = (k: string, v: number) =>
     k === "price" ? `$${v.toFixed(2)}` : k === "shares" ? `${(v / 1e6).toFixed(0)}M` : k === "net_debt" ? bn(v) : k === "beta" ? v.toFixed(2) : PCT_KEYS.test(k) ? pct(v) : v.toFixed(2);
@@ -76,12 +76,12 @@ export default function DcfView({ ticker, dcf }: { ticker: string; dcf: DcfModel
       </div>
 
       <div className="-mx-4 overflow-x-auto px-4">
-        <table className="w-full min-w-[520px] text-sm">
+        <table className="w-full min-w-[900px] text-sm">
           <thead>
             <tr className="text-muted">
-              <th className="py-2 pr-4 text-left font-normal" />
+              <th className="sticky left-0 bg-background py-2 pr-4 text-left font-normal" />
               {r.rows.map((x) => (
-                <th key={x.year} className="py-2 pl-4 text-right font-normal">
+                <th key={x.year} className="py-2 pl-3 text-right font-normal">
                   FY{fy0 + x.year}E
                 </th>
               ))}
@@ -98,7 +98,7 @@ export default function DcfView({ ticker, dcf }: { ticker: string; dcf: DcfModel
               ] as [string, (x: (typeof r.rows)[number]) => string][]
             ).map(([label, f]) => (
               <tr key={label}>
-                <td className="py-2.5 pr-4">{label}</td>
+                <td className="sticky left-0 bg-background py-2.5 pr-4">{label}</td>
                 {r.rows.map((x) => (
                   <td key={x.year} className="py-2.5 pl-4 text-right tabular-nums">
                     {f(x)}
@@ -148,11 +148,11 @@ export default function DcfView({ ticker, dcf }: { ticker: string; dcf: DcfModel
             <li key={k} className="flex items-baseline justify-between gap-4 py-2.5 text-sm">
               <span className="min-w-0">
                 {k === "growth_1"
-                  ? "Revenue growth, year 1 (fades to terminal by year 5)"
+                  ? "Revenue growth, years 1–2 (fades to terminal by year 10)"
                   : k === "margin_1"
                     ? "Operating margin (all years)"
                     : k === "capex_1"
-                      ? `Capex, % of revenue (year 1${a.capex_5 && a.capex_5.value !== a.capex_1.value ? ` → ${pct(a.capex_5.value)} by year 5` : ", all years"})`
+                      ? `Capex, % of revenue (year 1${a.capex_10 && a.capex_10.value !== a.capex_1.value ? ` → ${pct(a.capex_10.value)} by year 10` : ", all years"})`
                       : a[k].label}
                 <Notes ids={a[k].notes} />
                 <span className="mt-0.5 block text-xs text-muted">{a[k].source}</span>

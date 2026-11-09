@@ -7,7 +7,7 @@ import json
 import logging
 import re
 from dataclasses import asdict
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 from ei.ai import AiClient
@@ -445,6 +445,22 @@ def ensure_estimates(db: Db, av: AlphaVantageProvider, company: dict[str, Any]) 
     if est:
         db.delete("eps_estimates", {"cik": cik})
         db.upsert("eps_estimates", [{"cik": cik, **e} for e in est], on_conflict="cik,period_end,horizon")
+        # weekly snapshot of upcoming periods, for the estimate-revisions chart
+        today = _today_et()
+        snap = [
+            {
+                "cik": cik,
+                "snapshot_date": today.isoformat(),
+                **{
+                    k: e.get(k)
+                    for k in ("horizon", "period_end", "eps_avg", "eps_low", "eps_high", "revenue_avg", "analysts")
+                },
+            }
+            for e in est
+            if str(e.get("period_end", "")) >= (today - timedelta(days=30)).isoformat()
+        ]
+        if snap:
+            db.upsert("eps_estimate_history", snap, on_conflict="cik,snapshot_date,horizon,period_end")
     return db.select("eps_estimates", {"cik": f"eq.{cik}", "select": "*"})
 
 

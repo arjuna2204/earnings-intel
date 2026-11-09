@@ -4,6 +4,7 @@ import AnalyzePanel from "@/components/AnalyzePanel";
 import CompanyTabs from "@/components/CompanyTabs";
 import { normalizeTab } from "@/lib/tabs";
 import StreetView, { type EstimateRow } from "@/components/StreetView";
+import type { FieldRow } from "@/components/ValuationCharts";
 import FinancialsView from "@/components/FinancialsView";
 import PriceChart from "@/components/PriceChart";
 import { getCompanyByTicker, getFilings, getFinancials, getLatestJob, getPrices, getTicker } from "@/lib/company";
@@ -11,9 +12,10 @@ import { CALLS_VERSION, getAnalysis, getComparison, getEvents, getLatestCallsJob
 import CallsPanel from "@/components/CallsPanel";
 import CallView from "@/components/CallView";
 import { compact, filingIndexFromDocUrl, GENERAL_GROUPS, PACK_GROUPS } from "@/lib/metrics";
-import type { Company, Filing } from "@/lib/types";
+import type { Company, Filing, PricePoint } from "@/lib/types";
 import BriefView from "@/components/BriefView";
 import PeersView from "@/components/PeersView";
+import TrendsView, { type TrendRow } from "@/components/TrendsView";
 import { getDcf } from "@/lib/dcf";
 import { getLatestPeersJob, getPeerComparison, getPeerSet } from "@/lib/peers";
 import { buildExtras } from "@/lib/brief-extras";
@@ -129,7 +131,7 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
       <div className="mt-6">
         <Suspense key={`${tab}-${sp.a ?? ""}-${sp.b ?? ""}`} fallback={<TabSkeleton />}>
         {tab === "historical" && <FinancialsTab company={company} filings={filings} />}
-        {tab === "street" && <StreetTab company={company} events={events} />}
+        {tab === "street" && <StreetTab company={company} events={events} prices={prices} />}
         {tab === "sources" && <SourcesTab company={company} filings={filings} />}
         {tab === "brief" && <BriefTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />}
         {tab === "call" && <CallTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />}
@@ -373,7 +375,7 @@ function fallbackQuarters(): [number, number][] {
   return out;
 }
 
-async function StreetTab({ company, events }: { company: Company; events: Events }) {
+async function StreetTab({ company, events, prices }: { company: Company; events: Events; prices: PricePoint[] }) {
   const v = company.valuation;
   const lastReported = [...events].filter((e) => e.eps_reported != null).sort((a, b) => b.period_end.localeCompare(a.period_end))[0];
   const [estimates, cases, dcf, peers] = await Promise.all([
@@ -389,6 +391,45 @@ async function StreetTab({ company, events }: { company: Company; events: Events
     getPeerComparison(company.cik),
   ]);
   const lb = lastReported ? `FY${lastReported.fiscal_year}Q${lastReported.fiscal_quarter}` : null;
+  // weekly consensus snapshots for the next quarter and next fiscal year
+  const hist = await select<{ snapshot_date: string; horizon: string; period_end: string; eps_avg: number | null }>("eps_estimate_history", {
+    cik: `eq.${company.cik}`,
+    period_end: `gt.${lastReported?.period_end ?? "1900-01-01"}`,
+    select: "snapshot_date,horizon,period_end,eps_avg",
+    order: "snapshot_date",
+    limit: "2000",
+  });
+  const nextOf = (h: string) => estimates.find((e) => e.horizon === h)?.period_end;
+  const revisions = (["fiscal quarter", "fiscal year"] as const)
+    .map((h) => {
+      const pe = nextOf(h);
+      return {
+        name: `${h === "fiscal year" ? "Full year" : "Quarter"} ending ${pe}`,
+        points: hist.filter((x) => x.horizon === h && x.period_end === pe && x.eps_avg != null).map((x) => ({ date: x.snapshot_date, value: x.eps_avg as number })),
+      };
+    })
+    .filter((l) => l.points.length);
+  // football field
+  const field: FieldRow[] = [];
+  const price = v?.price ?? null;
+  const lastDate = prices.length ? prices[prices.length - 1].date : "";
+  const yearAgo = lastDate ? `${Number(lastDate.slice(0, 4)) - 1}${lastDate.slice(4)}` : "";
+  const lastYear = prices.filter((p) => p.date >= yearAgo).map((p) => p.close);
+  if (lastYear.length > 100) field.push({ label: "52-week trading range", sub: "Low to high close", lo: Math.min(...lastYear), hi: Math.max(...lastYear) });
+  const nb = cases?.numbers;
+  const eps = nb?.eps;
+  if (eps?.eps_low && eps.eps_high && v?.pe_fwd_ntm)
+    field.push({ label: "Analyst EPS range", sub: `Low–high estimate × today's ${v.pe_fwd_ntm.toFixed(1)}x`, lo: eps.eps_low * v.pe_fwd_ntm, hi: eps.eps_high * v.pe_fwd_ntm, mid: price });
+  if (nb?.pe && eps?.eps_avg)
+    field.push({ label: "Own forward P/E range", sub: `${nb.pe.p20.toFixed(1)}x–${nb.pe.p80.toFixed(1)}x × consensus EPS`, lo: nb.pe.p20 * eps.eps_avg, hi: nb.pe.p80 * eps.eps_avg, mid: nb.pe.p50 * eps.eps_avg });
+  const peerPe = peers?.result.medians.pe_fwd_ntm;
+  if (peerPe && eps?.eps_low && eps.eps_high)
+    field.push({ label: "Peer median multiple", sub: `${peerPe.toFixed(1)}x × low–high EPS`, lo: eps.eps_low * peerPe, hi: eps.eps_high * peerPe, mid: eps.eps_avg ? eps.eps_avg * peerPe : null });
+  const sc = nb?.scenarios;
+  if (sc?.bear && sc.bull) field.push({ label: "Bear · base · bull", sub: "Scenario values", lo: sc.bear.value, hi: sc.bull.value, mid: sc.base?.value ?? null });
+  const grid = dcf?.result?.sensitivity.values.flat().filter((x): x is number => x != null && x > 0) ?? [];
+  if (dcf?.status === "ok" && dcf.result?.per_share && grid.length)
+    field.push({ label: "DCF (10-year)", sub: "Sensitivity range, tick = base", lo: Math.min(...grid), hi: Math.max(...grid), mid: dcf.result.per_share });
   const analysis = lastReported ? await getAnalysis(company.cik, lastReported.fiscal_year, lastReported.fiscal_quarter) : null;
   const streak = [...events]
     .filter((e) => e.eps_reported != null && e.eps_estimated != null && e.eps_estimated !== 0)
@@ -418,15 +459,33 @@ async function StreetTab({ company, events }: { company: Company; events: Events
         guidance: analysis?.extraction?.guidance?.length && lb ? { label: lb, items: analysis.extraction.guidance } : null,
         cases,
         dcf,
+        field,
+        revisions,
+        firstSnapshot: hist[0]?.snapshot_date ?? null,
       }}
     />
   );
 }
 
 async function FinancialsTab({ company, filings }: { company: Company; filings: Filing[] }) {
-  const data = await getFinancials(company, filings);
+  const [data, trends] = await Promise.all([
+    getFinancials(company, filings),
+    select<TrendRow>("metric_values", {
+      cik: `eq.${company.cik}`,
+      fiscal_period: "eq.FY",
+      metric: "in.(gross_margin,operating_margin,fcf_margin,diluted_shares)",
+      select: "fiscal_year,metric,value",
+      order: "fiscal_year",
+      limit: "200",
+    }),
+  ]);
   const groups = [...GENERAL_GROUPS, ...(company.sector_pack !== "general" ? [PACK_GROUPS[company.sector_pack]] : [])];
-  return <FinancialsView data={data} groups={groups} />;
+  return (
+    <div className="space-y-12">
+      <TrendsView rows={trends} />
+      <FinancialsView data={data} groups={groups} />
+    </div>
+  );
 }
 
 function ValuationStrip({ company }: { company: Company }) {

@@ -2,6 +2,10 @@ import ExcelJS from "exceljs";
 import type { DcfModel } from "@/lib/dcf";
 
 const M = 1e6;
+const N = 10; // forecast years
+const YRS = Array.from({ length: N }, (_, i) => i + 1);
+const COLS = YRS.map((i) => String.fromCharCode(66 + i)); // C..L
+const LAST = COLS[N - 1];
 const BLUE = { argb: "FF0000FF" };
 const INPUT_FILL: ExcelJS.Fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFF2CC" } };
 const BOLD = { bold: true };
@@ -30,9 +34,9 @@ export function buildDcfWorkbook(company: { name: string; ticker: string; cik: n
   const ref: Record<string, string> = {};
   const pctKeys = new Set(["tax_rate", "da_pct", "capex_pct", "nwc_pct", "risk_free", "erp", "cost_of_debt", "equity_weight", "terminal_growth"]);
   const order = [
-    ...[1, 2, 3, 4, 5].map((t) => `growth_${t}`),
-    ...[1, 2, 3, 4, 5].map((t) => `margin_${t}`),
-    ...[1, 2, 3, 4, 5].map((t) => `capex_${t}`),
+    ...YRS.map((t) => `growth_${t}`),
+    ...YRS.map((t) => `margin_${t}`),
+    ...YRS.map((t) => `capex_${t}`),
     "tax_rate", "da_pct", "capex_pct", "nwc_pct",
     "risk_free", "beta", "erp", "cost_of_debt", "equity_weight", "terminal_growth",
     "price", "shares", "net_debt",
@@ -123,12 +127,12 @@ export function buildDcfWorkbook(company: { name: string; ticker: string; cik: n
 
   // ---------------- DCF
   const ds = wb.addWorksheet("DCF", { views: [{ state: "frozen", xSplit: 1 }] });
-  ds.columns = [{ width: 40 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 }];
+  ds.columns = [{ width: 40 }, ...Array.from({ length: N + 1 }, () => ({ width: 13 }))];
   ds.getCell("A1").value = `${company.name} (${company.ticker}) — discounted cash flow, USD millions`;
   ds.getCell("A1").font = { bold: true, size: 14 };
-  ds.getRow(3).values = ["", `FY${fy0} actual`, ...[1, 2, 3, 4, 5].map((t) => `FY${fy0 + t}E`)];
+  ds.getRow(3).values = ["", `FY${fy0} actual`, ...YRS.map((t) => `FY${fy0 + t}E`)];
   ds.getRow(3).font = BOLD;
-  const cols = ["C", "D", "E", "F", "G"];
+  const cols = COLS;
   const res = dcf.result;
   const L = (row: number, label: string, bold = false) => {
     ds.getCell(`A${row}`).value = label;
@@ -176,9 +180,9 @@ export function buildDcfWorkbook(company: { name: string; ticker: string; cik: n
     ds.getCell(`B${row}`).numFmt = fmt;
     if (bold) ds.getCell(`B${row}`).font = BOLD;
   };
-  S(17, "Sum of PV of free cash flows", "SUM(C15:G15)", res.sum_pv / M, USDM);
-  S(18, "Terminal value (Gordon growth)", `G13*(1+${ref.terminal_growth})/(${ref.wacc}-${ref.terminal_growth})`, res.terminal_value ? res.terminal_value / M : null, USDM);
-  S(19, "PV of terminal value", "B18*G14", res.pv_terminal ? res.pv_terminal / M : null, USDM);
+  S(17, "Sum of PV of free cash flows", `SUM(C15:${LAST}15)`, res.sum_pv / M, USDM);
+  S(18, "Terminal value (Gordon growth)", `${LAST}13*(1+${ref.terminal_growth})/(${ref.wacc}-${ref.terminal_growth})`, res.terminal_value ? res.terminal_value / M : null, USDM);
+  S(19, "PV of terminal value", `B18*${LAST}14`, res.pv_terminal ? res.pv_terminal / M : null, USDM);
   S(20, "Enterprise value", "B17+B19", res.enterprise_value / M, USDM, true);
   S(21, "− Net debt", ref.net_debt, a.net_debt.value / M, USDM);
   S(22, "Equity value", "B20-B21", res.equity_value / M, USDM, true);
@@ -216,7 +220,7 @@ export function buildDcfWorkbook(company: { name: string; ticker: string; cik: n
       const g = `${gcol}$4`;
       const cell = ss.getCell(rowN, 2 + j);
       cell.value = {
-        formula: `IF(${w}>${g},(NPV(${w},DCF!$C$13:$G$13)+DCF!$G$13*(1+${g})/(${w}-${g})/(1+${w})^5-DCF!$B$21)/DCF!$B$23,"n/a")`,
+        formula: `IF(${w}>${g},(NPV(${w},DCF!$C$13:$${LAST}$13)+DCF!$${LAST}$13*(1+${g})/(${w}-${g})/(1+${w})^${N}-DCF!$B$21)/DCF!$B$23,"n/a")`,
         result: res.sensitivity.values[i]?.[j] ?? undefined,
       };
       cell.numFmt = USD;

@@ -9,6 +9,7 @@ import type { StreakItem } from "@/lib/brief-extras";
 import type { DcfModel } from "@/lib/dcf";
 import type { Claim, StockCases } from "@/lib/filings";
 import type { GuidanceItem } from "@/lib/types";
+import { FootballField, PeHistoryChart, RevisionsChart, type FieldRow, type RevisionPoint } from "@/components/ValuationCharts";
 
 export type EstimateRow = { horizon: string; period_end: string; eps_low: number | null; eps_avg: number | null; eps_high: number | null; revenue_avg: number | null; analysts: number | null };
 export type StreetData = {
@@ -26,11 +27,15 @@ export type StreetData = {
   guidance: { label: string; items: GuidanceItem[] } | null;
   cases: StockCases | null;
   dcf: DcfModel | null;
+  field: FieldRow[];
+  revisions: { name: string; points: RevisionPoint[] }[];
+  firstSnapshot: string | null;
 };
 
 const money = (v: number | null | undefined) =>
   v == null ? "—" : Math.abs(v) >= 1e9 ? `$${(v / 1e9).toFixed(1)}B` : Math.abs(v) >= 1e6 ? `$${(v / 1e6).toFixed(0)}M` : `$${v.toFixed(2)}`;
 const SECTIONS = [
+  ["sv-value", "Valuation"],
   ["sv-estimates", "Estimates"],
   ["sv-guidance", "Guidance"],
   ["sv-cases", "Bull · Base · Bear"],
@@ -47,7 +52,9 @@ export default function StreetView({ d }: { d: StreetData }) {
   const quarters = d.estimates.filter((e) => e.horizon === "fiscal quarter").slice(0, 4);
   const years = d.estimates.filter((e) => e.horizon === "fiscal year").slice(0, 2);
   const range = (e: EstimateRow) => (e.eps_low != null && e.eps_high != null ? `$${e.eps_low.toFixed(2)} – $${e.eps_high.toFixed(2)}` : "");
-  const present = SECTIONS.filter(([id]) => (id === "sv-guidance" ? d.guidance?.items.length : id === "sv-cases" ? d.cases : id === "sv-dcf" ? d.dcf : true));
+  const present = SECTIONS.filter(([id]) =>
+    id === "sv-guidance" ? d.guidance?.items.length : id === "sv-cases" ? d.cases : id === "sv-dcf" ? d.dcf : id === "sv-value" ? d.field.length : true,
+  );
 
   return (
     <div className="space-y-12">
@@ -70,6 +77,16 @@ export default function StreetView({ d }: { d: StreetData }) {
         />
         <Stat label="Street P/E (last 12 months)" value={d.peAdjLtm != null ? `${d.peAdjLtm.toFixed(1)}x` : "—"} sub="on adjusted EPS" />
       </section>
+
+      {d.price && d.field.length > 0 && (
+        <section id="sv-value" className="scroll-mt-28">
+          <FootballField rows={d.field} price={d.price} />
+        </section>
+      )}
+
+      {d.cases?.numbers.pe && d.cases.numbers.pe_series && d.cases.numbers.pe_series.length > 6 && (
+        <PeHistoryChart series={d.cases.numbers.pe_series} p20={d.cases.numbers.pe.p20} p50={d.cases.numbers.pe.p50} p80={d.cases.numbers.pe.p80} current={d.peFwd} />
+      )}
 
       {d.streak.length > 1 && <Streak items={d.streak} />}
 
@@ -107,6 +124,9 @@ export default function StreetView({ d }: { d: StreetData }) {
           </div>
         )}
         <p className="mt-2 text-xs text-muted">Consensus estimates from Alpha Vantage, refreshed weekly. Periods are as the provider labels them.</p>
+        <div className="mt-8">
+          <RevisionsChart lines={d.revisions} firstDate={d.firstSnapshot} />
+        </div>
       </section>
 
       {d.guidance && d.guidance.items.length > 0 && (

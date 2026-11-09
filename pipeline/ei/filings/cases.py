@@ -69,14 +69,14 @@ def split_adjusted_closes(rows: list[dict[str, Any]]) -> tuple[list[date], list[
     return out_d, out_p
 
 
-def forward_pe_history(
+def forward_pe_series(
     quarter_eps: dict[date, float], prices: tuple[list[date], list[float]], today: date
-) -> list[float]:
+) -> list[tuple[date, float]]:
     """Monthly forward P/E over the past YEARS: price at each month-end ÷ the consensus EPS for the
     next four quarters as it stood then (each quarter's pre-report consensus, from Street data)."""
     pd_, pp = prices
     ends = sorted(quarter_eps)
-    out: list[float] = []
+    out: list[tuple[date, float]] = []
     d = date(today.year - YEARS, today.month, 1)
     while d <= today:
         i = bisect.bisect_right(pd_, d) - 1
@@ -87,9 +87,15 @@ def forward_pe_history(
             if ntm > 0:
                 pe = pp[i] / ntm
                 if 0 < pe < 200:
-                    out.append(pe)
+                    out.append((d, pe))
         d = date(d.year + (d.month // 12), d.month % 12 + 1, 1)
     return out
+
+
+def forward_pe_history(
+    quarter_eps: dict[date, float], prices: tuple[list[date], list[float]], today: date
+) -> list[float]:
+    return [pe for _, pe in forward_pe_series(quarter_eps, prices, today)]
 
 
 def scenario_numbers(db: Db, company: dict[str, Any], today: date) -> dict[str, Any] | None:
@@ -143,7 +149,8 @@ def scenario_numbers(db: Db, company: dict[str, Any], today: date) -> dict[str, 
             "limit": "2000",
         },
     )
-    pes = forward_pe_history(q_eps, split_adjusted_closes(px), today)
+    series = forward_pe_series(q_eps, split_adjusted_closes(px), today)
+    pes = [pe for _, pe in series]
     out: dict[str, Any] = {
         "price": price,
         "price_date": v.get("price_date"),
@@ -151,6 +158,7 @@ def scenario_numbers(db: Db, company: dict[str, Any], today: date) -> dict[str, 
         "eps_method": method,
         "analysts": analysts,
         "pe_samples": len(pes),
+        "pe_series": [[d.isoformat(), round(pe, 2)] for d, pe in series],
     }
     if len(pes) < 18 or not eps.get("eps_avg"):
         out["scenarios"] = None
@@ -275,6 +283,7 @@ def run_cases(settings: Any, ticker: str, job: Any | None = None) -> dict[str, A
     facts, pa, pb = build_facts(db, company, numbers)
     prev = db.select("stock_cases", {"cik": f"eq.{company['cik']}", "select": "facts,version"})
     if prev and prev[0]["version"] == VERSION and prev[0]["facts"] == facts:
+        db.update("stock_cases", {"cik": company["cik"]}, {"numbers": numbers})  # refresh chart data, no AI
         return {"ok": True, "cached": True}
     if not settings.anthropic_api_key:
         return {"ok": False, "reason": "no AI key"}
