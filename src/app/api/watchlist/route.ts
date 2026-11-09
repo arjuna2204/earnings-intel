@@ -28,6 +28,19 @@ export async function GET(req: NextRequest) {
       select<{ ticker: string; report_date: string }>("earnings_calendar", { ticker: `in.(${list})`, select: "ticker,report_date" }),
     ]);
     const ciks = companies.map((c) => c.cik).join(",");
+    // share classes (GOOG/GOOGL): the calendar may list the company under its other ticker
+    const siblings = ciks ? await select<{ cik: number; ticker: string }>("tickers", { cik: `in.(${ciks})`, select: "cik,ticker" }) : [];
+    const extra = siblings.map((x) => x.ticker).filter((t) => !tickers.includes(t));
+    const cal2 = extra.length
+      ? await select<{ ticker: string; report_date: string }>("earnings_calendar", { ticker: `in.(${extra.map((t) => `"${t}"`).join(",")})`, select: "ticker,report_date" })
+      : [];
+    const nextFor = (t: string) => {
+      const own = cal.find((x) => x.ticker === t)?.report_date;
+      if (own) return own;
+      const cik = companies.find((c) => c.ticker === t)?.cik;
+      const sib = siblings.filter((x) => x.cik === cik).map((x) => x.ticker);
+      return cal2.find((x) => sib.includes(x.ticker))?.report_date ?? null;
+    };
     const recentFrom = new Date(Date.now() - 120 * 864e5).toISOString().slice(0, 10);
     const [events, releases, prices] = await Promise.all([
       ciks
@@ -66,7 +79,7 @@ export async function GET(req: NextRequest) {
         price: p[0]?.close ?? null,
         change: p.length === 2 && p[1].close ? p[0].close / p[1].close - 1 : null,
         priceDate: p[0]?.date ?? null,
-        nextReport: cal.find((x) => x.ticker === t)?.report_date ?? null,
+        nextReport: nextFor(t),
         lastReport: last,
         lastQuarter: ev && ev.report_date === last ? `FY${ev.fiscal_year}Q${ev.fiscal_quarter}` : null,
         surprise: ev && ev.report_date === last && ev.eps_reported != null && ev.eps_estimated ? ev.eps_reported / ev.eps_estimated - 1 : null,
