@@ -1,1 +1,1 @@
-{"command": "analyze", "tickers": ["AAPL", "ABBV", "ADBE", "AMAT", "AMD", "AMZN", "AVGO", "BAC", "BRK-A", "C", "COF", "COST", "CRM", "CSCO", "DELL", "GOOG", "HPE", "HPQ", "IBM", "INTC", "INTU", "JNJ", "JPM", "LLY", "MA", "META", "MSFT", "MU", "NVDA", "O", "OLED", "OMCL", "ORCL", "OSS", "SMCI", "TSLA", "TSM", "TYGO", "USB", "V", "WFC", "WMT", "XOM", "XYZ", "ZEPP"], "nonce": "reingest-shares-1794258012", "args": ["--background"]}
+{"command": "analyze", "tickers": ["V", "BRK-A"], "args": ["--background"], "nonce": "v-div-1794258382"}

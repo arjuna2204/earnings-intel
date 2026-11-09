@@ -680,7 +680,12 @@ def valuation_snapshot(
     if dps and div_paid and shares and not 0.6 <= dps * shares / div_paid <= 1.6:
         dps = None  # per-share tags disagree with the cash actually paid; use the cash figure
     # payers tag their dividends in filings; nothing tagged = no dividend
-    snap["dividend_yield"] = dps / price if dps and dps > 0 else ((_div(div_paid, mcap) or 0.0) if div_paid else 0.0)
+    if dps and dps > 0:
+        snap["dividend_yield"] = dps / price
+    elif div_paid:
+        snap["dividend_yield"] = _div(div_paid, mcap)  # None when the market value is unknown
+    else:
+        snap["dividend_yield"] = 0.0
     snap["dividend_per_share_ttm"] = dps
     snap["shareholder_yield"] = (
         _div((div_paid or 0) + (bb or 0), mcap) if (div_paid is not None or bb is not None) else None
