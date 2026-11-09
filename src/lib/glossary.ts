@@ -255,6 +255,19 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   },
 
   // ------------------------------------------------------------------ trends (Historical)
+  segments: {
+    term: "Revenue breakdown",
+    what: "How sales split across the company's business segments, product lines and regions, as the company reports them.",
+    how: "Read from the tagged (XBRL) data in each 10-K and 10-Q. Where a company also lists a subtotal next to its parts (Apple's \"Products\" next to iPhone and Mac), the subtotal is left out so nothing is counted twice. Q4 = full year minus Q1–Q3.",
+    why: "Shows what actually drives the business, which parts are growing, and how dependent it is on one product or country.",
+    read: "Watch the fastest-growing line's share of revenue: if it keeps rising, it will soon drive the whole company's growth.",
+  },
+  segment_margin: {
+    term: "Segment operating margin",
+    what: "A segment's operating income divided by its revenue.",
+    how: "Both figures as the company reports them by segment. Corporate costs are usually not allocated, so segment margins add up to more than the company's overall margin.",
+    why: "Reveals which businesses make the money, not just the sales.",
+  },
   trend_margins: { term: "Margins over time", what: "Gross, operating and free-cash-flow margins by fiscal year.", why: "Steady or rising margins signal a durable business; a slide often precedes trouble." },
   trend_sales_eps: { term: "Sales vs EPS growth", what: "Year-over-year growth in revenue and in earnings per share.", why: "EPS growing faster than sales means rising margins or buybacks; slower means costs or dilution." },
   trend_roic_wacc: {

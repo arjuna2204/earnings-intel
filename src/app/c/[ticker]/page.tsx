@@ -16,6 +16,7 @@ import type { Company, Filing, PricePoint } from "@/lib/types";
 import BriefView from "@/components/BriefView";
 import PeersView from "@/components/PeersView";
 import TrendsView, { type TrendRow } from "@/components/TrendsView";
+import SegmentsView, { type SegmentRow } from "@/components/SegmentsView";
 import type { RiskYear } from "@/components/RiskTrend";
 import { getDcf } from "@/lib/dcf";
 import { getLatestPeersJob, getPeerComparison, getPeerSet } from "@/lib/peers";
@@ -600,7 +601,7 @@ async function StreetTab({ company, events, prices }: { company: Company; events
 }
 
 async function FinancialsTab({ company, filings }: { company: Company; filings: Filing[] }) {
-  const [data, trends, dcf] = await Promise.all([
+  const [data, trends, dcf, segments] = await Promise.all([
     getFinancials(company, filings),
     select<TrendRow>("metric_values", {
       cik: `eq.${company.cik}`,
@@ -611,11 +612,16 @@ async function FinancialsTab({ company, filings }: { company: Company; filings: 
       limit: "400",
     }),
     getDcf(company.cik),
+    selectAll<SegmentRow>("segment_values", {
+      cik: `eq.${company.cik}`,
+      select: "axis,measure,member,label,fiscal_year,fiscal_period,value,source,adds_up",
+    }).catch(() => [] as SegmentRow[]),
   ]);
   const groups = [...GENERAL_GROUPS, ...(company.sector_pack !== "general" ? [PACK_GROUPS[company.sector_pack]] : [])];
   return (
     <div className="space-y-12">
       <TrendsView rows={trends} wacc={dcf?.status === "ok" ? (dcf.assumptions.wacc?.value ?? null) : null} />
+      <SegmentsView rows={segments} />
       <FinancialsView data={data} groups={groups} />
     </div>
   );
