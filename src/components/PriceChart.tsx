@@ -141,6 +141,7 @@ export default function PriceChart({
   const optsRaw = useSyncExternalStore(subscribeOpts, readOptsRaw, () => "{}");
   const opts = useMemo(() => parseOpts(optsRaw), [optsRaw]);
   const toggle = (k: keyof Opts) => writeOpts({ ...opts, [k]: !opts[k] });
+  const [extras, setExtras] = useState(false); // 50D / 200D / Log live behind the "⋯" button
   const ma50Full = useMemo(() => sma(prices, 50), [prices]);
   const ma200Full = useMemo(() => sma(prices, 200), [prices]);
 
@@ -419,7 +420,7 @@ export default function PriceChart({
                 ["log", "Log", "log_scale"],
               ] as const
             ).map(([k, label, term]) =>
-              k === "vol" && !hasVolume ? null : (
+              (k === "vol" && !hasVolume) || (k !== "vol" && !extras && !opts[k]) ? null : (
                 <button
                   key={k}
                   type="button"
@@ -432,6 +433,15 @@ export default function PriceChart({
                 </button>
               ),
             )}
+            <button
+              type="button"
+              onClick={() => setExtras((e) => !e)}
+              aria-expanded={extras}
+              aria-label={extras ? "Hide chart options" : "More chart options: moving averages, log scale"}
+              className="rounded-full border border-border px-2.5 py-1 text-xs font-medium text-muted hover:text-foreground"
+            >
+              {extras ? "×" : "⋯"}
+            </button>
           </div>
         </div>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted">

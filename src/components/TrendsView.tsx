@@ -95,6 +95,26 @@ export default function TrendsView({ rows, wacc }: { rows: TrendRow[]; wacc: num
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [rows, t, wacc],
   );
+  // one plain headline per chart, from the numbers (the explanation lives in the title's info sheet)
+  const lastOf = (m: string) => {
+    for (let i = years.length - 1; i >= 0; i--) {
+      const v = val(m, years[i]);
+      if (v != null) return { y: years[i], v };
+    }
+    return null;
+  };
+  const om = lastOf("operating_margin");
+  const om5 = om ? val("operating_margin", om.y - 5) : null;
+  const marginHead = om
+    ? `Operating margin ${(om.v * 100).toFixed(1)}% in FY${om.y}${om5 != null ? `, ${om.v >= om5 ? "up" : "down"} ${Math.abs((om.v - om5) * 100).toFixed(1)} points from FY${om.y - 5}` : ""}.`
+    : "How much of each dollar of sales becomes profit.";
+  const gi = revG.length - 1;
+  const rg = revG[gi];
+  const eg = epsG[gi];
+  const growthHead =
+    rg != null
+      ? `Sales ${rg >= 0 ? "grew" : "fell"} ${Math.abs(rg * 100).toFixed(0)}% in FY${years[gi]}${eg != null ? `; earnings per share ${eg >= 0 ? "grew" : "fell"} ${Math.abs(eg * 100).toFixed(0)}%` : ""}${eg != null && rg != null ? (eg > rg + 0.02 ? " — profits growing faster than sales." : eg < rg - 0.02 ? " — profits lagging sales." : ".") : "."}`
+      : "";
   const above = roic.filter((v) => v != null && wacc != null && v > wacc).length;
   const counted = roic.filter((v) => v != null).length;
   if (years.length < 3) return null;
@@ -105,7 +125,7 @@ export default function TrendsView({ rows, wacc }: { rows: TrendRow[]; wacc: num
           <h3 className="flex items-center border-b border-border pb-3 text-xl font-semibold tracking-tight">
             <Term k="trend_margins" quiet>Margins over time</Term>
           </h3>
-          <p className="mt-2 text-sm text-muted">How much of each dollar of sales becomes gross profit, operating profit and free cash flow (fiscal years, SEC filings).</p>
+          <p className="mt-2 text-[15px]">{marginHead}</p>
           <EChart option={marginOpt} className="mt-3 h-72 w-full" ariaLabel="Gross, operating and free-cash-flow margins by fiscal year" />
         </div>
       )}
@@ -114,18 +134,17 @@ export default function TrendsView({ rows, wacc }: { rows: TrendRow[]; wacc: num
           <h3 className="flex items-center border-b border-border pb-3 text-xl font-semibold tracking-tight">
             <Term k="trend_sales_eps" quiet>Sales growth vs. earnings growth</Term>
           </h3>
-          <p className="mt-2 text-sm text-muted">When the line runs above the bars, profits are growing faster than sales (margins widening or buybacks). EPS growth is capped at 200% on the chart.</p>
+          <p className="mt-2 text-[15px]">{growthHead}</p>
           <EChart option={growthOpt} className="mt-3 h-64 w-full" ariaLabel="Revenue growth and EPS growth by fiscal year" />
         </div>
       )}
       {counted > 2 && (
-        <div>
+        <div className="pro-only">
           <h3 className="flex items-center border-b border-border pb-3 text-xl font-semibold tracking-tight">
             <Term k="trend_roic_wacc" quiet>Return on capital vs. cost of capital</Term>
           </h3>
-          <p className="mt-2 text-sm text-muted">
-            A company creates value when it earns more on the money invested in it than that money costs (the DCF&apos;s WACC).
-            {wacc != null && ` Above the line in ${above} of ${counted} years.`}
+          <p className="mt-2 text-[15px]">
+            {wacc != null ? `Earned more than its cost of capital in ${above} of ${counted} years.` : "Return on the money invested in the business, by year."}
           </p>
           <EChart option={roicOpt} className="mt-3 h-56 w-full" ariaLabel="Return on invested capital by year versus cost of capital" />
         </div>
@@ -135,8 +154,8 @@ export default function TrendsView({ rows, wacc }: { rows: TrendRow[]; wacc: num
           <h3 className="flex items-center border-b border-border pb-3 text-xl font-semibold tracking-tight">
             <Term k="trend_shares" quiet>Share count</Term>
           </h3>
-          <p className="mt-2 text-sm text-muted">
-            Diluted shares by fiscal year.{" "}
+          <p className="mt-2 text-[15px]">
+            {" "}
             {change != null && (
               <span className={change < 0 ? "font-semibold text-up" : "font-semibold text-down"}>
                 {change < 0 ? "▼" : "▲"} {Math.abs(change * 100).toFixed(1)}% since FY{years[shares.findIndex((x) => x != null)]}

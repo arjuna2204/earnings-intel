@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import Term, { AboutNumbers } from "@/components/Term";
+import { useMode } from "@/components/ModeToggle";
 import type { ScreenRow } from "@/lib/screener";
 
 type Key = keyof ScreenRow;
@@ -22,6 +23,15 @@ const cap = (v: number) =>
     : v >= 1e9
       ? `$${(v / 1e9).toFixed(0)}B`
       : `$${(v / 1e6).toFixed(0)}M`;
+
+// Simple mode: five everyday columns. Pro mode: three column sets.
+const ESSENTIALS: Col[] = [
+  { key: "marketCap", label: "Market cap", term: "market_cap", fmt: cap },
+  { key: "pe", label: "P/E", term: "pe", fmt: x },
+  { key: "revGrowth", label: "Revenue growth", term: "revenue_growth_yoy", fmt: pct, signed: true },
+  { key: "divYield", label: "Div. yield", term: "dividend_yield", fmt: pct },
+  { key: "ret1y", label: "1Y return", term: "vs_benchmark", fmt: pct, signed: true },
+];
 
 const VIEWS: Record<string, { label: string; cols: Col[] }> = {
   value: {
@@ -162,7 +172,8 @@ export default function ScreenerView({ rows }: { rows: ScreenRow[] }) {
     [rows],
   );
   const p = PRESETS.find((x) => x.key === preset)!;
-  const cols = VIEWS[view].cols;
+  const mode = useMode();
+  const cols = mode === "pro" ? VIEWS[view].cols : ESSENTIALS;
 
   const shown = rows
     .filter(
@@ -231,7 +242,7 @@ export default function ScreenerView({ rows }: { rows: ScreenRow[] }) {
       </div>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-2">
-        <div className="flex gap-1" role="tablist" aria-label="Columns">
+        <div className={`gap-1 ${mode === "pro" ? "flex" : "hidden"}`} role="tablist" aria-label="Columns">
           {Object.entries(VIEWS).map(([k, v]) => (
             <button
               key={k}

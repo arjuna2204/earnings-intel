@@ -209,7 +209,7 @@ export async function getQuickTake(company: Company, events: EarningsEvent[], as
       text: `Piotroski score ${f.score} of ${f.out_of} — ${f.score >= 7 ? "strong" : f.score <= 3 ? "weak" : "middling"}`,
       detail: `Profitability, balance sheet and efficiency checks, FY${f.fiscal_year}`,
       tone: f.score >= 7 ? "up" : f.score <= 3 ? "down" : "neutral",
-      href: tab("risk", "#rk-fund"),
+      href: tab("riskstats", "#rk-fund"),
     });
   }
   return { signals: out, bottomLine: bottomLine(company.ticker, out, revG[0] ?? null, band ?? null, pe ?? null) };

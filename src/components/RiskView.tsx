@@ -12,9 +12,9 @@ const spct = (v: N, d = 1) => (v == null ? "—" : `${v >= 0 ? "+" : "−"}${Mat
 const x2 = (v: N) => (v == null ? "—" : v.toFixed(2));
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-function Stat({ label, value, sub, info }: { label: string; value: string; sub?: React.ReactNode; info?: string }) {
+function Stat({ label, value, sub, info, pro }: { label: string; value: string; sub?: React.ReactNode; info?: string; pro?: boolean }) {
   return (
-    <div>
+    <div className={pro ? "pro-only" : undefined}>
       <dt className="flex items-center text-xs text-muted">
         <Term k={info} value={value}>{label}</Term>
       </dt>
@@ -24,9 +24,9 @@ function Stat({ label, value, sub, info }: { label: string; value: string; sub?:
   );
 }
 
-function Section({ id, title, note, info, children }: { id: string; title: string; note?: string; info?: string; children: React.ReactNode }) {
+function Section({ id, title, note, info, pro, children }: { id: string; title: string; note?: string; info?: string; pro?: boolean; children: React.ReactNode }) {
   return (
-    <section id={id} className="scroll-mt-32">
+    <section id={id} className={`scroll-mt-32 ${pro ? "pro-only" : ""}`}>
       <h2 className="flex items-center border-b border-border pb-3 text-xl font-semibold tracking-tight">
         <Term k={info} quiet>{title}</Term>
       </h2>
@@ -119,7 +119,7 @@ export default function RiskView({ ticker, r, sector }: { ticker: string; r: Ris
           ["rk-season", "Seasonality"],
           ["rk-fund", "Balance-sheet risk"],
         ].map(([id, l]) => (
-          <a key={id} href={`#${id}`} className="hover:text-foreground">
+          <a key={id} href={`#${id}`} className={`hover:text-foreground ${id === "rk-season" ? "pro-only" : ""}`}>
             {l}
           </a>
         ))}
@@ -138,16 +138,16 @@ export default function RiskView({ ticker, r, sector }: { ticker: string; r: Ris
           <Stat label="Beta (1 yr / 3 yr)" info="beta" value={`${x2(r.beta.y1)} / ${x2(r.beta.y3)}`} sub={`Correlation with market ${x2(r.beta.corr_y1)}${r.beta.sector_y1 != null ? ` · vs sector ${x2(r.beta.sector_y1)}` : ""}`} />
           <Stat label="Max drawdown" info="max_drawdown" value={pct(r.drawdown.y5.max, 0)} sub={`1 yr: ${pct(r.drawdown.y1.max, 0)} · all history: ${pct(r.drawdown.all.max, 0)}`} />
           <Stat label="Below 52-week high" info="below_high" value={pct(r.drawdown.current, 1)} />
-          <Stat label="Sharpe ratio (1 yr / 3 yr)" info="sharpe" value={`${x2(r.sharpe.y1)} / ${x2(r.sharpe.y3)}`} sub={`S&P 500 (1 yr): ${x2(r.sharpe.market_y1)}`} />
-          <Stat label="Sortino ratio (1 yr / 3 yr)" info="sortino" value={`${x2(r.sortino.y1)} / ${x2(r.sortino.y3)}`} />
-          <Stat label="1-day value at risk (95%)" info="var95" value={pct(r.var95)} sub={`Average on those bad days: ${pct(r.cvar95)}`} />
+          <Stat label="Sharpe ratio (1 yr / 3 yr)" info="sharpe" pro value={`${x2(r.sharpe.y1)} / ${x2(r.sharpe.y3)}`} sub={`S&P 500 (1 yr): ${x2(r.sharpe.market_y1)}`} />
+          <Stat label="Sortino ratio (1 yr / 3 yr)" info="sortino" pro value={`${x2(r.sortino.y1)} / ${x2(r.sortino.y3)}`} />
+          <Stat label="1-day value at risk (95%)" info="var95" pro value={pct(r.var95)} sub={`Average on those bad days: ${pct(r.cvar95)}`} />
           <Stat
-            label="Up / down capture (3 yr)" info="capture"
+            label="Up / down capture (3 yr)" info="capture" pro
             value={`${pct(r.capture.up, 0)} / ${pct(r.capture.down, 0)}`}
           />
           <Stat label="Return (1 yr)" info="vs_benchmark" value={spct(r.returns.y1, 0)} sub={`S&P 500: ${spct(r.returns.market_y1, 0)}`} />
-          <Stat label="Up days (1 yr)" info="up_days" value={pct(r.up_days_pct, 0)} />
-          <Stat label="Skew / fat tails" info="skew_kurt" value={`${x2(r.skew)} / ${x2(r.excess_kurtosis)}`} />
+          <Stat label="Up days (1 yr)" info="up_days" pro value={pct(r.up_days_pct, 0)} />
+          <Stat label="Skew / fat tails" info="skew_kurt" pro value={`${x2(r.skew)} / ${x2(r.excess_kurtosis)}`} />
         </dl>
       </Section>
 
@@ -166,7 +166,7 @@ export default function RiskView({ ticker, r, sector }: { ticker: string; r: Ris
               role="tab"
               aria-selected={chart === k}
               onClick={() => setChart(k)}
-              className={`rounded-full border px-3 py-1 text-xs font-medium ${chart === k ? "border-foreground bg-foreground text-background" : "border-border text-muted hover:text-foreground"}`}
+              className={`${k === "hist" ? "pro-only " : ""}rounded-full border px-3 py-1 text-xs font-medium ${chart === k ? "border-foreground bg-foreground text-background" : "border-border text-muted hover:text-foreground"}`}
             >
               {l}
             </button>
@@ -186,7 +186,7 @@ export default function RiskView({ ticker, r, sector }: { ticker: string; r: Ris
           <Term k={chart === "drawdown" ? "drawdown_chart" : chart === "vol" ? "rolling_vol" : "return_distribution"}>About this chart</Term>
         </p>
         <EChart option={charts[chart]} className="mt-3 h-72 w-full" ariaLabel={`${ticker} ${chart} chart`} />
-        <div className="mt-6 grid gap-8 sm:grid-cols-2">
+        <div className="pro-only mt-6 grid gap-8 sm:grid-cols-2">
           {(
             [
               ["Best days (1 yr)", r.best_days],
@@ -235,7 +235,7 @@ export default function RiskView({ ticker, r, sector }: { ticker: string; r: Ris
         )}
       </Section>
 
-      <Section id="rk-season" info="seasonality" title="Seasonality" note="Average return by calendar month over the full price history. Patterns like these are often noise — treat them as context, not a forecast.">
+      <Section id="rk-season" pro info="seasonality" title="Seasonality" note="Average return by calendar month over the full price history. Patterns like these are often noise — treat them as context, not a forecast.">
         <div className="flex gap-4 text-xs text-muted">
           <span>
             <span className="text-up">▲</span> Up on average
@@ -255,7 +255,7 @@ export default function RiskView({ ticker, r, sector }: { ticker: string; r: Ris
           <Stat label="Stock comp / revenue" info="sbc_pct" value={pct(f.sbc_pct_revenue)} sub={`Share count ${spct(f.share_change_1y)} (1 yr) · ${spct(f.share_change_3y)}/yr (3 yr)`} />
         </dl>
         {f.piotroski && (
-          <ul className="mt-5 grid gap-x-8 gap-y-1 text-sm sm:grid-cols-2">
+          <ul className="pro-only mt-5 grid gap-x-8 gap-y-1 text-sm sm:grid-cols-2">
             {f.piotroski.checks.map((c) => (
               <li key={c.label} className="flex items-baseline gap-2 py-1">
                 {c.pass == null ? <span className="text-muted">–</span> : c.pass ? <span className="text-up">▲</span> : <span className="text-down">▼</span>}

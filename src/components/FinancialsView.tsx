@@ -3,12 +3,30 @@
 import { useMemo, useState } from "react";
 import EChart from "@/components/EChart";
 import Term from "@/components/Term";
+import { useMode } from "@/components/ModeToggle";
 import SourcePanel from "@/components/SourcePanel";
 import { useThemeColors } from "@/components/useThemeColors";
-import { filingIndexFromDocUrl, fmtValue, periodLabel, secFilingIndexUrl, type MetricGroup, type MetricInfo } from "@/lib/metrics";
+import {
+  filingIndexFromDocUrl,
+  fmtValue,
+  periodLabel,
+  secFilingIndexUrl,
+  type MetricGroup,
+  type MetricInfo,
+} from "@/lib/metrics";
 
 /** Compact row sent from the server: [fy, fp, value, source, tag, derivationIdx, accession, periodEnd, unit] */
-export type CompactRow = [number, string, number, "reported" | "derived", string | null, number, string | null, string, string];
+export type CompactRow = [
+  number,
+  string,
+  number,
+  "reported" | "derived",
+  string | null,
+  number,
+  string | null,
+  string,
+  string,
+];
 
 export type FinancialsData = {
   cik: number;
@@ -22,15 +40,27 @@ export type FinancialsData = {
 type Mode = "FY" | "Q";
 type Selected = { metric: MetricInfo; row: CompactRow } | null;
 
-export default function FinancialsView({ data, groups }: { data: FinancialsData; groups: MetricGroup[] }) {
+export default function FinancialsView({
+  data,
+  groups,
+}: {
+  data: FinancialsData;
+  groups: MetricGroup[];
+}) {
   const [mode, setMode] = useState<Mode>("FY");
   const [period, setPeriod] = useState<string | null>(null); // "2024|FY" — highlighted everywhere
   const [selected, setSelected] = useState<Selected>(null);
+  const proMode = useMode() === "pro";
+  const [openGroups, setOpenGroups] = useState<string[]>([]);
 
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-full bg-card p-1" role="tablist" aria-label="Period type">
+        <div
+          className="inline-flex rounded-full bg-card p-1"
+          role="tablist"
+          aria-label="Period type"
+        >
           {(["FY", "Q"] as const).map((m) => (
             <button
               key={m}
@@ -57,34 +87,52 @@ export default function FinancialsView({ data, groups }: { data: FinancialsData;
         </p>
       </div>
 
-      {groups.map((g) => (
-        <section key={g.title} className="mt-8">
-          <h2 className="mb-3 text-lg font-semibold">{g.title}</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {g.metrics.map((m) => (
-              <MetricCard
-                key={m.key}
-                metric={m}
-                rows={data.series[m.key] ?? []}
-                unresolved={data.unresolved[m.key]}
-                mode={mode}
-                period={period}
-                onPick={(row) => {
-                  setPeriod(`${row[0]}|${row[1]}`);
-                  setSelected({ metric: m, row });
-                }}
-              />
-            ))}
-          </div>
-        </section>
-      ))}
+      {groups.map((g) => {
+        // Simple mode: the first three numbers of each group, the rest one tap away
+        const all = proMode || openGroups.includes(g.title);
+        const shown = all ? g.metrics : g.metrics.slice(0, 3);
+        return (
+          <section key={g.title} className="mt-8">
+            <h2 className="mb-3 text-lg font-semibold">{g.title}</h2>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {shown.map((m) => (
+                <MetricCard
+                  key={m.key}
+                  metric={m}
+                  rows={data.series[m.key] ?? []}
+                  unresolved={data.unresolved[m.key]}
+                  mode={mode}
+                  period={period}
+                  onPick={(row) => {
+                    setPeriod(`${row[0]}|${row[1]}`);
+                    setSelected({ metric: m, row });
+                  }}
+                />
+              ))}
+            </div>
+            {!all && g.metrics.length > 3 && (
+              <button
+                type="button"
+                onClick={() => setOpenGroups((o) => [...o, g.title])}
+                className="mt-3 text-sm font-medium text-muted hover:text-foreground"
+              >
+                Show all {g.metrics.length} numbers ▾
+              </button>
+            )}
+          </section>
+        );
+      })}
 
       {selected && (
         <SourcePanel
           title={`${selected.metric.label} · ${periodLabel(selected.row[0], selected.row[1])}`}
           onClose={() => setSelected(null)}
         >
-          <SourceDetails data={data} metric={selected.metric} row={selected.row} />
+          <SourceDetails
+            data={data}
+            metric={selected.metric}
+            row={selected.row}
+          />
         </SourcePanel>
       )}
     </div>
@@ -92,8 +140,12 @@ export default function FinancialsView({ data, groups }: { data: FinancialsData;
 }
 
 function rowsFor(rows: CompactRow[], mode: Mode): CompactRow[] {
-  const keep = rows.filter((r) => (mode === "FY" ? r[1] === "FY" : r[1] !== "FY"));
-  return keep.sort((a, b) => (a[7] < b[7] ? -1 : a[7] > b[7] ? 1 : 0)).slice(mode === "FY" ? -15 : -60);
+  const keep = rows.filter((r) =>
+    mode === "FY" ? r[1] === "FY" : r[1] !== "FY",
+  );
+  return keep
+    .sort((a, b) => (a[7] < b[7] ? -1 : a[7] > b[7] ? 1 : 0))
+    .slice(mode === "FY" ? -15 : -60);
 }
 
 function MetricCard({
@@ -114,9 +166,13 @@ function MetricCard({
   const colors = useThemeColors();
   const shown = useMemo(() => rowsFor(rows, mode), [rows, mode]);
   const last = shown[shown.length - 1];
-  const highlightIdx = period ? shown.findIndex((r) => `${r[0]}|${r[1]}` === period) : -1;
+  const highlightIdx = period
+    ? shown.findIndex((r) => `${r[0]}|${r[1]}` === period)
+    : -1;
   const focus = highlightIdx >= 0 ? shown[highlightIdx] : last;
-  const prior = focus ? rows.find((r) => r[0] === focus[0] - 1 && r[1] === focus[1]) : undefined;
+  const prior = focus
+    ? rows.find((r) => r[0] === focus[0] - 1 && r[1] === focus[1])
+    : undefined;
 
   if (!shown.length) {
     return (
@@ -124,15 +180,24 @@ function MetricCard({
         <div className="flex items-center text-sm text-muted">
           <Term k={metric.key}>{metric.label}</Term>
         </div>
-        <div className="mt-2 text-2xl font-semibold text-muted">Not reported</div>
-        <p className="mt-2 text-xs text-muted">{unresolved ?? "This company doesn't report this item in a form we can read."}</p>
+        <div className="mt-2 text-2xl font-semibold text-muted">
+          Not reported
+        </div>
+        <p className="mt-2 text-xs text-muted">
+          {unresolved ??
+            "This company doesn't report this item in a form we can read."}
+        </p>
       </div>
     );
   }
 
   const unit = focus[8];
-  const delta = prior && metric.fmt !== "pct" && prior[2] !== 0 ? focus[2] / Math.abs(prior[2]) - Math.sign(prior[2]) : null;
-  const deltaPts = prior && metric.fmt === "pct" ? (focus[2] - prior[2]) * 100 : null;
+  const delta =
+    prior && metric.fmt !== "pct" && prior[2] !== 0
+      ? focus[2] / Math.abs(prior[2]) - Math.sign(prior[2])
+      : null;
+  const deltaPts =
+    prior && metric.fmt === "pct" ? (focus[2] - prior[2]) * 100 : null;
   const up = (delta ?? deltaPts ?? 0) >= 0;
 
   const option = {
@@ -140,8 +205,16 @@ function MetricCard({
     grid: { left: 2, right: 2, top: 6, bottom: 18 },
     xAxis: {
       type: "category",
-      data: shown.map((r) => (mode === "FY" ? `'${String(r[0]).slice(2)}` : `${r[1]} ${String(r[0]).slice(2)}`)),
-      axisLabel: { color: colors.muted, fontSize: 10, interval: mode === "FY" ? 2 : 7 },
+      data: shown.map((r) =>
+        mode === "FY"
+          ? `'${String(r[0]).slice(2)}`
+          : `${r[1]} ${String(r[0]).slice(2)}`,
+      ),
+      axisLabel: {
+        color: colors.muted,
+        fontSize: 10,
+        interval: mode === "FY" ? 2 : 7,
+      },
       axisLine: { show: false },
       axisTick: { show: false },
     },
@@ -176,14 +249,23 @@ function MetricCard({
         <div className="flex items-center text-sm text-muted">
           <Term k={metric.key}>{metric.label}</Term>
         </div>
-        <div className="text-xs text-muted">{periodLabel(focus[0], focus[1])}</div>
+        <div className="text-xs text-muted">
+          {periodLabel(focus[0], focus[1])}
+        </div>
       </div>
       <button className="mt-1 text-left" onClick={() => onPick(focus)}>
-        <span className="text-2xl font-semibold tracking-tight">{fmtValue(focus[2], metric.fmt, unit)}</span>
+        <span className="text-2xl font-semibold tracking-tight">
+          {fmtValue(focus[2], metric.fmt, unit)}
+        </span>
         {(delta !== null || deltaPts !== null) && (
-          <span className="ml-2 text-sm font-medium" style={{ color: up ? colors.up : colors.down }}>
+          <span
+            className="ml-2 text-sm font-medium"
+            style={{ color: up ? colors.up : colors.down }}
+          >
             {up ? "▲" : "▼"}{" "}
-            {delta !== null ? `${Math.abs(delta * 100).toFixed(1)}%` : `${Math.abs(deltaPts!).toFixed(1)} pts`}
+            {delta !== null
+              ? `${Math.abs(delta * 100).toFixed(1)}%`
+              : `${Math.abs(deltaPts!).toFixed(1)} pts`}
           </span>
         )}
       </button>
@@ -197,19 +279,34 @@ function MetricCard({
   );
 }
 
-function SourceDetails({ data, metric, row }: { data: FinancialsData; metric: MetricInfo; row: CompactRow }) {
-  const [fy, fp, value, source, tag, derivIdx, accession, periodEnd, unit] = row;
+function SourceDetails({
+  data,
+  metric,
+  row,
+}: {
+  data: FinancialsData;
+  metric: MetricInfo;
+  row: CompactRow;
+}) {
+  const [fy, fp, value, source, tag, derivIdx, accession, periodEnd, unit] =
+    row;
   const filing = accession ? data.filings[accession] : undefined;
   return (
     <>
-      <div className="text-3xl font-semibold">{fmtValue(value, metric.fmt, unit)}</div>
+      <div className="text-3xl font-semibold">
+        {fmtValue(value, metric.fmt, unit)}
+      </div>
       <dl className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-2">
         <dt className="text-muted">Period</dt>
         <dd>
           {periodLabel(fy, fp)} · ends {periodEnd}
         </dd>
         <dt className="text-muted">Type</dt>
-        <dd>{source === "reported" ? "Reported in XBRL" : "Derived in code (not AI)"}</dd>
+        <dd>
+          {source === "reported"
+            ? "Reported in XBRL"
+            : "Derived in code (not AI)"}
+        </dd>
         {tag && (
           <>
             <dt className="text-muted">XBRL tag</dt>
@@ -230,7 +327,11 @@ function SourceDetails({ data, metric, row }: { data: FinancialsData; metric: Me
               <br />
               <a
                 className="text-accent underline"
-                href={filing ? filingIndexFromDocUrl(filing.url, accession) : secFilingIndexUrl(data.cik, accession)}
+                href={
+                  filing
+                    ? filingIndexFromDocUrl(filing.url, accession)
+                    : secFilingIndexUrl(data.cik, accession)
+                }
                 target="_blank"
                 rel="noreferrer"
               >

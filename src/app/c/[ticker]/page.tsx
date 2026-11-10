@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import AnalyzePanel from "@/components/AnalyzePanel";
 import CompanyTabs from "@/components/CompanyTabs";
-import { normalizeTab } from "@/lib/tabs";
+import { resolveTab } from "@/lib/tabs";
 import StreetView, { type EstimateRow } from "@/components/StreetView";
 import type { FieldRow } from "@/components/ValuationCharts";
 import FinancialsView from "@/components/FinancialsView";
@@ -17,10 +17,7 @@ import BriefView from "@/components/BriefView";
 import PeersView from "@/components/PeersView";
 import TrendsView, { type TrendRow } from "@/components/TrendsView";
 import SegmentsView, { type SegmentRow } from "@/components/SegmentsView";
-import QualityNotes from "@/components/QualityNotes";
-import Freshness from "@/components/Freshness";
-import { RecapFacts, recapDate } from "@/components/RecapLine";
-import { latestRecap } from "@/lib/screener";
+import DataInfo from "@/components/DataInfo";
 import type { RiskYear } from "@/components/RiskTrend";
 import { getDcf } from "@/lib/dcf";
 import { getLatestPeersJob, getPeerComparison, getPeerSet } from "@/lib/peers";
@@ -33,12 +30,12 @@ import OwnershipView from "@/components/OwnershipView";
 import RiskView from "@/components/RiskView";
 import OptionsView from "@/components/OptionsView";
 import { getOptions, getRisk } from "@/lib/riskopts";
-import QuickTake from "@/components/QuickTake";
+import Overview from "@/components/Overview";
+import ProGate from "@/components/ProGate";
 import WatchButton from "@/components/WatchButton";
 import Term, { AboutNumbers } from "@/components/Term";
 import { COMPARE_ETFS, etfName } from "@/lib/etfs";
 import { comparablePeerPe } from "@/lib/peer-check";
-import { getQuickTake } from "@/lib/quicktake";
 import { getHolders, getInsiderTrades, summarizeInsiders } from "@/lib/ownership";
 
 export default function CompanyPage(props: PageProps<"/c/[ticker]">) {
@@ -52,12 +49,11 @@ export default function CompanyPage(props: PageProps<"/c/[ticker]">) {
 }
 
 const PACK_LABEL: Record<string, string> = { bank: "Bank", reit: "REIT", insurer: "Insurer", general: "General" };
-const SYMBOL: Record<string, string> = { USD: "$", TWD: "NT$", EUR: "€", GBP: "£", JPY: "¥" };
 
 async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">) {
   const ticker = decodeURIComponent((await params).ticker).toUpperCase();
   const sp = await searchParams;
-  const tab = normalizeTab(typeof sp.tab === "string" ? sp.tab : null, "street");
+  const { view } = resolveTab(typeof sp.tab === "string" ? sp.tab : null, typeof sp.view === "string" ? sp.view : null);
 
   const company = await getCompanyByTicker(ticker);
   if (!company) {
@@ -145,7 +141,7 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
         </div>
       </header>
       <Suspense fallback={null}>
-        <Freshness cik={company.cik} priceDate={prices.at(-1)?.date ?? company.valuation?.price_date ?? null} filings={filings} />
+        <DataInfo company={company} priceDate={prices.at(-1)?.date ?? company.valuation?.price_date ?? null} filings={filings} />
       </Suspense>
       {company.history_note && <p className="mt-3 text-sm text-muted">ⓘ {company.history_note}</p>}
       {company.sector_note && (
@@ -174,51 +170,46 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
       <ValuationStrip company={company} />
 
       <div className="mt-6">
-        <CompanyTabs defaultTab="street" />
+        <CompanyTabs />
       </div>
 
       <div className="mt-6">
-        <Suspense key={`${tab}-${sp.a ?? ""}-${sp.b ?? ""}`} fallback={<TabSkeleton />}>
-        {tab === "historical" && <FinancialsTab company={company} filings={filings} />}
-        {tab === "street" && <StreetTab company={company} events={events} prices={prices} />}
-        {tab === "sources" && <SourcesTab company={company} filings={filings} />}
-        {tab === "brief" && (
-          <div className="space-y-10">
-            <QuickTakeSection company={company} events={events} asOf={prices.at(-1)?.date ?? company.valuation?.price_date ?? "2026-01-01"} />
-            <BriefTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />
-          </div>
+        <Suspense key={`${view}-${sp.a ?? ""}-${sp.b ?? ""}`} fallback={<TabSkeleton />}>
+        {view === "overview" && (
+          <Overview company={company} events={events} asOf={prices.at(-1)?.date ?? company.valuation?.price_date ?? "2026-01-01"} />
         )}
-        {tab === "call" && <CallTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />}
-        {tab === "filings" && <BriefTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} mode="filings" />}
-        {tab === "peers" && <PeersTab company={company} prices={prices} />}
-        {tab === "risk" && <RiskTab company={company} />}
-        {tab === "options" && <OptionsTab company={company} />}
-        {tab === "ownership" && <OwnershipTab company={company} asOf={prices.at(-1)?.date ?? company.valuation?.price_date ?? "2026-01-01"} />}
+        {view === "historical" && <FinancialsTab company={company} filings={filings} />}
+        {view === "street" && <StreetTab company={company} events={events} prices={prices} />}
+        {view === "sources" && <SourcesTab company={company} filings={filings} />}
+        {view === "brief" && (
+          <BriefTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />
+        )}
+        {view === "call" && <CallTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />}
+        {view === "filings" && (
+          <ProGate what="Filings detail (adjusted numbers, MD&A, risk-factor redline)">
+            <BriefTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} mode="filings" />
+          </ProGate>
+        )}
+        {view === "peers" && <PeersTab company={company} prices={prices} />}
+        {view === "riskstats" && <RiskTab company={company} />}
+        {view === "options" && (
+          <ProGate what="Options data">
+            <OptionsTab company={company} />
+          </ProGate>
+        )}
+        {view === "ownership" && <OwnershipTab company={company} asOf={prices.at(-1)?.date ?? company.valuation?.price_date ?? "2026-01-01"} />}
         </Suspense>
       </div>
+      <p className="mt-12 border-t border-border pt-4 text-xs text-muted">
+        Every number links to where it came from.{" "}
+        <Link href={`/c/${encodeURIComponent(company.ticker)}?tab=sources`} className="font-medium text-foreground hover:underline">
+          All sources for {company.ticker} →
+        </Link>
+      </p>
     </>
   );
 }
 
-async function QuickTakeSection({ company, events, asOf }: { company: Company; events: Awaited<ReturnType<typeof getEvents>>; asOf: string }) {
-  const [q, recap] = await Promise.all([getQuickTake(company, events, asOf), latestRecap(company.ticker)]);
-  return (
-    <>
-      {recap && (
-        <section aria-label="Latest earnings" className="mb-6 rounded-2xl bg-card p-4">
-          <div className="flex items-baseline justify-between gap-2">
-            <h2 className="font-semibold">Just reported{recap.quarter ? ` · ${recap.quarter}` : ""}</h2>
-            <span className="text-xs text-muted">{recapDate(recap.report_date)}</span>
-          </div>
-          <div className="mt-2">
-            <RecapFacts r={recap} />
-          </div>
-        </section>
-      )}
-      <QuickTake signals={q.signals} bottomLine={q.bottomLine} />
-    </>
-  );
-}
 
 async function RiskTab({ company }: { company: Company }) {
   const r = await getRisk(company.cik);
@@ -658,85 +649,62 @@ async function FinancialsTab({ company, filings }: { company: Company; filings: 
 function ValuationStrip({ company }: { company: Company }) {
   const v = company.valuation;
   if (!v) return null;
-  const cur = SYMBOL[v.currency] ?? "";
-  const items: [string, string | null, string][] = [
+  if (v.note) return <p className="mt-6 rounded-xl bg-card px-4 py-3 text-sm text-muted">{v.note}</p>;
+  const x1 = (n: number | null | undefined) => (n != null ? `${n.toFixed(1)}×` : null);
+  const dy = v.dividend_yield != null ? (v.dividend_yield > 0 ? `${(v.dividend_yield * 100).toFixed(2)}%` : "None") : null;
+  // four numbers everyone needs; the rest one tap away
+  const key: [string, string | null, string][] = [
     ["Market cap", v.market_cap != null ? `$${compact(v.market_cap)}` : null, "market_cap"],
-    ["Enterprise value", v.enterprise_value != null ? `$${compact(v.enterprise_value)}` : null, "enterprise_value"],
-    ["P/E (TTM)", v.pe != null ? `${v.pe.toFixed(1)}×` : null, "pe"],
+    ["P/E (TTM)", x1(v.pe), "pe"],
+    v.pe_fwd_ntm != null ? ["Fwd P/E", x1(v.pe_fwd_ntm), "pe_fwd_ntm"] : ["FCF yield", v.fcf_yield != null ? `${(v.fcf_yield * 100).toFixed(1)}%` : null, "fcf_yield"],
+    ["Dividend yield", dy, "dividend_yield"],
   ];
-  if (company.sector_pack === "bank") items.push(["P/TBV", v.p_tbv != null ? `${v.p_tbv.toFixed(2)}×` : null, "p_tbv"]);
-  else if (company.sector_pack === "insurer") items.push(["P/B", v.p_b != null ? `${v.p_b.toFixed(2)}×` : null, "p_b"]);
+  const more: [string, string | null, string, string?][] = [["Enterprise value", v.enterprise_value != null ? `$${compact(v.enterprise_value)}` : null, "enterprise_value"]];
+  if (company.sector_pack === "bank") more.push(["P/TBV", v.p_tbv != null ? `${v.p_tbv.toFixed(2)}×` : null, "p_tbv"]);
+  else if (company.sector_pack === "insurer") more.push(["P/B", v.p_b != null ? `${v.p_b.toFixed(2)}×` : null, "p_b"]);
   else {
-    items.push(["EV/EBITDA (TTM)", v.ev_ebitda != null ? `${v.ev_ebitda.toFixed(1)}×` : null, "ev_ebitda"]);
-    items.push(["EV/Revenue (TTM)", v.ev_revenue != null ? `${v.ev_revenue.toFixed(2)}×` : null, "ev_revenue"]);
+    more.push(["EV/EBITDA (TTM)", x1(v.ev_ebitda), "ev_ebitda"]);
+    more.push(["EV/Revenue (TTM)", v.ev_revenue != null ? `${v.ev_revenue.toFixed(2)}×` : null, "ev_revenue"]);
   }
-  items.push(["FCF yield (TTM)", v.fcf_yield != null ? `${(v.fcf_yield * 100).toFixed(1)}%` : null, "fcf_yield"]);
-  items.push([
-    "Dividend yield",
-    v.dividend_yield != null ? (v.dividend_yield > 0 ? `${(v.dividend_yield * 100).toFixed(2)}%` : "None") : null,
-    "dividend_yield",
-  ]);
-  const x = (n: number | null | undefined) => (n != null ? `${n.toFixed(1)}×` : null);
-  const street: [string, string | null, string, string][] = v.street_source
-    ? [
-        ["Adj. P/E (LTM)", x(v.pe_adj_ltm), v.adj_eps_ltm != null ? `EPS $${v.adj_eps_ltm.toFixed(2)}, last 4 quarters` : "needs 4 reported quarters", "pe_adj_ltm"],
-        ["Adj. P/E (run-rate)", x(v.pe_adj_run_rate), v.adj_eps_run_rate != null ? `${v.adj_eps_run_rate_quarter} EPS × 4 = $${v.adj_eps_run_rate.toFixed(2)}` : "", "pe_adj_run_rate"],
-        ["Fwd P/E (next 12 mo.)", x(v.pe_fwd_ntm), v.eps_ntm != null ? `consensus EPS $${v.eps_ntm.toFixed(2)}` : "no consensus available", "pe_fwd_ntm"],
-      ]
-    : [];
-
+  if (v.pe_fwd_ntm != null) more.push(["FCF yield (TTM)", v.fcf_yield != null ? `${(v.fcf_yield * 100).toFixed(1)}%` : null, "fcf_yield"]);
+  if (v.shareholder_yield != null) more.push(["Shareholder yield", `${(v.shareholder_yield * 100).toFixed(1)}%`, "shareholder_yield", "dividends + buybacks"]);
+  if (v.street_source) {
+    more.push(["Adj. P/E (LTM)", x1(v.pe_adj_ltm), "pe_adj_ltm", v.adj_eps_ltm != null ? `EPS $${v.adj_eps_ltm.toFixed(2)}, last 4 quarters` : "needs 4 reported quarters"]);
+    more.push(["Adj. P/E (run-rate)", x1(v.pe_adj_run_rate), "pe_adj_run_rate", v.adj_eps_run_rate != null ? `${v.adj_eps_run_rate_quarter} EPS × 4` : ""]);
+  }
+  const Tile = ({ label, val, k, sub }: { label: string; val: string | null; k: string; sub?: string }) => (
+    <div>
+      <dt className="flex items-center text-xs text-muted">
+        <Term k={k} value={val}>{label}</Term>
+      </dt>
+      <dd className={`mt-0.5 text-lg font-semibold tabular-nums ${val ? "" : "text-muted"}`}>{val ?? "—"}</dd>
+      {sub && <dd className="text-xs text-muted">{sub}</dd>}
+    </div>
+  );
   return (
-    <section className="mt-6" aria-label="Valuation">
-      {v.note ? (
-        <p className="rounded-xl bg-card px-4 py-3 text-sm text-muted">{v.note}</p>
-      ) : (
-        <>
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4 lg:grid-cols-7">
-            {items.map(([label, val, k]) => (
-              <div key={label}>
-                <dt className="flex items-center text-xs text-muted">
-                  <Term k={k} value={val}>{label}</Term>
-                </dt>
-                <dd className={`mt-0.5 text-lg font-semibold ${val ? "" : "text-muted"}`}>{val ?? "Not reported"}</dd>
-              </div>
-            ))}
-          </dl>
-          {v.shares_note && <p className="mt-2 text-xs text-muted">{v.shares_note}</p>}
-          <QualityNotes flags={company.quality} />
-          {street.length > 0 && (
-            <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-border pt-4 sm:grid-cols-3">
-              {street.map(([label, val, sub, k]) => (
-                <div key={label}>
-                  <dt className="flex items-center text-xs text-muted">
-                    <Term k={k} value={val}>{label}</Term>
-                  </dt>
-                  <dd className={`mt-0.5 text-lg font-semibold ${val ? "" : "text-muted"}`}>{val ?? "Not available"}</dd>
-                  <dd className="text-xs text-muted">{sub}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
-          <p className="mt-2 text-xs text-muted">
-            Price {cur}
-            {v.price?.toFixed(2)} on {v.price_date} · shares: {v.shares_source?.toLowerCase()} · computed in code from the
-            latest filings
-            {v.fy_fallback?.length ? ` · uses latest fiscal year (no quarterly data) for: ${v.fy_fallback.join(", ")}` : ""}
-          </p>
-          <div className="mt-1">
-            <AboutNumbers
-              title="About these valuation numbers"
-              keys={["market_cap", "enterprise_value", "pe", "ev_ebitda", "ev_revenue", "fcf_yield", "dividend_yield", "shareholder_yield", "p_tbv", "p_b", "pe_adj_ltm", "pe_adj_run_rate", "pe_fwd_ntm"]}
-            />
-          </div>
-          {v.street_source && (
-            <p className="mt-1 text-xs text-muted">
-              Adjusted and forward P/E use Street EPS (the adjusted basis companies report to analysts) and analyst consensus from{" "}
-              {v.street_source.split(" (")[0]} — not SEC filings. Run-rate annualizes one quarter, so it overstates seasonal businesses
-              after their peak quarter. {v.eps_ntm_method ? `Forward EPS: ${v.eps_ntm_method}.` : ""}
-            </p>
-          )}
-        </>
-      )}
+    <section className="mt-6" aria-label="Key numbers">
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
+        {key.map(([label, val, k]) => (
+          <Tile key={label} label={label} val={val} k={k} />
+        ))}
+      </dl>
+      <details className="group mt-3">
+        <summary className="cursor-pointer list-none text-sm font-medium text-muted hover:text-foreground">
+          <span className="group-open:hidden">More valuation numbers ▾</span>
+          <span className="hidden group-open:inline">Fewer ▴</span>
+        </summary>
+        <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-border pt-3 sm:grid-cols-4">
+          {more.map(([label, val, k, sub]) => (
+            <Tile key={label} label={label} val={val} k={k} sub={sub} />
+          ))}
+        </dl>
+        <div className="mt-2">
+          <AboutNumbers
+            title="About these valuation numbers"
+            keys={["market_cap", "enterprise_value", "pe", "ev_ebitda", "ev_revenue", "fcf_yield", "dividend_yield", "shareholder_yield", "p_tbv", "p_b", "pe_adj_ltm", "pe_adj_run_rate", "pe_fwd_ntm"]}
+          />
+        </div>
+      </details>
     </section>
   );
 }
