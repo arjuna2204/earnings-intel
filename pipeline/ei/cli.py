@@ -43,6 +43,7 @@ def main(argv: list[str] | None = None) -> int:
     ins = sub.add_parser("insiders")
     ins.add_argument("ticker", nargs="?", default=None)
     sub.add_parser("quality")
+    sub.add_parser("short-interest")
     px = sub.add_parser("proxy")
     px.add_argument("ticker", nargs="?", default=None)
     sc = sub.add_parser("supply")
@@ -164,6 +165,11 @@ def main(argv: list[str] | None = None) -> int:
 
         tks = [t.upper() for t in args.ticker.split(",")] if args.ticker else None
         print(json.dumps(run_proxy(settings, tks)))
+    elif args.cmd == "short-interest":
+        from ei.db import Db
+        from ei.short_interest import run as run_short
+
+        print(json.dumps(run_short(Db(settings.supabase_url, settings.supabase_secret_key))))
     elif args.cmd == "quality":
         from ei.db import Db
         from ei.quality import run as run_quality

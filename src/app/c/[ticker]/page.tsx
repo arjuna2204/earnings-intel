@@ -21,6 +21,9 @@ import DataInfo from "@/components/DataInfo";
 import EventsView from "@/components/EventsView";
 import DocSearch from "@/components/DocSearch";
 import SupplyView, { type Supply } from "@/components/SupplyView";
+import LeadershipView, { type Leader, type Pay } from "@/components/LeadershipView";
+import BigHolders, { type BigHolder } from "@/components/BigHolders";
+import ShortInterest, { type ShortRow } from "@/components/ShortInterest";
 import DebtView, { type DebtProfile, type DebtTotals } from "@/components/DebtView";
 import { getEvents8k, ITEMS } from "@/lib/events";
 import type { RiskYear } from "@/components/RiskTrend";
@@ -192,6 +195,7 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
         )}
         {view === "events" && <EventsTab company={company} />}
         {view === "supply" && <SupplyTab company={company} />}
+        {view === "leaders" && <LeadersTab company={company} />}
         {view === "search" && (
           <DocSearch cik={company.cik} ticker={company.ticker} filingLinks={Object.fromEntries(filings.map((f) => [f.accession, f.url]))} />
         )}
@@ -244,8 +248,23 @@ function Pending({ what, note }: { what: string; note?: string }) {
 
 async function OwnershipTab({ company, asOf }: { company: Company; asOf: string }) {
   const since = `${Number(asOf.slice(0, 4)) - 2}${asOf.slice(4)}`;
-  const [trades, holders] = await Promise.all([getInsiderTrades(company.cik, since), getHolders(company.cik)]);
-  return <OwnershipView ticker={company.ticker} trades={trades} summary={summarizeInsiders(trades, asOf)} holders={holders} asOf={asOf} />;
+  const [trades, holders, big, short] = await Promise.all([
+    getInsiderTrades(company.cik, since),
+    getHolders(company.cik),
+    select<BigHolder>("big_holders", { cik: `eq.${company.cik}`, select: "accession,form,filed_date,holder,pct,shares,activist,url", order: "filed_date.desc", limit: "100" }).catch(
+      () => [] as BigHolder[],
+    ),
+    select<ShortRow>("short_interest", { ticker: `eq.${company.ticker}`, select: "settlement_date,short_shares,avg_daily_volume,days_to_cover", order: "settlement_date.desc", limit: "24" }).catch(
+      () => [] as ShortRow[],
+    ),
+  ]);
+  return (
+    <div className="space-y-12">
+      <ShortInterest rows={short} sharesOut={company.valuation?.market_cap && company.valuation.price ? company.valuation.market_cap / company.valuation.price : null} />
+      <OwnershipView ticker={company.ticker} trades={trades} summary={summarizeInsiders(trades, asOf)} holders={holders} asOf={asOf} />
+      <BigHolders rows={big} />
+    </div>
+  );
 }
 
 async function CallTab({
@@ -739,6 +758,26 @@ function ValuationStrip({ company }: { company: Company }) {
       </details>
     </section>
   );
+}
+
+async function LeadersTab({ company }: { company: Company }) {
+  const since = new Date(Date.parse(company.valuation?.price_date ?? "2026-01-01") - 730 * 86400000).toISOString().slice(0, 10);
+  const [pay, trades] = await Promise.all([
+    select<{ result: Pay; accession: string; filed_date: string }>("exec_pay", { cik: `eq.${company.cik}`, select: "result,accession,filed_date" }).catch(() => []),
+    select<{ owner: string; role: string | null; filed_date: string; owned_after: number | null }>("insider_trades", {
+      cik: `eq.${company.cik}`,
+      filed_date: `gte.${since}`,
+      select: "owner,role,filed_date,owned_after",
+      order: "filed_date.asc",
+      limit: "2000",
+    }).catch(() => []),
+  ]);
+  const by = new Map<string, Leader>();
+  for (const t of trades) by.set(t.owner, { owner: t.owner, role: t.role, last: t.filed_date, shares: t.owned_after ?? by.get(t.owner)?.shares ?? null });
+  const leaders = [...by.values()].sort((a, b) => (b.shares ?? 0) - (a.shares ?? 0));
+  const p = pay[0];
+  const payUrl = p ? `https://www.sec.gov/Archives/edgar/data/${company.cik}/${p.accession.replace(/-/g, "")}/` : null;
+  return <LeadershipView pay={p?.result ?? null} filed={p?.filed_date ?? null} payUrl={payUrl} leaders={leaders} price={company.valuation?.price ?? null} />;
 }
 
 async function SupplyTab({ company }: { company: Company }) {

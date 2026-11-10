@@ -192,6 +192,10 @@ jobs:
         if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily'
         working-directory: pipeline
         run: python -m ei.cli proxy || echo "::warning::proxy/13D-G failed"
+      - name: Short interest from FINRA (free; new data twice a month)
+        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily'
+        working-directory: pipeline
+        run: python -m ei.cli short-interest || echo "::warning::short interest failed"
       - name: Data-quality checks (free, no AI; about 1 minute)
         if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily'
         working-directory: pipeline

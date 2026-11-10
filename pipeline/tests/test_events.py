@@ -20,3 +20,11 @@ def test_summary_from_most_important_item() -> None:
 
 def test_boilerplate_only_gives_none() -> None:
     assert summarize_8k(HTML, ["2.02"]) is None
+
+
+def test_abbreviations_dont_end_the_sentence() -> None:
+    html = "<p>Item 5.02 Departure of Directors.</p><p>The Board approved the annual compensation for Mr. Dimon, the Chief Executive Officer of the Firm. Other text follows here.</p>"
+    assert (
+        summarize_8k(html, ["5.02"])
+        == "The Board approved the annual compensation for Mr. Dimon, the Chief Executive Officer of the Firm."
+    )

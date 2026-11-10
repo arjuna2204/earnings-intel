@@ -30,11 +30,12 @@ export const VIEWS: Record<TabKey, { key: ViewKey; label: string; pro?: boolean 
     { key: "ownership", label: "Who owns it" },
     { key: "riskstats", label: "Risk" },
     { key: "supply", label: "Customers & suppliers" },
+    { key: "leaders", label: "Leadership & pay" },
     { key: "options", label: "Options", pro: true },
   ],
 };
 
-export type ViewKey = "search" | "supply" | "overview" | "brief" | "call" | "events" | "filings" | "historical" | "street" | "peers" | "ownership" | "riskstats" | "options" | "sources";
+export type ViewKey = "leaders" | "search" | "supply" | "overview" | "brief" | "call" | "events" | "filings" | "historical" | "street" | "peers" | "ownership" | "riskstats" | "options" | "sources";
 
 const VIEW_TAB: Record<ViewKey, TabKey> = {
   overview: "overview",
@@ -49,6 +50,7 @@ const VIEW_TAB: Record<ViewKey, TabKey> = {
   ownership: "risk",
   riskstats: "risk",
   supply: "risk",
+  leaders: "risk",
   options: "risk",
   sources: "overview", // reached from the footer link
 };

@@ -293,6 +293,38 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     how: "Read from the latest 10-K; only companies the filing names are listed, each checked against the exact wording.",
     why: "A problem at a key supplier — a factory shutdown, export rules, a price increase — becomes this company's problem.",
   },
+  pay_vs_performance: {
+    term: "Pay versus performance",
+    what: "A standard table every large US company must put in its proxy statement since 2023, comparing what the CEO was paid with what shareholders earned.",
+    how: "\"Reported\" pay values stock awards when they were granted; \"actually paid\" revalues them at year end, so it moves with the share price. \"$100 invested became\" is total shareholder return from the start of the table.",
+    why: "Shows whether the people running the company do well when shareholders do — and badly when they don't.",
+    read: "Good alignment: actually-paid pay rises in years the $100 grows, and falls when it shrinks.",
+  },
+  leadership: {
+    term: "Executives and directors",
+    what: "The officers and board members who have traded the stock, with the shares they own.",
+    how: "From their Form 4 filings with the SEC (required within two business days of any trade).",
+    why: "Large personal stakes mean leaders feel what shareholders feel.",
+  },
+  holders_13dg: {
+    term: "5% owners (13D / 13G)",
+    what: "Anyone who owns 5% or more of a company must tell the SEC. Passive investors (index funds) file a 13G; investors who may push for changes file a 13D.",
+    how: "Read from the structured Schedule 13D and 13G filings (the format the SEC required from December 2024); the latest filing per owner.",
+    why: "A new 13D often means an activist investor wants board seats, a sale or a strategy change — usually news for the stock.",
+  },
+  short_interest: {
+    term: "Short interest",
+    what: "The number of shares investors have borrowed and sold, betting the price will fall.",
+    how: "FINRA's consolidated short interest, reported as of the 15th and the end of each month. % of shares outstanding uses the share count behind the market value.",
+    why: "Rising short interest means more investors expect bad news. Very high short interest can also fuel sharp rallies when short sellers rush to buy back (a \"short squeeze\").",
+    read: "Under ~4% of shares is low; over ~10% is high. The trend matters as much as the level.",
+  },
+  days_to_cover: {
+    term: "Days to cover",
+    what: "How many days of normal trading it would take short sellers to buy back all the shares they owe.",
+    how: "Shares sold short ÷ average daily trading volume (FINRA).",
+    why: "The higher it is, the harder and more violent it can be for short sellers to exit at once.",
+  },
   segments: {
     term: "Revenue breakdown",
     what: "How sales split across the company's business segments, product lines and regions, as the company reports them.",

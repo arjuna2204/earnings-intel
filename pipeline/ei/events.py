@@ -71,7 +71,11 @@ def summarize_8k(html: str, items: list[str]) -> str | None:
             low = t.lower()
             if len(t) < 40 or any(p in low for p in SKIP_PHRASES):
                 continue
-            first = re.split(r"(?<=[a-z0-9\)])\.\s+(?=[A-Z])", t)[0]
+            # end at the first full stop that isn't an abbreviation (Mr., Inc., U.S.)
+            first = re.split(
+                r"(?<!\bMr)(?<!\bMs)(?<!\bMrs)(?<!\bDr)(?<!\bInc)(?<!\bCo)(?<!\bCorp)(?<!\bNo)(?<!\bU\.S)(?<=[a-z0-9\)])\.\s+(?=[A-Z])",
+                t,
+            )[0]
             first = first if first.endswith(".") else first + "."
             return first if len(first) <= 240 else first[:237].rsplit(" ", 1)[0] + "…"
     return None
