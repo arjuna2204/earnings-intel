@@ -195,3 +195,44 @@ export async function upcomingEarnings(days = 7): Promise<CalendarRow[]> {
     })
     .sort((a, b) => a.date.localeCompare(b.date) || (a.rank ?? 1e9) - (b.rank ?? 1e9));
 }
+
+export type Recap = {
+  ticker: string;
+  name: string | null;
+  report_date: string;
+  researched: boolean;
+  quarter: string | null;
+  eps_estimate: number | null;
+  eps_actual: number | null;
+  eps_surprise: number | null;
+  expected_move: number | null;
+  move: number | null;
+  move_from: string | null;
+  move_to: string | null;
+  revenue: number | null;
+  revenue_growth: number | null;
+  guidance: { raised: number; lowered: number; maintained: number } | null;
+};
+
+const RECAP_COLS =
+  "ticker,name,report_date,researched,quarter,eps_estimate,eps_actual,eps_surprise,expected_move,move,move_from,move_to,revenue,revenue_growth,guidance";
+
+/** Reports from the last `days` days that have at least a price reaction or an EPS result. */
+export async function recentRecaps(days = 7): Promise<Recap[]> {
+  const since = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+  const rows = await selectAll<Recap>("earnings_recaps", { report_date: `gte.${since}`, select: RECAP_COLS, order: "report_date.desc" }).catch(
+    () => [] as Recap[],
+  );
+  return rows.filter((r) => r.move != null || r.eps_actual != null);
+}
+
+export async function latestRecap(ticker: string, days = 14): Promise<Recap | null> {
+  const since = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+  const rows = await selectAll<Recap>("earnings_recaps", {
+    ticker: `eq.${ticker}`,
+    report_date: `gte.${since}`,
+    select: RECAP_COLS,
+    order: "report_date.desc",
+  }).catch(() => [] as Recap[]);
+  return rows.find((r) => r.move != null || r.eps_actual != null) ?? null;
+}

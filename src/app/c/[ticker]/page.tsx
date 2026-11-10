@@ -18,6 +18,8 @@ import PeersView from "@/components/PeersView";
 import TrendsView, { type TrendRow } from "@/components/TrendsView";
 import SegmentsView, { type SegmentRow } from "@/components/SegmentsView";
 import QualityNotes from "@/components/QualityNotes";
+import { RecapFacts, recapDate } from "@/components/RecapLine";
+import { latestRecap } from "@/lib/screener";
 import type { RiskYear } from "@/components/RiskTrend";
 import { getDcf } from "@/lib/dcf";
 import { getLatestPeersJob, getPeerComparison, getPeerSet } from "@/lib/peers";
@@ -195,8 +197,23 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
 }
 
 async function QuickTakeSection({ company, events, asOf }: { company: Company; events: Awaited<ReturnType<typeof getEvents>>; asOf: string }) {
-  const q = await getQuickTake(company, events, asOf);
-  return <QuickTake signals={q.signals} bottomLine={q.bottomLine} />;
+  const [q, recap] = await Promise.all([getQuickTake(company, events, asOf), latestRecap(company.ticker)]);
+  return (
+    <>
+      {recap && (
+        <section aria-label="Latest earnings" className="mb-6 rounded-2xl bg-card p-4">
+          <div className="flex items-baseline justify-between gap-2">
+            <h2 className="font-semibold">Just reported{recap.quarter ? ` · ${recap.quarter}` : ""}</h2>
+            <span className="text-xs text-muted">{recapDate(recap.report_date)}</span>
+          </div>
+          <div className="mt-2">
+            <RecapFacts r={recap} />
+          </div>
+        </section>
+      )}
+      <QuickTake signals={q.signals} bottomLine={q.bottomLine} />
+    </>
+  );
 }
 
 async function RiskTab({ company }: { company: Company }) {

@@ -2,7 +2,8 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import Term from "@/components/Term";
-import { upcomingEarnings, type CalendarRow } from "@/lib/screener";
+import { RecapFacts, recapDate } from "@/components/RecapLine";
+import { recentRecaps, upcomingEarnings, type CalendarRow, type Recap } from "@/lib/screener";
 
 export const metadata: Metadata = { title: "Earnings this week" };
 
@@ -33,12 +34,18 @@ async function Calendar({ searchParams }: PageProps<"/earnings">) {
   const sp = await searchParams;
   const mine = sp.mine === "1";
   let rows: CalendarRow[];
+  let recaps: Recap[];
   try {
-    rows = await upcomingEarnings(7);
+    [rows, recaps] = await Promise.all([upcomingEarnings(7), recentRecaps(7)]);
   } catch {
     return <p className="mt-8 text-sm text-muted">The earnings calendar couldn&apos;t load. Try again in a minute.</p>;
   }
-  if (mine) rows = rows.filter((r) => r.loaded);
+  if (mine) {
+    rows = rows.filter((r) => r.loaded);
+    recaps = recaps.filter((r) => r.researched);
+  }
+  // researched companies first, then the biggest moves
+  recaps.sort((a, b) => b.report_date.localeCompare(a.report_date) || Number(b.researched) - Number(a.researched) || Math.abs(b.move ?? 0) - Math.abs(a.move ?? 0));
   const days = [...new Set(rows.map((r) => r.date))];
   const loadedCount = rows.filter((r) => r.loaded).length;
 
@@ -63,6 +70,30 @@ async function Calendar({ searchParams }: PageProps<"/earnings">) {
         </Link>
       </div>
 
+      {recaps.length > 0 && (
+        <section className="mt-8">
+          <h2 className="flex items-baseline justify-between border-b border-border pb-2">
+            <span className="font-semibold">Just reported</span>
+            <span className="text-xs text-muted">last 7 days · {recaps.length}</span>
+          </h2>
+          <RecapRows rows={recaps.slice(0, SHOW)} />
+          {recaps.length > SHOW && (
+            <details className="group">
+              <summary className="cursor-pointer list-none py-2 text-sm font-medium text-muted hover:text-foreground">
+                <span className="group-open:hidden">Show all {recaps.length}</span>
+                <span className="hidden group-open:inline">Show fewer</span>
+              </summary>
+              <RecapRows rows={recaps.slice(SHOW)} />
+            </details>
+          )}
+          <p className="mt-2 text-xs text-muted">
+            Stock move: close before the report date to the close of the first trading day after it, so it covers both before-the-open and
+            after-the-close reports. Expected move: what options priced in beforehand (researched companies).
+          </p>
+        </section>
+      )}
+
+      <h2 className="mt-10 text-lg font-semibold">Coming up</h2>
       {days.length === 0 && (
         <p className="mt-8 text-sm text-muted">
           {mine ? "None of the companies researched here report in the next 7 days." : "No scheduled reports in the next 7 days."}
@@ -96,6 +127,27 @@ async function Calendar({ searchParams }: PageProps<"/earnings">) {
         (Cboe, delayed) and appear only for companies researched here.
       </p>
     </>
+  );
+}
+
+function RecapRows({ rows }: { rows: Recap[] }) {
+  return (
+    <ul className="divide-y divide-border">
+      {rows.map((r) => (
+        <li key={`${r.ticker}-${r.report_date}`} className="py-3">
+          <div className="flex items-baseline gap-2">
+            <a href={`/c/${encodeURIComponent(r.ticker)}`} className="font-semibold hover:underline">
+              {r.ticker}
+            </a>
+            <span className="truncate text-sm text-muted">{r.name}</span>
+            <span className="ml-auto shrink-0 text-xs text-muted">{recapDate(r.report_date)}</span>
+          </div>
+          <div className="mt-1">
+            <RecapFacts r={r} />
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }
 
