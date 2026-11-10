@@ -44,14 +44,17 @@ class Cboe:
         self._client = httpx.Client(
             timeout=30, headers={"User-Agent": "Mozilla/5.0 (research tool)"}, follow_redirects=True
         )
-        self._limiter = RateLimiter(rate=4)
+        self._limiter = RateLimiter(rate=1.5)  # Cboe throttles bursts (429s after ~500 fast requests)
 
     def close(self) -> None:
         self._client.close()
 
     def quote(self, ticker: str) -> tuple[float, str] | None:
         """(last price, ISO date) from the delayed quote."""
-        r = get_with_retries(self._client, QUOTE_URL.format(symbol=_sym(ticker)), limiter=self._limiter, attempts=2)
+        try:
+            r = get_with_retries(self._client, QUOTE_URL.format(symbol=_sym(ticker)), limiter=self._limiter, attempts=4)
+        except httpx.HTTPError:
+            return None  # throttled or down: keep yesterday's price rather than failing the company
         if r.status_code != 200:
             return None
         d = r.json().get("data") or {}
@@ -61,7 +64,10 @@ class Cboe:
         return float(px), _trade_day()
 
     def history(self, ticker: str) -> list[tuple[str, float]]:
-        r = get_with_retries(self._client, HIST_URL.format(symbol=_sym(ticker)), limiter=self._limiter, attempts=2)
+        try:
+            r = get_with_retries(self._client, HIST_URL.format(symbol=_sym(ticker)), limiter=self._limiter, attempts=4)
+        except httpx.HTTPError:
+            return []
         if r.status_code != 200:
             return []
         rows = (r.json().get("data") or []) if isinstance(r.json(), dict) else []
@@ -200,7 +206,8 @@ def run(
                     rows = []
             except Exception as e:
                 stats["errors"] += 1
-                errors[u["ticker"]] = f"{type(e).__name__}: {e}"[:160]
+                host = getattr(getattr(e, "request", None), "url", None)
+                errors[u["ticker"]] = f"{type(e).__name__}: {e} ({getattr(host, 'host', '?')})"[:160]
         if rows:
             db.upsert("lite_companies", rows, on_conflict="cik")
         # companies since researched in full, or that left the top 500, drop out of the basic list
