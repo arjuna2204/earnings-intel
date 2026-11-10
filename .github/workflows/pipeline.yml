@@ -172,6 +172,10 @@ jobs:
         run: |
           python -m ei.cli risk || echo "::warning::risk stats failed"
           python -m ei.cli options || echo "::warning::options refresh failed"
+      - name: Basic data for the 500 largest companies (prices daily, financials Sundays; free, no AI)
+        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily'
+        working-directory: pipeline
+        run: python -m ei.cli lite || echo "::warning::basic-data refresh failed"
       - name: Data-quality checks (free, no AI; about 1 minute)
         if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily'
         working-directory: pipeline

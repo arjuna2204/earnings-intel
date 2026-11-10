@@ -12,6 +12,7 @@ from __future__ import annotations
 import logging
 from datetime import date, datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -55,11 +56,9 @@ class Cboe:
             return None
         d = r.json().get("data") or {}
         px = d.get("current_price") or d.get("close") or d.get("prev_day_close")
-        ts = r.json().get("timestamp") or d.get("last_trade_time") or ""
         if not px:
             return None
-        day = ts[:10] if len(ts) >= 10 else date.today().isoformat()
-        return float(px), day
+        return float(px), _trade_day()
 
     def history(self, ticker: str) -> list[tuple[str, float]]:
         r = get_with_retries(self._client, HIST_URL.format(symbol=_sym(ticker)), limiter=self._limiter, attempts=2)
@@ -73,6 +72,17 @@ class Cboe:
             except (KeyError, TypeError, ValueError):
                 continue
         return sorted(out)
+
+
+def _trade_day(now: datetime | None = None) -> str:
+    """The session a delayed quote belongs to: today after the 4pm ET close, else the previous weekday."""
+    et = (now or datetime.now(ZoneInfo("America/New_York"))).astimezone(ZoneInfo("America/New_York"))
+    d = et.date()
+    if et.weekday() >= 5 or (et.hour, et.minute) < (16, 15):
+        d -= timedelta(days=1)
+        while d.weekday() >= 5:
+            d -= timedelta(days=1)
+    return d.isoformat()
 
 
 def _latest(nc: Any, metric: str) -> float | None:
@@ -136,6 +146,8 @@ def run(
                 q = cboe.quote(u["ticker"])
                 prev = have.get(u["cik"])
                 hist: list[list[Any]] = list(prev.get("history") or []) if prev else []
+                today_session = _trade_day()
+                hist = [h for h in hist if str(h[0]) <= today_session]  # no entries dated in the future
                 if not hist:  # seed a year of closes once
                     hist = [[d, c] for d, c in cboe.history(u["ticker"])][-KEEP_DAYS:]
                 if q:

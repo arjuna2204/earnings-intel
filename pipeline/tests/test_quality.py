@@ -46,3 +46,15 @@ def test_segments_double_count_and_stale_price() -> None:
     f = checks(segments={"product": (270e9, 95e9)}, last_price=date(2026, 10, 1))
     assert f["segments"]["fields"] == ["segments:product"]
     assert f["price_stale"]["severity"] == "warn"
+
+
+def test_lite_trade_day() -> None:
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    from ei.lite import _trade_day
+
+    et = ZoneInfo("America/New_York")
+    assert _trade_day(datetime(2026, 11, 10, 7, 30, tzinfo=et)) == "2026-11-09"  # Tue morning -> Mon
+    assert _trade_day(datetime(2026, 11, 9, 7, 30, tzinfo=et)) == "2026-11-06"  # Mon morning -> Fri
+    assert _trade_day(datetime(2026, 11, 9, 17, 0, tzinfo=et)) == "2026-11-09"  # after the close
