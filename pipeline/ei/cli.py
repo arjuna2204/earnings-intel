@@ -42,6 +42,7 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--job-id", type=int, default=None)
     ins = sub.add_parser("insiders")
     ins.add_argument("ticker", nargs="?", default=None)
+    sub.add_parser("quality")
     sg = sub.add_parser("segments")
     sg.add_argument("ticker", nargs="?", default=None)
     hd = sub.add_parser("holders")
@@ -108,6 +109,11 @@ def main(argv: list[str] | None = None) -> int:
         from ei.insiders import run_all as run_insiders
 
         print(json.dumps(run_insiders(settings, [args.ticker.upper()] if args.ticker else None), default=str))
+    elif args.cmd == "quality":
+        from ei.db import Db
+        from ei.quality import run as run_quality
+
+        print(json.dumps(run_quality(Db(settings.supabase_url, settings.supabase_secret_key)), default=str))
     elif args.cmd == "segments":
         from ei.segments import run_all as run_segments
 

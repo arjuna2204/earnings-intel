@@ -69,6 +69,15 @@ class Db:
         data: list[dict[str, Any]] = self._check(self._client.get(f"/{table}", params=params)).json()
         return data
 
+    def select_all(self, table: str, params: dict[str, str], page: int = 1000) -> list[dict[str, Any]]:
+        """Every matching row: PostgREST returns at most 1,000 per request, so page with offset."""
+        out: list[dict[str, Any]] = []
+        while True:
+            rows = self.select(table, {**params, "limit": str(page), "offset": str(len(out))})
+            out.extend(rows)
+            if len(rows) < page:
+                return out
+
     def rpc(self, fn: str, args: dict[str, Any]) -> Any:
         return self._check(self._client.post(f"/rpc/{fn}", json=args)).json()
 
