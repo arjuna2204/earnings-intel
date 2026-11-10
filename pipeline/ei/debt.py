@@ -64,7 +64,7 @@ def profile(cf: dict[str, Any]) -> dict[str, Any] | None:
             as_of = max(as_of or v[1], v[1])
     # keep only rungs from the latest fiscal year end (an old schedule must not mix with a new one)
     if as_of:
-        for (label, tags), r in zip(LADDER, rungs, strict=True):
+        for (_label, tags), r in zip(LADDER, rungs, strict=True):
             v = _latest_annual(cf, tags)
             if v and v[1] != as_of:
                 r["value"] = None
