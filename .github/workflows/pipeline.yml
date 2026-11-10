@@ -180,6 +180,10 @@ jobs:
         if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily'
         working-directory: pipeline
         run: python -m ei.cli recap || echo "::warning::recaps failed"
+      - name: Company events from new 8-Ks (free, no AI)
+        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily'
+        working-directory: pipeline
+        run: python -m ei.cli events || echo "::warning::events failed"
       - name: Data-quality checks (free, no AI; about 1 minute)
         if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily'
         working-directory: pipeline

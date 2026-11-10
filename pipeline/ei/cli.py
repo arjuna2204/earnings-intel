@@ -43,6 +43,8 @@ def main(argv: list[str] | None = None) -> int:
     ins = sub.add_parser("insiders")
     ins.add_argument("ticker", nargs="?", default=None)
     sub.add_parser("quality")
+    ev = sub.add_parser("events")
+    ev.add_argument("--days", type=int, default=3)
     sub.add_parser("recap")
     lt = sub.add_parser("lite")
     lt.add_argument("ticker", nargs="?", default=None)
@@ -123,6 +125,18 @@ def main(argv: list[str] | None = None) -> int:
         from ei.recap import run as run_recap
 
         print(json.dumps(run_recap(Db(settings.supabase_url, settings.supabase_secret_key)), default=str))
+    elif args.cmd == "events":
+        from ei.db import Db
+        from ei.events import run as run_events
+        from ei.sec import SecClient
+
+        sec_c = SecClient(settings.sec_user_agent)
+        try:
+            print(
+                json.dumps(run_events(Db(settings.supabase_url, settings.supabase_secret_key), sec_c, days=args.days))
+            )
+        finally:
+            sec_c.close()
     elif args.cmd == "quality":
         from ei.db import Db
         from ei.quality import run as run_quality
