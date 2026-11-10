@@ -116,10 +116,15 @@ export async function screenRows(): Promise<ScreenRow[]> {
   const researched = new Set(full.map((r) => r.ticker));
   // plausibility guards for basic rows (they skip the full daily checks)
   const sane = (v: number | null, lo: number, hi: number) => (v != null && v > lo && v < hi ? v : null);
-  const basic: ScreenRow[] = lite
+  const basic = lite
     .filter((l) => !researched.has(l.ticker) && num(l.snapshot.price))
-    .map((l) => {
+    .map((l): ScreenRow | null => {
       const v = l.snapshot;
+      // same guard as the pipeline, for rows read before it existed: > 80× sales = share-count error
+      const rev = num(v.revenue_ttm);
+      const mc = num(v.market_cap);
+      const badShares = (mc != null && rev != null && rev > 0 && mc / rev > 80) || (mc != null && mc > 6e12);
+      if (badShares) return null;
       return {
         ticker: l.ticker,
         name: l.name,
@@ -143,7 +148,8 @@ export async function screenRows(): Promise<ScreenRow[]> {
         expectedMove: null,
         basic: true,
       };
-    });
+    })
+    .filter((r): r is ScreenRow => r !== null);
   return [...full, ...basic];
 }
 

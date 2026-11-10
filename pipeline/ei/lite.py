@@ -108,7 +108,26 @@ def snapshot(sec: SecClient, cik: int, price: float | None, price_date: str | No
     # Per-share history isn't split-adjusted here (no price history to detect splits), so take P/E as
     # market value ÷ net income, which a split can't distort.
     ni = _latest(nc, "net_income_ttm")
+    rev = _latest(nc, "revenue_ttm")
+    snap["revenue_ttm"] = rev
     mcap = snap.get("market_cap")
+    # Basic rows skip the full daily checks, so guard the share count here: a market value above 80× sales
+    # is almost always a share-count unit error in the filing (Waters showed $46.8 trillion)
+    if isinstance(mcap, (int, float)) and rev and rev > 0 and mcap / rev > 80:
+        for k in (
+            "market_cap",
+            "enterprise_value",
+            "ev_ebitda",
+            "ev_revenue",
+            "fcf_yield",
+            "dividend_yield",
+            "shareholder_yield",
+            "p_b",
+            "p_tbv",
+        ):
+            snap[k] = None
+        snap["shares_note"] = "Market value held back: the share count in the filing looks wrong."
+        mcap = None
     snap["pe"] = mcap / ni if isinstance(mcap, (int, float)) and ni and ni > 0 else None
     snap["net_income_ttm"] = ni
     for m in METRICS:
