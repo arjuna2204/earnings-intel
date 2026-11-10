@@ -43,6 +43,9 @@ def main(argv: list[str] | None = None) -> int:
     ins = sub.add_parser("insiders")
     ins.add_argument("ticker", nargs="?", default=None)
     sub.add_parser("quality")
+    lt = sub.add_parser("lite")
+    lt.add_argument("ticker", nargs="?", default=None)
+    lt.add_argument("--full", action="store_true")
     sg = sub.add_parser("segments")
     sg.add_argument("ticker", nargs="?", default=None)
     hd = sub.add_parser("holders")
@@ -109,6 +112,11 @@ def main(argv: list[str] | None = None) -> int:
         from ei.insiders import run_all as run_insiders
 
         print(json.dumps(run_insiders(settings, [args.ticker.upper()] if args.ticker else None), default=str))
+    elif args.cmd == "lite":
+        from ei.lite import run as run_lite
+
+        tks = [t.upper() for t in args.ticker.split(",")] if args.ticker else None
+        print(json.dumps(run_lite(settings, full=True if args.full else None, tickers=tks), default=str))
     elif args.cmd == "quality":
         from ei.db import Db
         from ei.quality import run as run_quality

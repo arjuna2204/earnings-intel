@@ -1,1 +1,1 @@
-{"command": "analyze", "tickers": ["AMD"], "args": ["--background"], "nonce": "amd-1794272199"}
+{"command": "lite", "ticker": "BRK-B,LIN,PEP,TMO,NFLX", "args": ["--full"], "nonce": "lite-1794272334"}
