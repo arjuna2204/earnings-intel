@@ -324,7 +324,7 @@ export default function PriceChart({
   }
 
   return (
-    <section aria-label="Price chart" className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_17rem]">
+    <section aria-label="Price chart">
       <div>
         <div className="mb-3">
           <div className="text-4xl font-semibold tracking-tight">
@@ -390,7 +390,7 @@ export default function PriceChart({
             }
           }}
           option={option}
-          className="h-64 w-full sm:h-80"
+          className="h-72 w-full sm:h-[26rem]"
           ariaLabel={`Price over ${range}: ${up ? "up" : "down"} ${Math.abs(pct * 100).toFixed(1)} percent`}
         />
         <div className="mt-2 flex items-center justify-between border-b border-border pb-3">
@@ -460,55 +460,54 @@ export default function PriceChart({
         </div>
       </div>
 
-      <aside aria-label="Compare on chart" className="lg:pt-2">
-        <h2 className="flex items-center text-sm font-semibold">
-          <Term k="chart_compare" quiet>Compare on chart</Term>
-        </h2>
-        <ul className="mt-2 divide-y divide-border text-sm">
-          <li className="flex items-center gap-2 py-2">
+      {/* comparisons: one short, wide strip under the chart */}
+      <div aria-label="Compare on chart" className="mt-4 rounded-2xl border border-border px-4 py-3">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+          <span className="flex items-center text-xs font-semibold text-muted">
+            <Term k="chart_compare" quiet>Compare</Term>
+          </span>
+          <span className="flex items-center gap-2">
             <span className="h-0.5 w-5 shrink-0 rounded" style={{ background: color }} aria-hidden />
             <span className="font-semibold">{ticker}</span>
-            <span className="ml-auto tabular-nums" style={{ color }}>
+            <span className="tabular-nums" style={{ color }}>
               {up ? "+" : "−"}
               {Math.abs(pct * 100).toFixed(1)}%
             </span>
-            <span className="w-4" />
-          </li>
+          </span>
           {lines.map((l) => {
             const r = ret(l.values);
             const off = hidden.includes(l.ticker);
             const isDefault = defaults.some((d) => d.ticker === l.ticker);
             return (
-              <li key={l.ticker} className="flex items-center gap-2 py-2">
+              <span key={l.ticker} className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => setHidden((h) => (off ? h.filter((x) => x !== l.ticker) : [...h, l.ticker]))}
                   aria-pressed={!off}
-                  title={off ? "Show on chart" : "Hide from chart"}
-                  className={`flex min-w-0 flex-1 items-center gap-2 text-left ${off ? "opacity-40" : ""}`}
+                  title={`${l.label !== l.ticker ? `${l.label} · ` : ""}${off ? "show on chart" : "hide from chart"}`}
+                  className={`flex items-center gap-2 ${off ? "opacity-40" : ""}`}
                 >
                   <svg width="20" height="4" className="shrink-0" aria-hidden>
                     <line x1="0" y1="2" x2="20" y2="2" stroke={l.color} strokeWidth="2" strokeDasharray="4 3" />
                   </svg>
                   <span className="font-medium">{l.ticker}</span>
-                  <span className="truncate text-xs text-muted">{l.label !== l.ticker ? l.label : ""}</span>
+                  <span className="tabular-nums text-muted">{r == null ? "—" : `${r >= 0 ? "+" : "−"}${Math.abs(r * 100).toFixed(1)}%`}</span>
                 </button>
-                <span className="tabular-nums text-muted">{r == null ? "—" : `${r >= 0 ? "+" : "−"}${Math.abs(r * 100).toFixed(1)}%`}</span>
-                {isDefault ? (
-                  <span className="w-4" />
-                ) : (
-                  <button type="button" onClick={() => remove(l.ticker)} aria-label={`Remove ${l.ticker}`} className="w-4 text-xs text-muted hover:text-foreground">
+                {!isDefault && (
+                  <button type="button" onClick={() => remove(l.ticker)} aria-label={`Remove ${l.ticker}`} className="text-xs text-muted hover:text-foreground">
                     ✕
                   </button>
                 )}
-              </li>
+              </span>
             );
           })}
-        </ul>
-        <AddBox choices={choices.filter((c) => c.ticker !== ticker && !lines.some((l) => l.ticker === c.ticker))} onAdd={add} loading={loading} />
+          <div className="ml-auto w-full sm:w-56">
+            <AddBox choices={choices.filter((c) => c.ticker !== ticker && !lines.some((l) => l.ticker === c.ticker))} onAdd={add} loading={loading} />
+          </div>
+        </div>
         {error && <p className="mt-2 text-xs text-muted">{error}</p>}
-        <p className="mt-3 text-xs text-muted">Returns over the selected range, dividends included. Click a line to hide it. Added comparisons are remembered in this browser.</p>
-      </aside>
+        <p className="mt-2 text-xs text-muted">Returns over the selected range, dividends included. Tap a line to hide it; added comparisons are remembered in this browser.</p>
+      </div>
     </section>
   );
 }
@@ -543,7 +542,7 @@ function AddBox({ choices, onAdd, loading }: { choices: CompareChoice[]; onAdd: 
     setOpen(false);
   };
   return (
-    <div ref={box} className="relative mt-3">
+    <div ref={box} className="relative">
       <input
         value={q}
         onChange={(e) => {
@@ -564,7 +563,7 @@ function AddBox({ choices, onAdd, loading }: { choices: CompareChoice[]; onAdd: 
         }}
         placeholder={loading ? `Adding ${loading}…` : "Add an ETF or stock"}
         aria-label="Add an ETF or stock to the chart"
-        className="w-full rounded-full border border-border bg-transparent px-4 py-2 text-sm outline-none placeholder:text-muted focus:border-foreground"
+        className="w-full rounded-full border border-border bg-transparent px-4 py-1.5 text-sm outline-none placeholder:text-muted focus:border-foreground"
       />
       {open && matches.length > 0 && (
         <ul className="absolute inset-x-0 top-11 z-30 max-h-72 overflow-auto rounded-2xl border border-border bg-background p-1 shadow-xl">

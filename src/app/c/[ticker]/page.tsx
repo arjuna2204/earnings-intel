@@ -150,6 +150,10 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
         </p>
       )}
 
+      <div className="mt-4">
+        <CompanyTabs />
+      </div>
+
       <div className="mt-6">
         <PriceChart
           ticker={company.ticker}
@@ -168,10 +172,6 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
       </div>
 
       <ValuationStrip company={company} />
-
-      <div className="mt-6">
-        <CompanyTabs />
-      </div>
 
       <div className="mt-6">
         <Suspense key={`${view}-${sp.a ?? ""}-${sp.b ?? ""}`} fallback={<TabSkeleton />}>
