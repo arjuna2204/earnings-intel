@@ -43,6 +43,7 @@ def main(argv: list[str] | None = None) -> int:
     ins = sub.add_parser("insiders")
     ins.add_argument("ticker", nargs="?", default=None)
     sub.add_parser("quality")
+    sub.add_parser("macro")
     sub.add_parser("short-interest")
     px = sub.add_parser("proxy")
     px.add_argument("ticker", nargs="?", default=None)
@@ -170,6 +171,11 @@ def main(argv: list[str] | None = None) -> int:
         from ei.short_interest import run as run_short
 
         print(json.dumps(run_short(Db(settings.supabase_url, settings.supabase_secret_key))))
+    elif args.cmd == "macro":
+        from ei.db import Db
+        from ei.macro import run as run_macro
+
+        print(json.dumps(run_macro(Db(settings.supabase_url, settings.supabase_secret_key))))
     elif args.cmd == "quality":
         from ei.db import Db
         from ei.quality import run as run_quality
