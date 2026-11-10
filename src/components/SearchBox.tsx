@@ -4,6 +4,28 @@ import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { TickerHit } from "@/lib/types";
 
+// Recent searches, newest first, remembered in this browser only.
+const RECENT_KEY = "ei.recentSearches";
+const RECENT_MAX = 8;
+type Recent = { ticker: string; name: string };
+
+function readRecent(): Recent[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]");
+    return Array.isArray(v) ? (v as Recent[]).filter((r) => r && typeof r.ticker === "string").slice(0, RECENT_MAX) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeRecent(list: Recent[]) {
+  try {
+    localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, RECENT_MAX)));
+  } catch {
+    /* storage blocked: nothing to remember */
+  }
+}
+
 export default function SearchBox({
   autoFocus = false,
   large = false,
@@ -25,6 +47,7 @@ export default function SearchBox({
   const [active, setActive] = useState(0);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [recent, setRecent] = useState<Recent[]>([]); // read on focus, so the first render matches the server
   const seq = useRef(0);
 
   useEffect(() => {
@@ -47,13 +70,17 @@ export default function SearchBox({
     return () => clearTimeout(t);
   }, [q]);
 
-  const visible = q.trim() ? hits : [];
+  const showRecent = !q.trim() && recent.length > 0;
+  const visible: TickerHit[] = q.trim() ? hits : showRecent ? recent.map((r) => ({ ticker: r.ticker, name: r.name, exchange: "" }) as TickerHit) : [];
 
   const go = (hit?: TickerHit) => {
     const ticker = hit?.ticker ?? q.trim().toUpperCase();
     if (!ticker) return;
     setOpen(false);
     setQ("");
+    const next = [{ ticker, name: hit?.name ?? ticker }, ...readRecent().filter((r) => r.ticker !== ticker)];
+    writeRecent(next);
+    setRecent(next.slice(0, RECENT_MAX));
     if (onPick) onPick(ticker);
     else router.push(`/c/${encodeURIComponent(ticker)}`);
   };
@@ -65,7 +92,10 @@ export default function SearchBox({
         value={q}
         autoFocus={autoFocus}
         onChange={(e) => setQ(e.target.value)}
-        onFocus={() => visible.length > 0 && setOpen(true)}
+        onFocus={() => {
+          setRecent(readRecent());
+          setOpen(true);
+        }}
         onBlur={() => setTimeout(() => setOpen(false), 120)}
         onKeyDown={(e) => {
           if (e.key === "ArrowDown") {
@@ -94,6 +124,22 @@ export default function SearchBox({
       {error && <p className="mt-2 px-5 text-sm text-muted">{error}</p>}
       {open && visible.length > 0 && (
         <ul id={listId} role="listbox" className="absolute z-40 mt-2 w-full overflow-hidden rounded-2xl border border-border bg-background shadow-xl">
+          {showRecent && (
+            <li role="presentation" className="flex items-center justify-between px-5 pb-1 pt-3 text-xs text-muted">
+              <span>Recent searches</span>
+              <button
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  writeRecent([]);
+                  setRecent([]);
+                }}
+                className="hover:text-foreground"
+              >
+                Clear
+              </button>
+            </li>
+          )}
           {visible.map((h, i) => (
             <li
               key={h.ticker}
@@ -108,7 +154,24 @@ export default function SearchBox({
             >
               <span className="w-16 shrink-0 font-semibold">{h.ticker}</span>
               <span className="truncate text-muted">{h.name}</span>
-              <span className="ml-auto shrink-0 text-xs text-muted">{h.exchange}</span>
+              {showRecent ? (
+                <button
+                  type="button"
+                  aria-label={`Remove ${h.ticker} from recent searches`}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const next = readRecent().filter((r) => r.ticker !== h.ticker);
+                    writeRecent(next);
+                    setRecent(next);
+                  }}
+                  className="ml-auto shrink-0 text-xs text-muted hover:text-foreground"
+                >
+                  ✕
+                </button>
+              ) : (
+                <span className="ml-auto shrink-0 text-xs text-muted">{h.exchange}</span>
+              )}
             </li>
           ))}
         </ul>
