@@ -19,6 +19,7 @@ import TrendsView, { type TrendRow } from "@/components/TrendsView";
 import SegmentsView, { type SegmentRow } from "@/components/SegmentsView";
 import DataInfo from "@/components/DataInfo";
 import EventsView from "@/components/EventsView";
+import SupplyView, { type Supply } from "@/components/SupplyView";
 import DebtView, { type DebtProfile, type DebtTotals } from "@/components/DebtView";
 import { getEvents8k, ITEMS } from "@/lib/events";
 import type { RiskYear } from "@/components/RiskTrend";
@@ -189,6 +190,7 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
           <BriefTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />
         )}
         {view === "events" && <EventsTab company={company} />}
+        {view === "supply" && <SupplyTab company={company} />}
         {view === "call" && <CallTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />}
         {view === "filings" && (
           <ProGate what="Filings detail (adjusted numbers, MD&A, risk-factor redline)">
@@ -733,6 +735,34 @@ function ValuationStrip({ company }: { company: Company }) {
       </details>
     </section>
   );
+}
+
+async function SupplyTab({ company }: { company: Company }) {
+  const [mine, all, names] = await Promise.all([
+    select<{ result: Supply; accession: string; filed_date: string }>("supply_chain", { cik: `eq.${company.cik}`, select: "result,accession,filed_date" }).catch(() => []),
+    select<{ cik: number; result: Supply }>("supply_chain", { select: "cik,result" }).catch(() => []),
+    select<{ cik: number; ticker: string; name: string }>("companies", { select: "cik,ticker,name" }).catch(() => []),
+  ]);
+  // other companies whose 10-K names this one as a supplier (matched on the core of its name)
+  const core = company.name
+    .replace(/[.,]/g, "")
+    .replace(/\b(inc|corp|corporation|co|company|ltd|limited|plc|holdings?|group|the|class [a-z])\b/gi, "")
+    .trim()
+    .toLowerCase();
+  const byCik = new Map(names.map((n) => [n.cik, n]));
+  const dependents =
+    core.length >= 3
+      ? all
+          .filter((r) => r.cik !== company.cik)
+          .flatMap((r) => {
+            const hit = r.result.suppliers.find((x) => x.name.toLowerCase().includes(core));
+            const c = byCik.get(r.cik);
+            return hit && c ? [{ ticker: c.ticker, name: c.name, role: hit.role }] : [];
+          })
+      : [];
+  const row = mine[0];
+  const url = row ? (await select<{ url: string }>("filings", { accession: `eq.${row.accession}`, select: "url" }).catch(() => []))[0]?.url ?? null : null;
+  return <SupplyView s={row?.result ?? null} filed={row?.filed_date ?? null} url={url} dependents={dependents} />;
 }
 
 async function EventsTab({ company }: { company: Company }) {

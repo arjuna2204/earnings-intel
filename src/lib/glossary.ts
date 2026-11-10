@@ -280,6 +280,19 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     how: "Remaining borrowing capacity under its revolving credit facility, from the latest 10-K.",
     why: "A backup source of cash — useful if markets freeze or a large bill comes due.",
   },
+  customer_concentration: {
+    term: "Customer concentration",
+    what: "How much of the company's sales come from its biggest customers.",
+    how: "US rules require a company to disclose any customer worth 10% or more of revenue. Read from the latest 10-K; each line quotes the filing.",
+    why: "If one buyer is a big slice of sales, losing or renegotiating with that buyer can hit results hard.",
+    read: "Above ~30% from a few customers is a real dependence; no disclosed customers means none passes 10%.",
+  },
+  key_suppliers: {
+    term: "Key suppliers",
+    what: "Companies the business names as manufacturers, suppliers or partners it relies on.",
+    how: "Read from the latest 10-K; only companies the filing names are listed, each checked against the exact wording.",
+    why: "A problem at a key supplier — a factory shutdown, export rules, a price increase — becomes this company's problem.",
+  },
   segments: {
     term: "Revenue breakdown",
     what: "How sales split across the company's business segments, product lines and regions, as the company reports them.",
