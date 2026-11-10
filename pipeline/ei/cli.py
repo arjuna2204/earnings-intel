@@ -43,6 +43,8 @@ def main(argv: list[str] | None = None) -> int:
     ins = sub.add_parser("insiders")
     ins.add_argument("ticker", nargs="?", default=None)
     sub.add_parser("quality")
+    px = sub.add_parser("proxy")
+    px.add_argument("ticker", nargs="?", default=None)
     sc = sub.add_parser("supply")
     sc.add_argument("ticker", nargs="?", default=None)
     dbt = sub.add_parser("debt")
@@ -157,6 +159,11 @@ def main(argv: list[str] | None = None) -> int:
 
         tks = [t.upper() for t in args.ticker.split(",")] if args.ticker else None
         print(json.dumps(run_supply(settings, tks)))
+    elif args.cmd == "proxy":
+        from ei.proxy import run as run_proxy
+
+        tks = [t.upper() for t in args.ticker.split(",")] if args.ticker else None
+        print(json.dumps(run_proxy(settings, tks)))
     elif args.cmd == "quality":
         from ei.db import Db
         from ei.quality import run as run_quality
