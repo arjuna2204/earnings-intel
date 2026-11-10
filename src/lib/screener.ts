@@ -27,6 +27,8 @@ export type ScreenRow = {
   dcfUpside: number | null;
   nextEarnings: string | null;
   expectedMove: number | null;
+  /** true: basic data only (SEC financials + delayed price); full research not loaded yet */
+  basic: boolean;
 };
 
 const METRICS = ["revenue_growth_yoy", "operating_margin", "roic"] as const;
@@ -36,7 +38,7 @@ type MetricRow = { cik: number; metric: string; fiscal_period: string; period_en
 export async function screenRows(): Promise<ScreenRow[]> {
   const since = new Date(Date.now() - 500 * 86400000).toISOString().slice(0, 10);
   const today = new Date().toISOString().slice(0, 10);
-  const [companies, metrics, risk, opts, dcfs, cal] = await Promise.all([
+  const [companies, metrics, risk, opts, dcfs, lite, cal] = await Promise.all([
     selectAll<{ cik: number; ticker: string; name: string; sector_etf: string | null; valuation: Valuation | null; currency: string | null }>(
       "companies",
       { select: "cik,ticker,name,sector_etf,valuation,currency" },
@@ -54,6 +56,9 @@ export async function screenRows(): Promise<ScreenRow[]> {
       select: "cik,move:result->earnings->day_move,edate:result->earnings->>date",
     }),
     selectAll<{ cik: number; status: string; upside: number | null }>("dcf_models", { select: "cik,status,upside:result->upside" }),
+    selectAll<{ cik: number; ticker: string; name: string; snapshot: Record<string, unknown> }>("lite_companies", {
+      select: "cik,ticker,name,snapshot",
+    }).catch(() => []),
     selectAll<{ ticker: string; report_date: string }>("earnings_calendar", {
       report_date: `gte.${today}`,
       select: "ticker,report_date",
@@ -74,7 +79,7 @@ export async function screenRows(): Promise<ScreenRow[]> {
   const flagsBy = new Map<number, QualityFlag[]>();
   for (const f of flags) flagsBy.set(f.cik, [...(flagsBy.get(f.cik) ?? []), f]);
 
-  return companies
+  const full = companies
     .filter((c) => c.valuation?.price)
     .map((c) => {
       const fl = flagsBy.get(c.cik) ?? [];
@@ -105,8 +110,41 @@ export async function screenRows(): Promise<ScreenRow[]> {
         nextEarnings: next,
         // the options-implied earnings-day move only applies to the report the options were priced for
         expectedMove: o?.edate && next && o.edate === next ? num(o.move) : null,
+        basic: false,
       };
     });
+  const researched = new Set(full.map((r) => r.ticker));
+  // plausibility guards for basic rows (they skip the full daily checks)
+  const sane = (v: number | null, lo: number, hi: number) => (v != null && v > lo && v < hi ? v : null);
+  const basic: ScreenRow[] = lite
+    .filter((l) => !researched.has(l.ticker) && num(l.snapshot.price))
+    .map((l) => {
+      const v = l.snapshot;
+      return {
+        ticker: l.ticker,
+        name: l.name,
+        sector: etfName((v.sector_etf as string) ?? null),
+        price: num(v.price),
+        marketCap: num(v.market_cap),
+        pe: sane(num(v.pe), 0, 400),
+        fwdPe: null,
+        evEbitda: sane(num(v.ev_ebitda), 0, 300),
+        fcfYield: sane(num(v.fcf_yield), -1, 1),
+        divYield: sane(num(v.dividend_yield), -0.0001, 0.15),
+        revGrowth: sane(num(v.revenue_growth_yoy), -1, 10),
+        opMargin: num(v.operating_margin),
+        roic: num(v.roic),
+        ret1y: num(v.return_1y),
+        beta: null,
+        vol: null,
+        fscore: null,
+        dcfUpside: null,
+        nextEarnings: nextBy.get(l.ticker) ?? null,
+        expectedMove: null,
+        basic: true,
+      };
+    });
+  return [...full, ...basic];
 }
 
 export type CalendarRow = {
