@@ -22,7 +22,8 @@ export default function SupplyView({
   if (!s) {
     return <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted">Customers and suppliers are read from each company&apos;s latest 10-K every morning. Not read for this company yet.</p>;
   }
-  const rev = s.customers.filter((c) => c.basis === "revenue" && c.share_pct != null);
+  // individual customers only; groups like "top ten customers" would double count
+  const rev = s.customers.filter((c) => c.basis === "revenue" && c.share_pct != null && !/^(top|largest)\b|customers\b/i.test(c.name));
   const top = rev.reduce((a, c) => a + (c.share_pct ?? 0), 0);
   const headline = rev.length
     ? `${rev.length === 1 ? "One customer" : `${rev.length} customers`} made up ${top.toFixed(0)}% of revenue — ${top >= 30 ? "a heavy dependence on a few buyers" : "a notable concentration"}.`
