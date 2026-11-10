@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import ExportTable from "@/components/ExportTable";
 import EChart from "@/components/EChart";
 import Term, { AboutNumbers } from "@/components/Term";
 import ShowNumbers from "@/components/ShowNumbers";
@@ -252,62 +253,64 @@ export default function SegmentsView({ rows }: { rows: SegmentRow[] }) {
 
       <ShowNumbers>
         <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[32rem] text-sm tabular-nums">
-            <thead className="text-xs text-muted">
-              <tr className="border-b border-border">
-                <th scope="col" className="py-2 text-left font-medium">
-                  {view.latest}
-                </th>
-                <th scope="col" className="py-2 text-right font-medium">
-                  Revenue
-                </th>
-                <th scope="col" className="py-2 text-right font-medium">
-                  Share
-                </th>
-                <th scope="col" className="py-2 text-right font-medium">
-                  <Term k="revenue_growth_yoy" quiet>
-                    vs a year ago
-                  </Term>
-                </th>
-                {hasMargin && (
+          <ExportTable name="revenue-breakdown">
+            <table className="w-full min-w-[32rem] text-sm tabular-nums">
+              <thead className="text-xs text-muted">
+                <tr className="border-b border-border">
+                  <th scope="col" className="py-2 text-left font-medium">
+                    {view.latest}
+                  </th>
                   <th scope="col" className="py-2 text-right font-medium">
-                    <Term k="segment_margin" quiet>
-                      Op. margin
+                    Revenue
+                  </th>
+                  <th scope="col" className="py-2 text-right font-medium">
+                    Share
+                  </th>
+                  <th scope="col" className="py-2 text-right font-medium">
+                    <Term k="revenue_growth_yoy" quiet>
+                      vs a year ago
                     </Term>
                   </th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {view.table.map((r) => (
-                <tr key={r.member}>
-                  <td className="max-w-[16rem] truncate py-2 pr-3">
-                    {r.label}
-                  </td>
-                  <td className="py-2 text-right">
-                    {r.now != null ? money(r.now) : "—"}
-                  </td>
-                  <td className="py-2 text-right text-muted">
-                    {r.share != null ? `${(r.share * 100).toFixed(0)}%` : "—"}
-                  </td>
-                  <td
-                    className={`py-2 text-right ${r.growth == null ? "text-muted" : r.growth >= 0 ? "text-up" : "text-down"}`}
-                  >
-                    {r.growth == null
-                      ? "—"
-                      : `${r.growth >= 0 ? "▲" : "▼"} ${Math.abs(r.growth * 100).toFixed(1)}%`}
-                  </td>
                   {hasMargin && (
-                    <td className="py-2 text-right">
-                      {r.margin != null
-                        ? `${(r.margin * 100).toFixed(1)}%`
-                        : "—"}
-                    </td>
+                    <th scope="col" className="py-2 text-right font-medium">
+                      <Term k="segment_margin" quiet>
+                        Op. margin
+                      </Term>
+                    </th>
                   )}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {view.table.map((r) => (
+                  <tr key={r.member}>
+                    <td className="max-w-[16rem] truncate py-2 pr-3">
+                      {r.label}
+                    </td>
+                    <td className="py-2 text-right">
+                      {r.now != null ? money(r.now) : "—"}
+                    </td>
+                    <td className="py-2 text-right text-muted">
+                      {r.share != null ? `${(r.share * 100).toFixed(0)}%` : "—"}
+                    </td>
+                    <td
+                      className={`py-2 text-right ${r.growth == null ? "text-muted" : r.growth >= 0 ? "text-up" : "text-down"}`}
+                    >
+                      {r.growth == null
+                        ? "—"
+                        : `${r.growth >= 0 ? "▲" : "▼"} ${Math.abs(r.growth * 100).toFixed(1)}%`}
+                    </td>
+                    {hasMargin && (
+                      <td className="py-2 text-right">
+                        {r.margin != null
+                          ? `${(r.margin * 100).toFixed(1)}%`
+                          : "—"}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </ExportTable>
         </div>
       </ShowNumbers>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import ShowNumbers from "@/components/ShowNumbers";
+import ExportTable from "@/components/ExportTable";
 import Term, { AboutNumbers } from "@/components/Term";
 import { useState } from "react";
 import EChart from "@/components/EChart";
@@ -291,67 +292,69 @@ function Insiders({
         )}
         {rows.length ? (
           <div className="mt-2 overflow-x-auto">
-            <table className="w-full min-w-[640px] text-sm">
-              <thead>
-                <tr className="text-left text-xs text-muted">
-                  <th className="py-2 pr-3 font-normal">Date</th>
-                  <th className="py-2 pr-3 font-normal">Insider</th>
-                  <th className="py-2 pr-3 font-normal">Type</th>
-                  <th className="py-2 pr-3 text-right font-normal">Shares</th>
-                  <th className="py-2 pr-3 text-right font-normal">Price</th>
-                  <th className="py-2 pr-3 text-right font-normal">Value</th>
-                  <th className="py-2 font-normal" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {rows.map((t) => (
-                  <tr key={`${t.accession}-${t.seq}`}>
-                    <td className="py-2.5 pr-3 tabular-nums text-muted">
-                      {t.trade_date}
-                    </td>
-                    <td className="py-2.5 pr-3">
-                      <span className="block">{titleCase(t.owner)}</span>
-                      <span className="text-xs text-muted">{t.role}</span>
-                    </td>
-                    <td className="py-2.5 pr-3">
-                      {t.code === "P" ? (
-                        <span className="text-up">▲ Bought</span>
-                      ) : t.code === "S" ? (
-                        <span className="text-down">▼ Sold</span>
-                      ) : (
-                        <span className="text-muted">
-                          {CODE[t.code] ?? t.code}
-                        </span>
-                      )}
-                      {t.plan_10b5_1 && t.code === "S" && (
-                        <span className="ml-1.5 rounded-full bg-card px-1.5 py-0.5 text-[10px] text-muted">
-                          plan
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-2.5 pr-3 text-right tabular-nums">
-                      {num(t.shares)}
-                    </td>
-                    <td className="py-2.5 pr-3 text-right tabular-nums">
-                      {t.price ? `$${t.price.toFixed(2)}` : "—"}
-                    </td>
-                    <td className="py-2.5 pr-3 text-right tabular-nums">
-                      {t.value ? money(t.value) : "—"}
-                    </td>
-                    <td className="py-2.5 text-right">
-                      <a
-                        href={t.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-xs text-muted underline-offset-2 hover:text-foreground hover:underline"
-                      >
-                        Form 4 ↗
-                      </a>
-                    </td>
+            <ExportTable name="ownership">
+              <table className="w-full min-w-[640px] text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-muted">
+                    <th className="py-2 pr-3 font-normal">Date</th>
+                    <th className="py-2 pr-3 font-normal">Insider</th>
+                    <th className="py-2 pr-3 font-normal">Type</th>
+                    <th className="py-2 pr-3 text-right font-normal">Shares</th>
+                    <th className="py-2 pr-3 text-right font-normal">Price</th>
+                    <th className="py-2 pr-3 text-right font-normal">Value</th>
+                    <th className="py-2 font-normal" />
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {rows.map((t) => (
+                    <tr key={`${t.accession}-${t.seq}`}>
+                      <td className="py-2.5 pr-3 tabular-nums text-muted">
+                        {t.trade_date}
+                      </td>
+                      <td className="py-2.5 pr-3">
+                        <span className="block">{titleCase(t.owner)}</span>
+                        <span className="text-xs text-muted">{t.role}</span>
+                      </td>
+                      <td className="py-2.5 pr-3">
+                        {t.code === "P" ? (
+                          <span className="text-up">▲ Bought</span>
+                        ) : t.code === "S" ? (
+                          <span className="text-down">▼ Sold</span>
+                        ) : (
+                          <span className="text-muted">
+                            {CODE[t.code] ?? t.code}
+                          </span>
+                        )}
+                        {t.plan_10b5_1 && t.code === "S" && (
+                          <span className="ml-1.5 rounded-full bg-card px-1.5 py-0.5 text-[10px] text-muted">
+                            plan
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2.5 pr-3 text-right tabular-nums">
+                        {num(t.shares)}
+                      </td>
+                      <td className="py-2.5 pr-3 text-right tabular-nums">
+                        {t.price ? `$${t.price.toFixed(2)}` : "—"}
+                      </td>
+                      <td className="py-2.5 pr-3 text-right tabular-nums">
+                        {t.value ? money(t.value) : "—"}
+                      </td>
+                      <td className="py-2.5 text-right">
+                        <a
+                          href={t.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs text-muted underline-offset-2 hover:text-foreground hover:underline"
+                        >
+                          Form 4 ↗
+                        </a>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </ExportTable>
           </div>
         ) : (
           <p className="mt-3 text-sm text-muted">
@@ -464,40 +467,42 @@ function Institutions({ ticker, h }: { ticker: string; h: Holders | null }) {
           </Term>
         </h3>
         <div className="mt-2 overflow-x-auto">
-          <table className="w-full min-w-[560px] text-sm">
-            <thead>
-              <tr className="text-left text-xs text-muted">
-                <th className="py-2 pr-3 font-normal">Fund</th>
-                <th className="py-2 pr-3 text-right font-normal">Shares</th>
-                <th className="py-2 pr-3 text-right font-normal">
-                  % of company
-                </th>
-                <th className="py-2 text-right font-normal">
-                  Change vs prior quarter
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {r.top.map((x) => (
-                <tr key={x.filer_cik}>
-                  <td className="py-2.5 pr-3">{fundName(x.name)}</td>
-                  <td className="py-2.5 pr-3 text-right tabular-nums">
-                    {num(x.shares)}
-                  </td>
-                  <td className="py-2.5 pr-3 text-right tabular-nums">
-                    {pct(x.pct_out, 2)}
-                  </td>
-                  <td className="py-2.5 text-right tabular-nums">
-                    {x.status === "new" ? (
-                      <span className="text-up">▲ New position</span>
-                    ) : (
-                      <Delta v={x.change} fmt={num} />
-                    )}
-                  </td>
+          <ExportTable name="ownership">
+            <table className="w-full min-w-[560px] text-sm">
+              <thead>
+                <tr className="text-left text-xs text-muted">
+                  <th className="py-2 pr-3 font-normal">Fund</th>
+                  <th className="py-2 pr-3 text-right font-normal">Shares</th>
+                  <th className="py-2 pr-3 text-right font-normal">
+                    % of company
+                  </th>
+                  <th className="py-2 text-right font-normal">
+                    Change vs prior quarter
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {r.top.map((x) => (
+                  <tr key={x.filer_cik}>
+                    <td className="py-2.5 pr-3">{fundName(x.name)}</td>
+                    <td className="py-2.5 pr-3 text-right tabular-nums">
+                      {num(x.shares)}
+                    </td>
+                    <td className="py-2.5 pr-3 text-right tabular-nums">
+                      {pct(x.pct_out, 2)}
+                    </td>
+                    <td className="py-2.5 text-right tabular-nums">
+                      {x.status === "new" ? (
+                        <span className="text-up">▲ New position</span>
+                      ) : (
+                        <Delta v={x.change} fmt={num} />
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </ExportTable>
         </div>
 
         <div className="mt-8 grid gap-8 sm:grid-cols-2">

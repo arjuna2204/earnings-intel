@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import ExportTable from "@/components/ExportTable";
 import Link from "next/link";
 import Term, { AboutNumbers } from "@/components/Term";
 import { useMode } from "@/components/ModeToggle";
@@ -28,9 +29,21 @@ const cap = (v: number) =>
 const ESSENTIALS: Col[] = [
   { key: "marketCap", label: "Market cap", term: "market_cap", fmt: cap },
   { key: "pe", label: "P/E", term: "pe", fmt: x },
-  { key: "revGrowth", label: "Revenue growth", term: "revenue_growth_yoy", fmt: pct, signed: true },
+  {
+    key: "revGrowth",
+    label: "Revenue growth",
+    term: "revenue_growth_yoy",
+    fmt: pct,
+    signed: true,
+  },
   { key: "divYield", label: "Div. yield", term: "dividend_yield", fmt: pct },
-  { key: "ret1y", label: "1Y return", term: "vs_benchmark", fmt: pct, signed: true },
+  {
+    key: "ret1y",
+    label: "1Y return",
+    term: "vs_benchmark",
+    fmt: pct,
+    signed: true,
+  },
 ];
 
 const VIEWS: Record<string, { label: string; cols: Col[] }> = {
@@ -242,7 +255,11 @@ export default function ScreenerView({ rows }: { rows: ScreenRow[] }) {
       </div>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-2">
-        <div className={`gap-1 ${mode === "pro" ? "flex" : "hidden"}`} role="tablist" aria-label="Columns">
+        <div
+          className={`gap-1 ${mode === "pro" ? "flex" : "hidden"}`}
+          role="tablist"
+          aria-label="Columns"
+        >
           {Object.entries(VIEWS).map(([k, v]) => (
             <button
               key={k}
@@ -286,107 +303,109 @@ export default function ScreenerView({ rows }: { rows: ScreenRow[] }) {
       </p>
 
       <div className="mt-2 overflow-x-auto">
-        <table className="w-full min-w-[40rem] text-sm tabular-nums">
-          <thead className="text-xs text-muted">
-            <tr className="border-b border-border">
-              {head("ticker", "Company", false)}
-              {head("price", "Price")}
-              {cols.map((c) => (
-                <th
-                  key={c.key}
-                  scope="col"
-                  className="whitespace-nowrap px-3 py-2 text-right font-medium"
-                >
-                  <span className="inline-flex items-center gap-1">
-                    <Term k={c.term} quiet>
-                      {c.label}
-                    </Term>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSort((s) => ({
-                          key: c.key,
-                          desc: s.key === c.key ? !s.desc : true,
-                        }))
-                      }
-                      className="w-3 text-[10px] hover:text-foreground"
-                      aria-label={`Sort by ${c.label}`}
-                    >
-                      {sort.key === c.key ? (sort.desc ? "▼" : "▲") : "↕"}
-                    </button>
-                  </span>
-                </th>
-              ))}
-              {head("nextEarnings", "Next report")}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {shown.map((r) => (
-              <tr key={r.ticker} className="hover:bg-card">
-                <td className="max-w-[14rem] px-3 py-2.5">
-                  <Link
-                    href={`/c/${encodeURIComponent(r.ticker)}`}
-                    className="block"
+        <ExportTable name="screener">
+          <table className="w-full min-w-[40rem] text-sm tabular-nums">
+            <thead className="text-xs text-muted">
+              <tr className="border-b border-border">
+                {head("ticker", "Company", false)}
+                {head("price", "Price")}
+                {cols.map((c) => (
+                  <th
+                    key={c.key}
+                    scope="col"
+                    className="whitespace-nowrap px-3 py-2 text-right font-medium"
                   >
-                    <span className="font-semibold">{r.ticker}</span>
-                    {r.basic && (
-                      <span
-                        className="ml-1.5 rounded-full border border-border px-1.5 py-px text-[10px] text-muted"
-                        title="Basic data only. Open to load full research."
+                    <span className="inline-flex items-center gap-1">
+                      <Term k={c.term} quiet>
+                        {c.label}
+                      </Term>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSort((s) => ({
+                            key: c.key,
+                            desc: s.key === c.key ? !s.desc : true,
+                          }))
+                        }
+                        className="w-3 text-[10px] hover:text-foreground"
+                        aria-label={`Sort by ${c.label}`}
                       >
-                        Basic
-                      </span>
-                    )}
-                    <span className="block truncate text-xs text-muted">
-                      {r.name}
+                        {sort.key === c.key ? (sort.desc ? "▼" : "▲") : "↕"}
+                      </button>
                     </span>
-                  </Link>
-                </td>
-                <td className="px-3 py-2.5 text-right">
-                  {r.price != null ? `$${r.price.toFixed(2)}` : "—"}
-                </td>
-                {cols.map((c) => {
-                  const v = r[c.key];
-                  if (typeof v !== "number") {
+                  </th>
+                ))}
+                {head("nextEarnings", "Next report")}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {shown.map((r) => (
+                <tr key={r.ticker} className="hover:bg-card">
+                  <td className="max-w-[14rem] px-3 py-2.5">
+                    <Link
+                      href={`/c/${encodeURIComponent(r.ticker)}`}
+                      className="block"
+                    >
+                      <span className="font-semibold">{r.ticker}</span>
+                      {r.basic && (
+                        <span
+                          className="ml-1.5 rounded-full border border-border px-1.5 py-px text-[10px] text-muted"
+                          title="Basic data only. Open to load full research."
+                        >
+                          Basic
+                        </span>
+                      )}
+                      <span className="block truncate text-xs text-muted">
+                        {r.name}
+                      </span>
+                    </Link>
+                  </td>
+                  <td className="px-3 py-2.5 text-right">
+                    {r.price != null ? `$${r.price.toFixed(2)}` : "—"}
+                  </td>
+                  {cols.map((c) => {
+                    const v = r[c.key];
+                    if (typeof v !== "number") {
+                      return (
+                        <td
+                          key={c.key}
+                          className="px-3 py-2.5 text-right text-muted"
+                        >
+                          —
+                        </td>
+                      );
+                    }
+                    const tone = c.signed
+                      ? v >= 0
+                        ? "text-up"
+                        : "text-down"
+                      : "";
                     return (
                       <td
                         key={c.key}
-                        className="px-3 py-2.5 text-right text-muted"
+                        className={`px-3 py-2.5 text-right ${tone}`}
                       >
-                        —
+                        {c.signed ? (v >= 0 ? "▲ " : "▼ ") : ""}
+                        {c.signed ? c.fmt(Math.abs(v), r) : c.fmt(v, r)}
                       </td>
                     );
-                  }
-                  const tone = c.signed
-                    ? v >= 0
-                      ? "text-up"
-                      : "text-down"
-                    : "";
-                  return (
-                    <td
-                      key={c.key}
-                      className={`px-3 py-2.5 text-right ${tone}`}
-                    >
-                      {c.signed ? (v >= 0 ? "▲ " : "▼ ") : ""}
-                      {c.signed ? c.fmt(Math.abs(v), r) : c.fmt(v, r)}
-                    </td>
-                  );
-                })}
-                <td className="whitespace-nowrap px-3 py-2.5 text-right text-muted">
-                  {r.nextEarnings
-                    ? new Date(
-                        `${r.nextEarnings}T12:00:00Z`,
-                      ).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        timeZone: "UTC",
-                      })
-                    : "—"}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  })}
+                  <td className="whitespace-nowrap px-3 py-2.5 text-right text-muted">
+                    {r.nextEarnings
+                      ? new Date(
+                          `${r.nextEarnings}T12:00:00Z`,
+                        ).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          timeZone: "UTC",
+                        })
+                      : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </ExportTable>
       </div>
       {shown.length === 0 && (
         <p className="py-8 text-center text-sm text-muted">

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import EChart from "@/components/EChart";
 import Term from "@/components/Term";
 import { useMode } from "@/components/ModeToggle";
+import { DownloadButton, downloadCsv } from "@/components/ExportTable";
 import SourcePanel from "@/components/SourcePanel";
 import { useThemeColors } from "@/components/useThemeColors";
 import {
@@ -76,6 +77,24 @@ export default function FinancialsView({
             </button>
           ))}
         </div>
+        <DownloadButton
+          label={`Download all ${mode === "FY" ? "annual" : "quarterly"} financials`}
+          onClick={() => {
+            // one row per metric, one column per period (oldest → newest), raw values from SEC
+            const metrics = groups.flatMap((g) => g.metrics);
+            const keyOf = (r: CompactRow) => `${r[0]}|${r[1]}`;
+            const periods = new Map<string, string>();
+            for (const m of metrics)
+              for (const r of rowsFor(data.series[m.key] ?? [], mode)) periods.set(keyOf(r), r[7]);
+            const cols = [...periods.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([k]) => k);
+            const header = ["Metric", ...cols.map((k) => periodLabel(Number(k.split("|")[0]), k.split("|")[1]))];
+            const body = metrics.map((m) => {
+              const by = new Map((data.series[m.key] ?? []).map((r) => [keyOf(r), r[2]]));
+              return [m.label, ...cols.map((k) => by.get(k) ?? null)];
+            });
+            downloadCsv(`financials-${mode === "FY" ? "annual" : "quarterly"}`, [header, ...body]);
+          }}
+        />
         <p className="text-xs text-muted">
           {data.currency !== "USD" && <>Reported in {data.currency}. </>}
           Tap a bar to see its source · selection highlights every chart
