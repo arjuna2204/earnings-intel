@@ -332,6 +332,18 @@ def analyze(
             job.step("segments", "done", f"{seg['rows']} segment figures ({', '.join(seg['axes']) or 'none reported'})")
         except Exception as exc:
             log.warning("segments skipped: %s", exc)
+        try:  # 9. Debt maturity ladder and credit lines (SEC XBRL, free)
+            from ei.debt import profile as debt_profile
+
+            dp = debt_profile(facts)
+            if dp:
+                db.upsert(
+                    "debt_profile",
+                    [{"cik": cik, "as_of": dp["as_of"] or date.today().isoformat(), "result": dp}],
+                    on_conflict="cik",
+                )
+        except Exception as exc:
+            log.warning("debt profile skipped: %s", exc)
         job.finish(
             "deferred" if deferred else "done",
             "Price download paused by the free-tier limit; retries automatically within 6 hours" if deferred else None,
