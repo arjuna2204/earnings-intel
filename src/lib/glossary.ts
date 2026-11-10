@@ -255,6 +255,12 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   },
 
   // ------------------------------------------------------------------ trends (Historical)
+  events_8k: {
+    term: "Company events (8-K)",
+    what: "Every time something material happens — an executive leaves, a big contract, an acquisition, a write-down — a company must file a Form 8-K with the SEC within four business days.",
+    how: "Each 8-K is tagged by type (Item number). We translate the type into plain English and show the first sentence the company wrote about it. Red dots mark the kinds investors watch most closely: restatements, auditor changes, write-downs, restructurings, delisting notices.",
+    why: "It's the official, unfiltered news feed for a company, published before most headlines.",
+  },
   segments: {
     term: "Revenue breakdown",
     what: "How sales split across the company's business segments, product lines and regions, as the company reports them.",

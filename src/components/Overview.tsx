@@ -2,6 +2,7 @@ import Link from "next/link";
 import Term from "@/components/Term";
 import { RecapFacts, recapDate } from "@/components/RecapLine";
 import { select } from "@/lib/db";
+import { getEvents8k, ITEMS } from "@/lib/events";
 import { getQuickTake, type Signal } from "@/lib/quicktake";
 import { getOptions, getRisk } from "@/lib/riskopts";
 import { latestRecap } from "@/lib/screener";
@@ -26,7 +27,8 @@ function Arrow({ tone }: { tone: Tone }) {
 export default async function Overview({ company, events, asOf }: { company: Company; events: EarningsEvent[]; asOf: string }) {
   const path = `/c/${encodeURIComponent(company.ticker)}`;
   const today = new Date(`${asOf}T12:00:00Z`).toISOString().slice(0, 10);
-  const [q, recap, risk, opts, revG, next] = await Promise.all([
+  const since60 = new Date(Date.parse(`${today}T12:00:00Z`) - 60 * 86400000).toISOString().slice(0, 10);
+  const [q, recap, risk, opts, revG, next, ev] = await Promise.all([
     getQuickTake(company, events, asOf),
     latestRecap(company.ticker),
     getRisk(company.cik),
@@ -46,6 +48,7 @@ export default async function Overview({ company, events, asOf }: { company: Com
       order: "report_date.asc",
       limit: "1",
     }).catch(() => []),
+    getEvents8k(company.cik, since60),
   ]);
   const sig = (k: string): Signal | undefined => q.signals.find((s) => s.key === k);
 
@@ -141,6 +144,15 @@ export default async function Overview({ company, events, asOf }: { company: Com
         .join(" · "),
       tone: "neutral",
       href: viewHref(path, "brief"),
+    });
+  }
+  const big = ev.find((e) => e.weight !== "routine");
+  if (big) {
+    watch.push({
+      text: big.items.map((i) => ITEMS[i]?.label ?? `Item ${i}`).join(" · "),
+      sub: `8-K filed ${recapDate(big.date)}`,
+      tone: big.weight === "high" ? "down" : "neutral",
+      href: viewHref(path, "events"),
     });
   }
   for (const k of ["insiders", "funds", "revisions"]) {

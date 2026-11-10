@@ -17,6 +17,7 @@ export const VIEWS: Record<TabKey, { key: ViewKey; label: string; pro?: boolean 
   earnings: [
     { key: "brief", label: "What changed" },
     { key: "call", label: "The call" },
+    { key: "events", label: "Company events" },
     { key: "filings", label: "Filings", pro: true },
   ],
   financials: [{ key: "historical", label: "Financials" }],
@@ -31,12 +32,13 @@ export const VIEWS: Record<TabKey, { key: ViewKey; label: string; pro?: boolean 
   ],
 };
 
-export type ViewKey = "overview" | "brief" | "call" | "filings" | "historical" | "street" | "peers" | "ownership" | "riskstats" | "options" | "sources";
+export type ViewKey = "overview" | "brief" | "call" | "events" | "filings" | "historical" | "street" | "peers" | "ownership" | "riskstats" | "options" | "sources";
 
 const VIEW_TAB: Record<ViewKey, TabKey> = {
   overview: "overview",
   brief: "earnings",
   call: "earnings",
+  events: "earnings",
   filings: "earnings",
   historical: "financials",
   street: "valuation",

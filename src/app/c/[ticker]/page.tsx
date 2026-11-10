@@ -18,6 +18,8 @@ import PeersView from "@/components/PeersView";
 import TrendsView, { type TrendRow } from "@/components/TrendsView";
 import SegmentsView, { type SegmentRow } from "@/components/SegmentsView";
 import DataInfo from "@/components/DataInfo";
+import EventsView from "@/components/EventsView";
+import { getEvents8k, ITEMS } from "@/lib/events";
 import type { RiskYear } from "@/components/RiskTrend";
 import { getDcf } from "@/lib/dcf";
 import { getLatestPeersJob, getPeerComparison, getPeerSet } from "@/lib/peers";
@@ -185,6 +187,7 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
         {view === "brief" && (
           <BriefTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />
         )}
+        {view === "events" && <EventsTab company={company} />}
         {view === "call" && <CallTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />}
         {view === "filings" && (
           <ProGate what="Filings detail (adjusted numbers, MD&A, risk-factor redline)">
@@ -708,6 +711,12 @@ function ValuationStrip({ company }: { company: Company }) {
       </details>
     </section>
   );
+}
+
+async function EventsTab({ company }: { company: Company }) {
+  const since = new Date(Date.parse(company.valuation?.price_date ?? "2026-01-01") - 730 * 86400000).toISOString().slice(0, 10);
+  const events = await getEvents8k(company.cik, since);
+  return <EventsView events={events} labels={Object.fromEntries(Object.entries(ITEMS).map(([k, v]) => [k, v.label]))} />;
 }
 
 function SourcesTab({ company, filings }: { company: Company; filings: Filing[] }) {
