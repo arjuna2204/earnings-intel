@@ -47,6 +47,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <Link href="/screener" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground sm:block">
                 Screener
               </Link>
+              <Link href="/macro" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground md:block">
+                Economy
+              </Link>
               <Link href="/coverage" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground md:block">
                 What&apos;s ready
               </Link>

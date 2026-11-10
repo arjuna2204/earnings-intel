@@ -3,6 +3,7 @@ import Term from "@/components/Term";
 import { RecapFacts, recapDate } from "@/components/RecapLine";
 import { select } from "@/lib/db";
 import { getEvents8k, ITEMS } from "@/lib/events";
+import { fmtMacro, getMacro, MACRO, reading, SECTOR_MACRO } from "@/lib/macro";
 import { getQuickTake, type Signal } from "@/lib/quicktake";
 import { getOptions, getRisk } from "@/lib/riskopts";
 import { latestRecap } from "@/lib/screener";
@@ -158,6 +159,20 @@ export default async function Overview({ company, events, asOf }: { company: Com
   for (const k of ["insiders", "funds", "revisions"]) {
     const s = sig(k);
     if (s && s.tone !== "neutral" && watch.length < 3) watch.push({ text: s.text, sub: s.title, tone: s.tone, href: s.href });
+  }
+  // the macro number that matters most for this company's sector
+  const sm = company.sector_etf ? SECTOR_MACRO[company.sector_etf] : undefined;
+  if (sm && watch.length < 3) {
+    const [s] = await getMacro([sm.ids[0]], 1);
+    const r = s ? reading(s) : null;
+    if (r) {
+      watch.push({
+        text: `${MACRO[s.id].name} ${fmtMacro(s.id, r.last[1])}${r.change != null ? `, ${r.change >= 0 ? "up" : "down"} ${Math.abs(r.change).toFixed(2)}${MACRO[s.id].unit === "%" || MACRO[s.id].unit === "pts" ? " pts" : ""} in 3 months` : ""}`,
+        sub: sm.note,
+        tone: "neutral",
+        href: "/macro",
+      });
+    }
   }
   const held = (company.quality ?? []).filter((f) => f.severity === "hide");
   if (held.length && watch.length < 3) {
