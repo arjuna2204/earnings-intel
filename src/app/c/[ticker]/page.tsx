@@ -150,7 +150,8 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
         </p>
       )}
 
-      <div className="mt-4">
+      {/* sticky here, not inside a wrapper, so the tabs stay in view while scrolling the whole page */}
+      <div className="sticky top-14 z-20 mt-4">
         <CompanyTabs />
       </div>
 

@@ -17,7 +17,7 @@ export default function CompanyTabs() {
   }, [tab]);
   const views = VIEWS[tab];
   return (
-    <nav className="sticky top-14 z-20 -mx-4 border-b border-border bg-background/90 px-4 backdrop-blur" aria-label="Company sections">
+    <nav className="-mx-4 border-b border-border bg-background/90 px-4 backdrop-blur" aria-label="Company sections">
       <ul className="-mb-px flex gap-6 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {TABS.map((t) => (
           <li key={t.key} className="shrink-0">
