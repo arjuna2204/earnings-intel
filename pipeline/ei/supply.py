@@ -20,7 +20,7 @@ from ei.filings.text import html_to_blocks
 from ei.verify import locate
 
 log = logging.getLogger(__name__)
-VERSION = "supply-v1"
+VERSION = "supply-v2"
 _PICK = re.compile(
     r"(\bcustomers?\b[^.]{0,160}\d{1,2}(\.\d)?\s?%|\d{1,2}(\.\d)?\s?%[^.]{0,160}\bcustomers?\b|"
     r"\b(sole|single|limited number of) (source|supplier|manufacturer|foundr)|\bfoundr(y|ies)\b|"
@@ -80,7 +80,9 @@ def verify(raw: dict[str, Any], paras: list[str]) -> dict[str, Any]:
         if idx is None:
             return False
         q = quote.lower()
-        if name.lower() not in q and name.lower() not in paras[idx].lower():
+        # unnamed customers ("Customer A" in "Customers A, B and C") are matched by their percentage instead
+        label = re.match(r"^(customer|one|two|three|a |an |our )", name.lower()) is not None
+        if not label and name.lower() not in q and name.lower() not in paras[idx].lower():
             return False
         return not (
             pct is not None

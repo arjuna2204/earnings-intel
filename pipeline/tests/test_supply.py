@@ -56,3 +56,24 @@ def test_verify_drops_unquoted_and_wrong_percent() -> None:
     v = verify(raw, PARAS)
     assert [c["name"] for c in v["customers"]] == ["Customer A"]  # B's % is wrong, Walmart isn't in the text
     assert len(v["suppliers"]) == 1 and v["sole_source"] is True
+
+
+def test_unnamed_customers_matched_by_percent() -> None:
+    paras = [
+        "Sales to direct Customers A, B and C represented 12%, 11% and 11% of total revenue, respectively, for fiscal year 2026."
+    ]
+    raw = {
+        "customers": [
+            {
+                "name": "Customer A",
+                "share_pct": 12,
+                "basis": "revenue",
+                "period": "fiscal 2026",
+                "quote": "Sales to direct Customers A, B and C represented 12%, 11% and 11% of total revenue",
+                "para": 0,
+            }
+        ],
+        "suppliers": [],
+        "sole_source": False,
+    }
+    assert [c["name"] for c in verify(raw, paras)["customers"]] == ["Customer A"]
