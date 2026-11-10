@@ -261,6 +261,25 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     how: "Each 8-K is tagged by type (Item number). We translate the type into plain English and show the first sentence the company wrote about it. Red dots mark the kinds investors watch most closely: restatements, auditor changes, write-downs, restructurings, delisting notices.",
     why: "It's the official, unfiltered news feed for a company, published before most headlines.",
   },
+  debt_ladder: {
+    term: "Debt maturity schedule",
+    what: "How much of the company's borrowed money must be repaid in each of the next five years, and after.",
+    how: "The principal repayment schedule the company tags in its latest 10-K (SEC). Compared with cash on hand for the next 12 months.",
+    why: "A big wall of debt coming due when rates are high, or cash is thin, can force a company to refinance expensively, sell shares or cut spending.",
+    read: "Compare the next year's bar with cash and free cash flow: if cash covers it, there's little refinancing risk.",
+  },
+  avg_interest_rate: {
+    term: "Average interest rate",
+    what: "The weighted average rate the company pays on its debt, as it reports it.",
+    how: "From the latest 10-K's tagged data, where the company provides it.",
+    why: "Shows how expensive the debt is. When old cheap debt is refinanced at today's rates, interest costs can jump.",
+  },
+  credit_line: {
+    term: "Unused credit line",
+    what: "Money banks have committed to lend the company on demand that it hasn't borrowed yet.",
+    how: "Remaining borrowing capacity under its revolving credit facility, from the latest 10-K.",
+    why: "A backup source of cash — useful if markets freeze or a large bill comes due.",
+  },
   segments: {
     term: "Revenue breakdown",
     what: "How sales split across the company's business segments, product lines and regions, as the company reports them.",

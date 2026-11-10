@@ -19,6 +19,7 @@ import TrendsView, { type TrendRow } from "@/components/TrendsView";
 import SegmentsView, { type SegmentRow } from "@/components/SegmentsView";
 import DataInfo from "@/components/DataInfo";
 import EventsView from "@/components/EventsView";
+import DebtView, { type DebtProfile, type DebtTotals } from "@/components/DebtView";
 import { getEvents8k, ITEMS } from "@/lib/events";
 import type { RiskYear } from "@/components/RiskTrend";
 import { getDcf } from "@/lib/dcf";
@@ -622,7 +623,7 @@ async function StreetTab({ company, events, prices }: { company: Company; events
 }
 
 async function FinancialsTab({ company, filings }: { company: Company; filings: Filing[] }) {
-  const [data, trends, dcf, segments] = await Promise.all([
+  const [data, trends, dcf, segments, debtRows, debtTotals] = await Promise.all([
     getFinancials(company, filings),
     select<TrendRow>("metric_values", {
       cik: `eq.${company.cik}`,
@@ -637,7 +638,27 @@ async function FinancialsTab({ company, filings }: { company: Company; filings: 
       cik: `eq.${company.cik}`,
       select: "axis,measure,member,label,fiscal_year,fiscal_period,value,source,adds_up",
     }).catch(() => [] as SegmentRow[]),
+    select<{ result: DebtProfile }>("debt_profile", { cik: `eq.${company.cik}`, select: "result" }).catch(() => []),
+    select<{ metric: string; value: number }>("metric_values", {
+      cik: `eq.${company.cik}`,
+      metric: "in.(total_debt,cash,net_debt,interest_expense,net_debt_to_ebitda,free_cash_flow_ttm)",
+      select: "metric,value",
+      order: "period_end.asc",
+      limit: "1000",
+    }).catch(() => []),
   ]);
+  const lastOf = (m: string) => {
+    const r = debtTotals.filter((x) => x.metric === m);
+    return r.length ? r[r.length - 1].value : null;
+  };
+  const totals: DebtTotals = {
+    total_debt: lastOf("total_debt"),
+    cash: lastOf("cash"),
+    net_debt: lastOf("net_debt"),
+    interest: lastOf("interest_expense"),
+    net_debt_to_ebitda: lastOf("net_debt_to_ebitda"),
+    fcf: lastOf("free_cash_flow_ttm"),
+  };
   const groups = [...GENERAL_GROUPS, ...(company.sector_pack !== "general" ? [PACK_GROUPS[company.sector_pack]] : [])];
   return (
     <div className="space-y-12">
@@ -645,6 +666,7 @@ async function FinancialsTab({ company, filings }: { company: Company; filings: 
       <SegmentsView
         rows={segments.filter((r) => !(company.quality ?? []).some((f) => f.severity === "hide" && f.fields.includes(`segments:${r.axis}`)))}
       />
+      {company.sector_pack === "general" && <DebtView p={debtRows[0]?.result ?? null} t={totals} />}
       <FinancialsView data={data} groups={groups} />
     </div>
   );
