@@ -152,7 +152,7 @@ export default function LeadershipView({
               . &quot;Actually paid&quot; counts stock awards at their current
               value, so it rises and falls with the share price.
               {pay?.ceo_names.length
-                ? ` CEO: ${pay.ceo_names.join(", ")}.`
+                ? ` CEO: ${pay.ceo_names[0]}.`
                 : ""}
               {pay?.measure_name
                 ? ` The company's own key pay measure: ${pay.measure_name}.`
