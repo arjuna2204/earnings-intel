@@ -19,6 +19,7 @@ import TrendsView, { type TrendRow } from "@/components/TrendsView";
 import SegmentsView, { type SegmentRow } from "@/components/SegmentsView";
 import DataInfo from "@/components/DataInfo";
 import EventsView from "@/components/EventsView";
+import DocSearch from "@/components/DocSearch";
 import SupplyView, { type Supply } from "@/components/SupplyView";
 import DebtView, { type DebtProfile, type DebtTotals } from "@/components/DebtView";
 import { getEvents8k, ITEMS } from "@/lib/events";
@@ -191,6 +192,9 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
         )}
         {view === "events" && <EventsTab company={company} />}
         {view === "supply" && <SupplyTab company={company} />}
+        {view === "search" && (
+          <DocSearch cik={company.cik} ticker={company.ticker} filingLinks={Object.fromEntries(filings.map((f) => [f.accession, f.url]))} />
+        )}
         {view === "call" && <CallTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />}
         {view === "filings" && (
           <ProGate what="Filings detail (adjusted numbers, MD&A, risk-factor redline)">

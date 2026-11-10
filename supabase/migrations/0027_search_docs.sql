@@ -1,0 +1,1 @@
+-- see migration applied via MCP: search_docs(p_cik, p_q, p_limit) over filing_sections and transcripts
