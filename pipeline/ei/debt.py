@@ -73,13 +73,13 @@ def profile(cf: dict[str, Any]) -> dict[str, Any] | None:
     if not as_of and rate is None and not any(credit.values()):
         return None
     # rates are tagged as fractions (0.045) by most filers but as percents (4.5) by a few
-    r = rate[0] if rate else None
-    if r is not None and r > 1:
-        r /= 100
+    avg = rate[0] if rate else None
+    if avg is not None and avg > 1:
+        avg /= 100
     return {
         "as_of": as_of,
         "ladder": rungs if as_of else [],
-        "avg_rate": r if r is not None and 0 < r < 0.3 else None,
+        "avg_rate": avg if avg is not None and 0 < avg < 0.3 else None,
         "credit": credit,
     }
 
