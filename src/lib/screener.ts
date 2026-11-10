@@ -1,6 +1,7 @@
 import "server-only";
 import { selectAll } from "@/lib/db";
 import { etfName } from "@/lib/etfs";
+import { getAllFlags, hiddenFields, sanitizeValuation, type QualityFlag } from "@/lib/quality";
 import type { Valuation } from "@/lib/types";
 
 /** One row per loaded company: the numbers the screener sorts and filters on. All come from tables the
@@ -69,11 +70,16 @@ export async function screenRows(): Promise<ScreenRow[]> {
   const nextBy = new Map<string, string>();
   for (const c of cal) if (!nextBy.has(c.ticker)) nextBy.set(c.ticker, c.report_date);
   const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  const flags = await getAllFlags();
+  const flagsBy = new Map<number, QualityFlag[]>();
+  for (const f of flags) flagsBy.set(f.cik, [...(flagsBy.get(f.cik) ?? []), f]);
 
   return companies
     .filter((c) => c.valuation?.price)
     .map((c) => {
-      const v = c.valuation ?? ({} as Valuation);
+      const fl = flagsBy.get(c.cik) ?? [];
+      const v = sanitizeValuation(c.valuation, fl) ?? ({} as Valuation);
+      const dcfHidden = hiddenFields(fl).has("dcf");
       const r = riskBy.get(c.cik);
       const o = optBy.get(c.cik);
       const next = nextBy.get(c.ticker) ?? null;
@@ -95,7 +101,7 @@ export async function screenRows(): Promise<ScreenRow[]> {
         beta: num(r?.beta),
         vol: num(r?.vol),
         fscore: num(r?.fscore),
-        dcfUpside: num(dcfBy.get(c.cik)),
+        dcfUpside: dcfHidden ? null : num(dcfBy.get(c.cik)),
         nextEarnings: next,
         // the options-implied earnings-day move only applies to the report the options were priced for
         expectedMove: o?.edate && next && o.edate === next ? num(o.move) : null,

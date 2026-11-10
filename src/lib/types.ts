@@ -12,6 +12,8 @@ export type Company = {
   fiscal_year_end: string | null;
   currency: string;
   valuation: Valuation | null;
+  /** failed data-quality checks, attached when the company is loaded */
+  quality?: { check: string; severity: "hide" | "warn"; fields: string[]; message: string }[];
   last_ingested_at: string | null;
   history_note: string | null;
 };

@@ -1,5 +1,6 @@
 import "server-only";
 import { select } from "@/lib/db";
+import { getFlags } from "@/lib/quality";
 
 export type Assumption = { value: number; label: string; source: string; notes?: number[] };
 export type Footnote = { id: number; text: string; url: string | null };
@@ -29,6 +30,13 @@ export type DcfModel = {
 };
 
 export async function getDcf(cik: number): Promise<DcfModel | null> {
-  const rows = await select<DcfModel>("dcf_models", { cik: `eq.${cik}`, select: "status,note,history,assumptions,result,created_at" });
-  return rows[0] ?? null;
+  const [rows, flags] = await Promise.all([
+    select<DcfModel>("dcf_models", { cik: `eq.${cik}`, select: "status,note,history,assumptions,result,created_at" }),
+    getFlags(cik),
+  ]);
+  const dcf = rows[0] ?? null;
+  const held = flags.find((f) => f.severity === "hide" && f.fields.includes("dcf"));
+  // a model that failed the daily sanity check is shown as unavailable, with the reason
+  if (dcf && held) return { ...dcf, status: "not_applicable", note: `${held.message} The model is held back until the inputs check out.` };
+  return dcf;
 }

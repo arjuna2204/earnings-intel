@@ -17,6 +17,7 @@ import BriefView from "@/components/BriefView";
 import PeersView from "@/components/PeersView";
 import TrendsView, { type TrendRow } from "@/components/TrendsView";
 import SegmentsView, { type SegmentRow } from "@/components/SegmentsView";
+import QualityNotes from "@/components/QualityNotes";
 import type { RiskYear } from "@/components/RiskTrend";
 import { getDcf } from "@/lib/dcf";
 import { getLatestPeersJob, getPeerComparison, getPeerSet } from "@/lib/peers";
@@ -621,7 +622,9 @@ async function FinancialsTab({ company, filings }: { company: Company; filings: 
   return (
     <div className="space-y-12">
       <TrendsView rows={trends} wacc={dcf?.status === "ok" ? (dcf.assumptions.wacc?.value ?? null) : null} />
-      <SegmentsView rows={segments} />
+      <SegmentsView
+        rows={segments.filter((r) => !(company.quality ?? []).some((f) => f.severity === "hide" && f.fields.includes(`segments:${r.axis}`)))}
+      />
       <FinancialsView data={data} groups={groups} />
     </div>
   );
@@ -674,6 +677,7 @@ function ValuationStrip({ company }: { company: Company }) {
             ))}
           </dl>
           {v.shares_note && <p className="mt-2 text-xs text-muted">{v.shares_note}</p>}
+          <QualityNotes flags={company.quality} />
           {street.length > 0 && (
             <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-border pt-4 sm:grid-cols-3">
               {street.map(([label, val, sub, k]) => (

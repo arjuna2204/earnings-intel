@@ -2,6 +2,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { select } from "@/lib/db";
 import type { Job } from "@/lib/types";
+import { getAllFlags } from "@/lib/quality";
 
 export default function StatusPage() {
   return (
@@ -29,6 +30,11 @@ async function StatusContent() {
     select<{ provider: string; requests: number }>("api_usage", { day: `eq.${todayEt()}`, select: "provider,requests" }),
     select<Job>("jobs", { select: "*", order: "created_at.desc", limit: "15" }),
   ]);
+  const [flags, names] = await Promise.all([
+    getAllFlags(),
+    select<{ cik: number; ticker: string }>("companies", { select: "cik,ticker" }),
+  ]);
+  const tickerOf = new Map(names.map((n) => [n.cik, n.ticker]));
   const budget = settings.find((s) => s.key === "ai_budget")?.value ?? { monthly_cap_usd: 10, warn_at_usd: 8 };
   const limits = settings.find((s) => s.key === "free_tier_limits")?.value ?? LIMITS_FALLBACK;
   const spent = Number(spend[0]?.spent_usd ?? 0);
@@ -62,6 +68,38 @@ async function StatusContent() {
           <p className="mt-2 text-sm text-down">■ Monthly AI budget reached — cached results still available. Resets on the 1st.</p>
         )}
         <p className="mt-2 text-xs text-muted">Every Claude call is estimated before it runs and refused if it would cross the cap.</p>
+      </section>
+
+      <section aria-labelledby="quality">
+        <h2 id="quality" className="text-sm font-semibold text-muted">
+          Data-quality checks · today
+        </h2>
+        <p className="mt-1 text-xs text-muted">
+          Every morning each company&apos;s numbers are cross-checked (market value two ways, P/E vs price ÷ EPS, dividends vs cash
+          paid, segments vs revenue, DCF vs price, stale prices). &quot;Hidden&quot; numbers are held back on the site until they pass.
+        </p>
+        {flags.length === 0 ? (
+          <p className="mt-3 text-sm">✓ All companies passed.</p>
+        ) : (
+          <ul className="mt-3 divide-y divide-border text-sm">
+            {[...flags]
+              .sort((a, b) => (a.severity === b.severity ? 0 : a.severity === "hide" ? -1 : 1))
+              .map((f) => {
+                const t = tickerOf.get(f.cik) ?? String(f.cik);
+                return (
+                  <li key={`${f.cik}-${f.check}`} className="flex gap-3 py-2">
+                    <a href={`/c/${t}`} className="w-14 shrink-0 font-semibold hover:underline">
+                      {t}
+                    </a>
+                    <span className={`w-16 shrink-0 text-xs font-medium ${f.severity === "hide" ? "text-down" : "text-muted"}`}>
+                      {f.severity === "hide" ? "■ Hidden" : "⚠︎ Flag"}
+                    </span>
+                    <span className="text-muted">{f.message}</span>
+                  </li>
+                );
+              })}
+          </ul>
+        )}
       </section>
 
       <section aria-labelledby="free-tiers">

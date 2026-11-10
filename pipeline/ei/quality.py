@@ -30,6 +30,10 @@ MCAP_FIELDS = [
 ]
 
 
+def _money(v: float) -> str:
+    return f"${v / 1e9:,.1f}B" if abs(v) >= 1e9 else f"${v / 1e6:,.0f}M"
+
+
 def _flag(check: str, severity: str, fields: list[str], message: str, **detail: Any) -> dict[str, Any]:
     return {"check": check, "severity": severity, "fields": fields, "message": message, "detail": detail}
 
@@ -60,7 +64,7 @@ def check_company(
                     "market_value",
                     "hide",
                     MCAP_FIELDS,
-                    f"Market value (${mcap / 1e9:.0f}B) doesn't match earnings ÷ EPS (${implied / 1e9:.0f}B); "
+                    f"Market value ({_money(mcap)}) doesn't match earnings ÷ EPS ({_money(implied)}); "
                     "the share count is probably off.",
                     ratio=round(ratio, 2),
                 )
@@ -115,7 +119,7 @@ def check_company(
                     "revenue_quarter",
                     "warn",
                     [],
-                    f"{label} revenue is negative (${val / 1e9:.2f}B); a full-year restatement likely broke the Q4 math.",
+                    f"{label} revenue is negative ({_money(val)}); a full-year restatement likely broke the Q4 math.",
                 )
             )
     # 6. Segment lines vs company revenue
@@ -132,16 +136,12 @@ def check_company(
     # 7. DCF far outside any reasonable range of the price
     if dcf_per_share is not None and price:
         r = dcf_per_share / price
-        if r > 4 or r < 0.15:
-            out.append(
-                _flag(
-                    "dcf",
-                    "hide",
-                    ["dcf"],
-                    f"DCF value ${dcf_per_share:.0f} is {r:.1f}× the price; an input is probably wrong.",
-                    ratio=round(r, 2),
-                )
-            )
+        if dcf_per_share <= 0:
+            msg = "Projected cash flows are negative, so a DCF can't value this company yet."
+            out.append(_flag("dcf", "hide", ["dcf"], msg, ratio=round(r, 2)))
+        elif r > 5 or r < 0.08:
+            msg = f"DCF value ${dcf_per_share:,.2f} is {r:.2f}× the price; an input is probably wrong."
+            out.append(_flag("dcf", "hide", ["dcf"], msg, ratio=round(r, 2)))
         elif r > 2.5 or r < 0.3:
             out.append(
                 _flag("dcf_range", "warn", ["dcf"], f"DCF value is {r:.1f}× the price — treat with extra caution.")

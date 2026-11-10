@@ -1,10 +1,19 @@
 import "server-only";
+import { getFlags, sanitizeValuation } from "@/lib/quality";
 import { select, selectAll } from "@/lib/db";
 import { GENERAL_GROUPS, PACK_GROUPS } from "@/lib/metrics";
 import type { CompactRow, FinancialsData } from "@/components/FinancialsView";
 import type { Company, Filing, Job, MetricValue, PricePoint, TickerHit } from "@/lib/types";
 
 export async function getCompanyByTicker(ticker: string): Promise<Company | null> {
+  const company = await findCompany(ticker);
+  if (!company) return null;
+  // numbers that failed the daily data-quality checks are held back everywhere the company is shown
+  const flags = await getFlags(company.cik);
+  return { ...company, quality: flags, valuation: sanitizeValuation(company.valuation, flags) };
+}
+
+async function findCompany(ticker: string): Promise<Company | null> {
   const rows = await select<Company>("companies", { ticker: `eq.${ticker}`, select: "*" });
   if (rows.length) return rows[0];
   // Share-class tickers (e.g. GOOG vs GOOGL) map to the same CIK.
