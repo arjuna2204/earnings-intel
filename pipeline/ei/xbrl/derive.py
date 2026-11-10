@@ -637,13 +637,14 @@ def valuation_snapshot(
 
     def ttm_or_fy(metric: str) -> float | None:
         """TTM if four quarters exist; otherwise the latest fiscal year (noted in the snapshot)."""
-        t = lv(f"{metric}_ttm")
-        if t is not None:
-            return t
+        t = latest_period(nc, f"{metric}_ttm")
         fy_rows = [pv for (m, _, fp), pv in nc.values.items() if m == metric and fp == "FY"]
-        if not fy_rows:
+        latest = max(fy_rows, key=lambda pv: pv.period_end) if fy_rows else None
+        # an old TTM (quarterly tags stopped years ago, e.g. AMD's D&A) must not beat a newer full year
+        if t is not None and (latest is None or t.period_end >= latest.period_end):
+            return t.value
+        if latest is None:
             return None
-        latest = max(fy_rows, key=lambda pv: pv.period_end)
         fy_fallback.append(f"{metric} (FY{latest.fiscal_year})")
         return latest.value
 

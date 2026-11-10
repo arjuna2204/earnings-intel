@@ -1,1 +1,1 @@
-{"command": "quality", "nonce": "q-1794272092"}
+{"command": "analyze", "tickers": ["AMD"], "args": ["--background"], "nonce": "amd-1794272199"}
