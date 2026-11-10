@@ -79,3 +79,26 @@ export async function getLatestCallsJob(ticker: string, a: string, b: string): P
   });
   return rows[0] ?? null;
 }
+
+/** Pairs of quarters already compared (free to view) and quarters whose call is already analyzed. */
+export async function analyzedCalls(cik: number): Promise<{ pairs: { a: string; b: string }[]; quarters: string[] }> {
+  const [pairs, qs] = await Promise.all([
+    select<{ period_a: string; period_b: string }>("call_comparisons", {
+      cik: `eq.${cik}`,
+      analysis_version: `eq.${CALLS_VERSION}`,
+      select: "period_a,period_b",
+      order: "period_b.desc",
+      limit: "20",
+    }).catch(() => []),
+    select<{ fiscal_year: number; fiscal_quarter: number }>("call_analysis", {
+      cik: `eq.${cik}`,
+      analysis_version: `eq.${CALLS_VERSION}`,
+      select: "fiscal_year,fiscal_quarter",
+      limit: "40",
+    }).catch(() => []),
+  ]);
+  return {
+    pairs: pairs.map((p) => ({ a: p.period_a, b: p.period_b })),
+    quarters: qs.map((q) => `FY${q.fiscal_year}Q${q.fiscal_quarter}`),
+  };
+}

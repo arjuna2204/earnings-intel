@@ -8,7 +8,7 @@ import type { FieldRow } from "@/components/ValuationCharts";
 import FinancialsView from "@/components/FinancialsView";
 import PriceChart from "@/components/PriceChart";
 import { getCompanyByTicker, getFilings, getFinancials, getLatestJob, getPrices, getTicker } from "@/lib/company";
-import { CALLS_VERSION, getAnalysis, getComparison, getEvents, getLatestCallsJob, getToneTrend, parseQ, qLabel } from "@/lib/calls";
+import { CALLS_VERSION, analyzedCalls, getAnalysis, getComparison, getEvents, getLatestCallsJob, getToneTrend, parseQ, qLabel } from "@/lib/calls";
 import CallsPanel from "@/components/CallsPanel";
 import CallView from "@/components/CallView";
 import { compact, filingIndexFromDocUrl, GENERAL_GROUPS, PACK_GROUPS } from "@/lib/metrics";
@@ -18,6 +18,7 @@ import PeersView from "@/components/PeersView";
 import TrendsView, { type TrendRow } from "@/components/TrendsView";
 import SegmentsView, { type SegmentRow } from "@/components/SegmentsView";
 import QualityNotes from "@/components/QualityNotes";
+import Freshness from "@/components/Freshness";
 import { RecapFacts, recapDate } from "@/components/RecapLine";
 import { latestRecap } from "@/lib/screener";
 import type { RiskYear } from "@/components/RiskTrend";
@@ -26,7 +27,7 @@ import { getLatestPeersJob, getPeerComparison, getPeerSet } from "@/lib/peers";
 import { buildExtras } from "@/lib/brief-extras";
 import { figureText, releaseFigure, type StreetRow } from "@/lib/figures";
 import FilingsView from "@/components/FilingsView";
-import { getBrief, getCases, getDodges, getLatestBriefJob, getRiskChanges, getTakes, type Brief } from "@/lib/filings";
+import { briefPairs, getBrief, getCases, getDodges, getLatestBriefJob, getRiskChanges, getTakes, type Brief } from "@/lib/filings";
 import { select, selectAll } from "@/lib/db";
 import OwnershipView from "@/components/OwnershipView";
 import RiskView from "@/components/RiskView";
@@ -143,6 +144,9 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
           <AnalyzePanel ticker={company.ticker} initialJob={job?.status === "running" || job?.status === "queued" ? job : null} mode="refresh" />
         </div>
       </header>
+      <Suspense fallback={null}>
+        <Freshness cik={company.cik} priceDate={prices.at(-1)?.date ?? company.valuation?.price_date ?? null} filings={filings} />
+      </Suspense>
       {company.history_note && <p className="mt-3 text-sm text-muted">ⓘ {company.history_note}</p>}
       {company.sector_note && (
         <p className="mt-3 rounded-xl border border-border bg-card px-4 py-3 text-sm">
@@ -253,7 +257,8 @@ async function CallTab({
   a?: string;
   b?: string;
 }) {
-  const { ea, eb, la, lb, options } = quarterChoice(events, a, b);
+  const done = await analyzedCalls(company.cik);
+  const { ea, eb, la, lb, options } = quarterChoice(events, a, b, done.quarters);
 
   const [comparison, job, trend] = await Promise.all([
     getComparison(company.cik, la, lb),
@@ -267,7 +272,7 @@ async function CallTab({
 
   return (
     <div className="space-y-8">
-      <CallsPanel ticker={company.ticker} options={options} a={la} b={lb} initialJob={activeJob} hasResult={Boolean(comparison)} />
+      <CallsPanel ticker={company.ticker} options={options} a={la} b={lb} initialJob={activeJob} hasResult={Boolean(comparison)} ready={done.pairs} />
       {comparison && anA && anB ? (
         <CallView cik={company.cik} comparison={comparison} a={anA} b={anB} trend={trend} />
       ) : (
@@ -280,7 +285,7 @@ async function CallTab({
   );
 }
 
-function quarterChoice(events: Awaited<ReturnType<typeof getEvents>>, a?: string, b?: string) {
+function quarterChoice(events: Awaited<ReturnType<typeof getEvents>>, a?: string, b?: string, analyzed: string[] = []) {
   // Quarter choices: reported quarters (once report dates are loaded), else the last 12 fiscal quarters.
   const quarters: [number, number][] = events.length
     ? [...events]
@@ -299,7 +304,8 @@ function quarterChoice(events: Awaited<ReturnType<typeof getEvents>>, a?: string
     .reverse()
     .map((v) => {
       const ev = events.find((e) => qLabel(e.fiscal_year, e.fiscal_quarter) === v);
-      return { value: v, label: `${v.replace("FY", "FY ").replace("Q", " · Q")}${ev ? ` (reported ${ev.report_date})` : ""}` };
+      const mark = analyzed.includes(v) ? " ✓ analyzed" : "";
+      return { value: v, label: `${v.replace("FY", "FY ").replace("Q", " · Q")}${ev ? ` (reported ${ev.report_date})` : ""}${mark}` };
     });
 
   return { ea, eb, la, lb, options };
@@ -312,6 +318,7 @@ const big = (v: number | null | undefined) =>
   v === null || v === undefined ? "—" : Math.abs(v) >= 1e9 ? `$${(v / 1e9).toFixed(1)}B` : `$${(v / 1e6).toFixed(0)}M`;
 
 async function BriefTab({ company, events, a, b, mode = "brief" }: { company: Company; events: Events; a?: string; b?: string; mode?: "brief" | "filings" }) {
+  const ready = await briefPairs(company.cik);
   const { ea, eb, la, lb, options } = quarterChoice(events, a, b);
   const [brief, job] = await Promise.all([getBrief(company.cik, la, lb), getLatestBriefJob(company.ticker, la, lb)]);
   const activeJob = job && ["queued", "running", "failed", "deferred"].includes(job.status) ? job : null;
@@ -328,6 +335,7 @@ async function BriefTab({ company, events, a, b, mode = "brief" }: { company: Co
       cta={mode === "brief" ? "Write brief" : "Analyze filings"}
       hint="Reads the 10-K/10-Q, earnings releases and call for both quarters. About $0.05 of AI budget the first time; cached after that."
       doneStep="brief"
+      ready={ready}
     />
   );
   if (!brief) {

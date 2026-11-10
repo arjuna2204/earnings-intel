@@ -75,13 +75,15 @@ const FEATURES: [string, string][] = [
 async function Recent() {
   await connection(); // always live data
   let rows: Pick<Company, "ticker" | "name" | "last_ingested_at" | "valuation">[] = [];
+  let total = 0;
   try {
-    rows = await select("companies", {
+    const all = await select<Pick<Company, "ticker" | "name" | "last_ingested_at" | "valuation">>("companies", {
       select: "ticker,name,last_ingested_at,valuation",
-      is_primary: "eq.true",
       order: "last_ingested_at.desc.nullslast",
-      limit: "12",
+      limit: "200",
     });
+    total = all.filter((c) => c.valuation?.price != null).length;
+    rows = all.filter((c) => c.valuation?.price != null).slice(0, 8);
   } catch {
     return (
       <p className="mt-10 text-sm text-muted">
@@ -94,22 +96,50 @@ async function Recent() {
     );
   }
   if (!rows.length) return <p className="mt-10 text-sm text-muted">No companies loaded yet — search for one to start.</p>;
+  // last two closes for each, for the day's move
+  const since = daysAgo(10);
+  const px = await select<{ ticker: string; date: string; adj_close: number }>("prices", {
+    ticker: `in.(${rows.map((r) => r.ticker).join(",")})`,
+    date: `gte.${since}`,
+    select: "ticker,date,adj_close",
+    order: "date.asc",
+  }).catch(() => []);
+  const change = (t: string) => {
+    const p = px.filter((x) => x.ticker === t);
+    return p.length >= 2 ? p[p.length - 1].adj_close / p[p.length - 2].adj_close - 1 : null;
+  };
   return (
     <section className="mt-12">
-      <h2 className="border-b border-border pb-3 text-xl font-semibold tracking-tight">Your companies</h2>
+      <div className="flex items-baseline justify-between border-b border-border pb-3">
+        <h2 className="text-xl font-semibold tracking-tight">Recently updated research</h2>
+        <Link href="/coverage" className="text-sm font-medium text-accent hover:underline">
+          All {total} →
+        </Link>
+      </div>
+      <p className="mt-2 text-xs text-muted">Companies with full research on Earnings Intel, newest first. Your own list is the watchlist above.</p>
       <ul className="divide-y divide-border">
-        {rows.map((c) => (
-          <li key={c.ticker}>
-            <Link href={`/c/${c.ticker}`} className="flex items-baseline gap-4 py-3.5 hover:text-accent">
-              <span className="w-16 shrink-0 font-semibold">{c.ticker}</span>
-              <span className="min-w-0 flex-1 truncate text-muted">{c.name}</span>
-              {c.valuation?.price != null && <span className="shrink-0 font-semibold tabular-nums">${c.valuation.price.toFixed(2)}</span>}
-            </Link>
-          </li>
-        ))}
+        {rows.map((c) => {
+          const ch = change(c.ticker);
+          return (
+            <li key={c.ticker}>
+              <Link href={`/c/${c.ticker}`} className="flex items-baseline gap-4 py-3.5 hover:text-accent">
+                <span className="w-16 shrink-0 font-semibold">{c.ticker}</span>
+                <span className="min-w-0 flex-1 truncate text-muted">{c.name}</span>
+                {c.valuation?.price != null && <span className="shrink-0 font-semibold tabular-nums">${c.valuation.price.toFixed(2)}</span>}
+                <span className={`w-16 shrink-0 text-right text-sm tabular-nums ${ch == null ? "text-muted" : ch >= 0 ? "text-up" : "text-down"}`}>
+                  {ch == null ? "" : `${ch >= 0 ? "▲" : "▼"} ${Math.abs(ch * 100).toFixed(1)}%`}
+                </span>
+              </Link>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
+}
+
+function daysAgo(n: number): string {
+  return new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
 }
 
 function RecentSkeleton() {

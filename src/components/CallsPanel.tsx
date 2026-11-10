@@ -32,6 +32,7 @@ export default function CallsPanel({
   cta = "Analyze calls",
   hint = "Uses ~3 free transcript requests and about $0.01 of AI budget for two new quarters (cached quarters are free).",
   doneStep = "compare",
+  ready = [],
 }: {
   ticker: string;
   options: Option[];
@@ -44,6 +45,8 @@ export default function CallsPanel({
   cta?: string;
   hint?: string;
   doneStep?: string;
+  /** quarter pairs already done: free to open, no AI budget */
+  ready?: { a: string; b: string }[];
 }) {
   const router = useRouter();
   const path = usePathname();
@@ -118,6 +121,24 @@ export default function CallsPanel({
           </button>
         )}
       </div>
+      {ready.length > 0 && (
+        <div className="mt-4 flex flex-wrap items-center gap-1.5 text-xs">
+          <span className="text-muted">Ready to read (free):</span>
+          {ready.slice(0, 8).map((r) => {
+            const current = r.a === a && r.b === b;
+            return (
+              <a
+                key={`${r.a}-${r.b}`}
+                href={`${path}?tab=${tab}&a=${r.a}&b=${r.b}`}
+                aria-current={current ? "page" : undefined}
+                className={`rounded-full px-2.5 py-1 font-medium ${current ? "bg-foreground text-background" : "bg-card hover:bg-border"}`}
+              >
+                {short(r.b)} vs {short(r.a)}
+              </a>
+            );
+          })}
+        </div>
+      )}
       {!active && !hasResult && (
         <p className="mt-3 text-xs text-muted">
           {hint}
@@ -147,6 +168,8 @@ export default function CallsPanel({
     </div>
   );
 }
+
+const short = (q: string) => q.replace(/^FY(\d{2})(\d{2})Q(\d)$/, "Q$3 '$2");
 
 function PeriodSelect({ label, value, options, onChange }: { label: string; value: string; options: Option[]; onChange: (v: string) => void }) {
   return (

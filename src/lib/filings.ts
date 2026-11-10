@@ -173,3 +173,15 @@ export async function getCases(cik: number): Promise<StockCases | null> {
   const rows = await select<StockCases>("stock_cases", { cik: `eq.${cik}`, select: "numbers,facts,claims,created_at" });
   return rows[0] ?? null;
 }
+
+/** Pairs of quarters that already have a brief (free to view). */
+export async function briefPairs(cik: number): Promise<{ a: string; b: string }[]> {
+  const rows = await select<{ period_a: string; period_b: string }>("briefs", {
+    cik: `eq.${cik}`,
+    version: `eq.${BRIEF_VERSION}`,
+    select: "period_a,period_b",
+    order: "period_b.desc",
+    limit: "20",
+  }).catch(() => []);
+  return rows.map((r) => ({ a: r.period_a, b: r.period_b }));
+}
