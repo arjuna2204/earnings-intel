@@ -184,6 +184,10 @@ jobs:
         if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily'
         working-directory: pipeline
         run: python -m ei.cli events || echo "::warning::events failed"
+      - name: Customers and suppliers from new 10-Ks (about 1 cent of AI per new 10-K)
+        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily'
+        working-directory: pipeline
+        run: python -m ei.cli supply || echo "::warning::supply chain failed"
       - name: Data-quality checks (free, no AI; about 1 minute)
         if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily'
         working-directory: pipeline

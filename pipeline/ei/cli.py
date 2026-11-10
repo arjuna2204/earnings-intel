@@ -43,6 +43,8 @@ def main(argv: list[str] | None = None) -> int:
     ins = sub.add_parser("insiders")
     ins.add_argument("ticker", nargs="?", default=None)
     sub.add_parser("quality")
+    sc = sub.add_parser("supply")
+    sc.add_argument("ticker", nargs="?", default=None)
     dbt = sub.add_parser("debt")
     dbt.add_argument("ticker", nargs="?", default=None)
     ev = sub.add_parser("events")
@@ -150,6 +152,11 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(run_debt(Db(settings.supabase_url, settings.supabase_secret_key), sec_d, tks)))
         finally:
             sec_d.close()
+    elif args.cmd == "supply":
+        from ei.supply import run as run_supply
+
+        tks = [t.upper() for t in args.ticker.split(",")] if args.ticker else None
+        print(json.dumps(run_supply(settings, tks)))
     elif args.cmd == "quality":
         from ei.db import Db
         from ei.quality import run as run_quality
