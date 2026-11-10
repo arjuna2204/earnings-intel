@@ -13,7 +13,7 @@ export default function MacroPage() {
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-16 pt-6">
       <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">The economy</h1>
-      <p className="mt-1 text-sm text-muted">The numbers that move whole sectors at once — rates, inflation, jobs, growth — over the last five years, from the Federal Reserve&apos;s FRED database.</p>
+      <p className="mt-1 text-sm text-muted">The numbers that move whole sectors at once — rates, inflation, jobs, growth — over the last five years, from official sources.</p>
       <Suspense fallback={<div className="mt-8 h-96 animate-pulse rounded-2xl bg-card" />}>
         <Macro />
       </Suspense>
@@ -74,7 +74,7 @@ async function Macro() {
             ))}
         </ul>
       </section>
-      <p className="mt-6 text-xs text-muted">Source: Federal Reserve Bank of St. Louis (FRED), updated each morning. Inflation is the change from 12 months earlier.</p>
+      <p className="mt-6 text-xs text-muted">Sources: US Treasury (yields), New York Fed (fed funds), Bureau of Labor Statistics (inflation, jobs), Cboe (VIX), St. Louis Fed FRED (the rest, when connected). Updated each morning. Inflation is the change from 12 months earlier.</p>
     </>
   );
 }

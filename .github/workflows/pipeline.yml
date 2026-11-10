@@ -44,6 +44,7 @@ jobs:
     timeout-minutes: 120
     env:
       SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+      FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
       TIINGO_API_KEY: ${{ secrets.TIINGO_API_KEY }}
@@ -196,7 +197,7 @@ jobs:
         if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily'
         working-directory: pipeline
         run: python -m ei.cli short-interest || echo "::warning::short interest failed"
-      - name: Macro data from FRED (free, no key)
+      - name: Macro data from FRED (Treasury, NY Fed, BLS, Cboe; free, no key)
         if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily'
         working-directory: pipeline
         run: python -m ei.cli macro || echo "::warning::macro failed"
