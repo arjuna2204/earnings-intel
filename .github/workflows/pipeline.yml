@@ -176,6 +176,10 @@ jobs:
         if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily'
         working-directory: pipeline
         run: python -m ei.cli lite || echo "::warning::basic-data refresh failed"
+      - name: Post-earnings recaps (free, no AI)
+        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily'
+        working-directory: pipeline
+        run: python -m ei.cli recap || echo "::warning::recaps failed"
       - name: Data-quality checks (free, no AI; about 1 minute)
         if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily'
         working-directory: pipeline

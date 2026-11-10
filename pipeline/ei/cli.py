@@ -43,6 +43,7 @@ def main(argv: list[str] | None = None) -> int:
     ins = sub.add_parser("insiders")
     ins.add_argument("ticker", nargs="?", default=None)
     sub.add_parser("quality")
+    sub.add_parser("recap")
     lt = sub.add_parser("lite")
     lt.add_argument("ticker", nargs="?", default=None)
     lt.add_argument("--full", action="store_true")
@@ -117,6 +118,11 @@ def main(argv: list[str] | None = None) -> int:
 
         tks = [t.upper() for t in args.ticker.split(",")] if args.ticker else None
         print(json.dumps(run_lite(settings, full=True if args.full else None, tickers=tks), default=str))
+    elif args.cmd == "recap":
+        from ei.db import Db
+        from ei.recap import run as run_recap
+
+        print(json.dumps(run_recap(Db(settings.supabase_url, settings.supabase_secret_key)), default=str))
     elif args.cmd == "quality":
         from ei.db import Db
         from ei.quality import run as run_quality
