@@ -57,7 +57,6 @@ export default function CompanyPage(props: PageProps<"/c/[ticker]">) {
   );
 }
 
-const PACK_LABEL: Record<string, string> = { bank: "Bank", reit: "REIT", insurer: "Insurer", general: "General" };
 
 async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">) {
   const ticker = decodeURIComponent((await params).ticker).toUpperCase();
@@ -87,7 +86,7 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
         <h1 className="mt-1 text-3xl font-semibold tracking-tight">{hit.name}</h1>
         <p className="mt-4 text-muted">
           This company hasn&apos;t been loaded yet. Loading pulls 15 years of SEC filings and financials plus daily
-          prices. It uses only free data — no AI budget.
+          prices. It takes a few minutes and is free.
         </p>
         <div className="mt-6">
           <AnalyzePanel ticker={ticker} initialJob={job} mode="load" />
@@ -134,7 +133,8 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-sm text-muted">
-            {company.ticker} · {company.exchange ?? "US"} · {PACK_LABEL[company.sector_pack]} metrics · vs {company.sector_etf}
+            {company.ticker} · {company.exchange ?? "US"}
+            {etfName(company.sector_etf) ? ` · ${etfName(company.sector_etf)}` : ""}
           </p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">{company.name}</h1>
         </div>
@@ -299,8 +299,8 @@ async function CallTab({
         <CallView cik={company.cik} comparison={comparison} a={anA} b={anB} trend={trend} />
       ) : (
         <div className="rounded-2xl border border-dashed border-border p-8 text-center text-muted">
-          Pick two quarters and press <b className="text-foreground">Analyze calls</b>. Transcripts are fetched once and stored; each new
-          quarter costs about half a cent of AI budget.
+          The latest call is analyzed automatically within a day or two of each report. To compare other quarters, pick two and press{" "}
+          <b className="text-foreground">Analyze calls</b>.
         </div>
       )}
     </div>
@@ -355,7 +355,7 @@ async function BriefTab({ company, events, a, b, mode = "brief" }: { company: Co
       endpoint="/api/brief"
       tab={mode}
       cta={mode === "brief" ? "Write brief" : "Analyze filings"}
-      hint="Reads the 10-K/10-Q, earnings releases and call for both quarters. About $0.05 of AI budget the first time; cached after that."
+      hint="Reads the 10-K/10-Q, earnings releases and call for both quarters. Takes about two minutes the first time; saved after that."
       doneStep="brief"
       ready={ready}
     />
@@ -365,8 +365,8 @@ async function BriefTab({ company, events, a, b, mode = "brief" }: { company: Co
       <div className="space-y-8">
         {panel}
         <div className="rounded-2xl border border-dashed border-border p-8 text-center text-muted">
-          Pick two quarters and press <b className="text-foreground">{mode === "brief" ? "Write brief" : "Analyze filings"}</b>. The same run fills both
-          the Brief and Filings tabs. Comparing the same quarter a year apart shows risk-factor changes too.
+          The brief for the latest quarter is written automatically within a day or two of each report. To compare other quarters, pick two and
+          press <b className="text-foreground">{mode === "brief" ? "Write brief" : "Analyze filings"}</b>.
         </div>
       </div>
     );

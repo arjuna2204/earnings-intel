@@ -188,7 +188,7 @@ def analyze(
             return {"ok": False}
         cik = int(hit[0]["cik"])
         subs = sec.submissions(cik)
-        sector = classify(subs.get("sic"))
+        sector = classify(subs.get("sic"), ticker)
         company = {
             "cik": cik,
             "ticker": ticker,

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 BANK_SIC = {6021, 6022, 6029, 6035, 6036}
 REIT_SIC = {6798}
@@ -28,9 +29,11 @@ _ETF_RANGES: list[tuple[int, int, str]] = [
     (3714, 3714, "XLY"),
     (3720, 3729, "XLI"),
     (3812, 3812, "XLI"),
+    (3826, 3826, "XLV"),  # lab instruments (Thermo, Agilent, Waters)
     (3841, 3851, "XLV"),
     (5400, 5499, "XLP"),
     (5912, 5912, "XLP"),
+    (6324, 6324, "XLV"),  # health plans (UnitedHealth, Elevance)
     (6500, 6553, "XLRE"),
     (6798, 6798, "XLRE"),
     (7310, 7319, "XLC"),
@@ -69,6 +72,16 @@ _ETF_RANGES: list[tuple[int, int, str]] = [
 
 DEFAULT_BENCHMARK = "SPY"
 
+# Large companies whose SEC industry code puts them in a different sector than the one
+# investors use (GICS). E.g. Visa/Mastercard file as "business services" but trade as financials.
+TICKER_ETF: dict[str, str] = {
+    "ACN": "XLK", "MA": "XLF", "V": "XLF", "PYPL": "XLF", "FI": "XLF", "FIS": "XLF",
+    "LRCX": "XLK", "AMAT": "XLK", "DHR": "XLV", "TMO": "XLV", "A": "XLV", "WAT": "XLV", "OMCL": "XLV",
+    "GE": "XLI", "GEV": "XLI", "COST": "XLP", "WMT": "XLP", "TGT": "XLP", "DG": "XLP", "DLTR": "XLP",
+    "UNH": "XLV", "ELV": "XLV", "CI": "XLV", "HUM": "XLV", "CVS": "XLV", "CNC": "XLV",
+    "GOOG": "XLC", "GOOGL": "XLC", "META": "XLC",
+}  # fmt: skip
+
 
 @dataclass(frozen=True)
 class SectorInfo:
@@ -77,7 +90,13 @@ class SectorInfo:
     ambiguous_reason: str | None = None
 
 
-def classify(sic: str | int | None) -> SectorInfo:
+def classify(sic: str | int | None, ticker: str | None = None) -> SectorInfo:
+    info = _classify(sic)
+    etf = TICKER_ETF.get((ticker or "").upper())
+    return SectorInfo(info.pack, etf, info.ambiguous_reason) if etf else info
+
+
+def _classify(sic: str | int | None) -> SectorInfo:
     try:
         code = int(sic) if sic not in (None, "") else None
     except (TypeError, ValueError):
@@ -94,3 +113,17 @@ def classify(sic: str | int | None) -> SectorInfo:
     if code in AMBIGUOUS_SIC:
         return SectorInfo("general", etf, AMBIGUOUS_SIC[code])
     return SectorInfo("general", etf)
+
+
+def fix_all(settings: Any) -> dict[str, str]:
+    """Re-apply the sector rules to every covered company; returns what changed."""
+    from ei.db import Db
+
+    db = Db(settings.supabase_url, settings.supabase_secret_key)
+    changed: dict[str, str] = {}
+    for c in db.select_all("companies", {"select": "cik,ticker,sic,sector_etf"}):
+        etf = classify(c.get("sic"), c["ticker"]).etf
+        if etf != c.get("sector_etf"):
+            db.update("companies", {"cik": c["cik"]}, {"sector_etf": etf})
+            changed[c["ticker"]] = f"{c.get('sector_etf')} -> {etf}"
+    return changed

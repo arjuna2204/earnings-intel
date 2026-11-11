@@ -56,6 +56,25 @@ export async function holdings(tickers: string[]): Promise<Holding[]> {
     Promise.all(ciks.map((c) => getFlags(c).then((f) => [c, f] as const))),
   ]);
   const flagBy = new Map(flags);
+  // 1-year return straight from stored prices for anyone the daily risk stats haven't reached yet.
+  const noRet = companies.filter((c) => typeof risk.find((x) => x.cik === c.cik)?.y1 !== "number").map((c) => c.ticker);
+  const yearAgo = new Date(Date.now() - 380 * 864e5).toISOString().slice(0, 10);
+  const px = noRet.length
+    ? await selectAll<{ ticker: string; date: string; adj_close: number }>("prices", {
+        ticker: `in.(${noRet.map((t) => `"${t}"`).join(",")})`,
+        date: `gte.${yearAgo}`,
+        select: "ticker,date,adj_close",
+        order: "date.asc",
+      }).catch(() => [])
+    : [];
+  const ret1yFromPrices = (t: string): number | null => {
+    const rows = px.filter((p) => p.ticker === t && p.adj_close > 0);
+    if (rows.length < 200) return null;
+    const last = rows[rows.length - 1];
+    const cut = new Date(new Date(`${last.date}T00:00:00Z`).getTime() - 365 * 864e5).toISOString().slice(0, 10);
+    const start = rows.find((p) => p.date >= cut);
+    return start ? last.adj_close / start.adj_close - 1 : null;
+  };
   const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
   const next = new Map<string, string>();
   for (const c of cal) if (!next.has(c.ticker)) next.set(c.ticker, c.report_date);
@@ -69,7 +88,9 @@ export async function holdings(tickers: string[]): Promise<Holding[]> {
       const o = opts.find((x) => x.cik === c.cik);
       const mine = segs.filter((s) => s.cik === c.cik);
       const fy = mine.length ? Math.max(...mine.map((s) => s.fiscal_year)) : null;
-      const latest = mine.filter((s) => s.fiscal_year === fy && s.value > 0);
+      // some filers tag the same total twice under two names ("International" and "Non-US"): keep one
+      const seen = new Set<number>();
+      const latest = mine.filter((s) => s.fiscal_year === fy && s.value > 0 && !seen.has(s.value) && Boolean(seen.add(s.value)));
       const total = latest.reduce((a, s) => a + s.value, 0);
       return {
         ticker: t,
@@ -81,7 +102,7 @@ export async function holdings(tickers: string[]): Promise<Holding[]> {
         dps: hide.has("dividend_per_share_ttm") ? null : num(v.dividend_per_share_ttm),
         divYield: hide.has("dividend_yield") ? null : num(v.dividend_yield),
         beta: num(r?.beta),
-        ret1y: num(r?.y1),
+        ret1y: num(r?.y1) ?? ret1yFromPrices(t),
         nextEarnings: next.get(t) ?? null,
         expectedMove: o?.edate && o.edate === next.get(t) ? num(o.move) : null,
         regions: total > 0 ? latest.map((s) => ({ label: s.label, share: s.value / total })) : [],

@@ -1,5 +1,6 @@
 import "server-only";
 import { select } from "@/lib/db";
+import { prettyName } from "@/lib/names";
 import type { Job } from "@/lib/types";
 
 export const PEERS_VERSION = "peers-v1"; // must match VERSION in pipeline/ei/peers.py
@@ -25,12 +26,17 @@ export type PeerComparison = {
 
 export async function getPeerSet(cik: number): Promise<PeerSet | null> {
   const rows = await select<PeerSet>("peer_sets", { cik: `eq.${cik}`, select: "peers,candidates,edited,updated_at" });
-  return rows[0] ?? null;
+  const s = rows[0];
+  if (!s) return null;
+  const fix = (list: Peer[] | null) => list?.map((p) => ({ ...p, name: prettyName(p.name) })) ?? null;
+  return { ...s, peers: fix(s.peers) ?? [], candidates: fix(s.candidates) };
 }
 
 export async function getPeerComparison(cik: number): Promise<PeerComparison | null> {
   const rows = await select<PeerComparison>("peer_comparisons", { cik: `eq.${cik}`, version: `eq.${PEERS_VERSION}`, select: "result,claims,dropped,created_at,version" });
-  return rows[0] ?? null;
+  const c = rows[0];
+  if (!c) return null;
+  return { ...c, result: { ...c.result, rows: c.result.rows.map((r) => ({ ...r, name: prettyName(r.name) })) } };
 }
 
 export async function getLatestPeersJob(ticker: string): Promise<Job | null> {

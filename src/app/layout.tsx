@@ -54,15 +54,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <Link href="/macro" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground md:block">
                 Economy
               </Link>
-              <Link href="/coverage" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground md:block">
-                What&apos;s ready
-              </Link>
-              <Link href="/backtest" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground lg:block">
-                Backtest
-              </Link>
-              <Link href="/status" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground lg:block">
-                Status
-              </Link>
               <ModeToggle />
               <ThemeToggle />
               <WatchAlerts />
@@ -76,6 +67,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <span>Educational research, not investment advice. Data may be delayed or contain errors.</span>
             <Link href="/terms" className="hover:text-foreground hover:underline">
               Terms &amp; data sources
+            </Link>
+            <Link href="/coverage" className="hover:text-foreground hover:underline">
+              Companies covered
+            </Link>
+            <Link href="/backtest" className="hover:text-foreground hover:underline">
+              Does it work? (backtest)
             </Link>
             <Link href="/status" className="hover:text-foreground hover:underline">
               Status

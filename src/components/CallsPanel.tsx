@@ -30,7 +30,7 @@ export default function CallsPanel({
   endpoint = "/api/calls",
   tab = "call",
   cta = "Analyze calls",
-  hint = "Uses ~3 free transcript requests and about $0.01 of AI budget for two new quarters (cached quarters are free).",
+  hint = "Fetches both call transcripts and compares them. Takes a minute or two; saved after that.",
   doneStep = "compare",
   ready = [],
 }: {

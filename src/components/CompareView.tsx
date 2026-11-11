@@ -95,7 +95,7 @@ export default function CompareView({
         <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted">
           {a.status === "empty" || b.status === "empty"
             ? "Pick two stocks above to see them side by side."
-            : "Both stocks need to be loaded before they can be compared. Loading uses only free data — no AI budget."}
+            : "Both stocks need to be loaded before they can be compared. Loading takes a few minutes and is free."}
         </p>
       )}
     </div>

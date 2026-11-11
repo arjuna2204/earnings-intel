@@ -73,6 +73,10 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("coverage")
     rk = sub.add_parser("risk")
     rk.add_argument("ticker", nargs="?", default=None)
+    rk.add_argument("--missing", action="store_true", help="only companies with no risk stats yet")
+    sub.add_parser("fix-sectors")
+    au = sub.add_parser("auto-research")
+    au.add_argument("--max", type=int, default=15)
     op = sub.add_parser("options")
     op.add_argument("ticker", nargs="?", default=None)
     hdd = sub.add_parser("holders-debug")
@@ -227,7 +231,20 @@ def main(argv: list[str] | None = None) -> int:
     elif args.cmd == "risk":
         from ei.risk import run_all as run_risk
 
-        print(json.dumps(run_risk(settings, [args.ticker.upper()] if args.ticker else None), default=str))
+        print(
+            json.dumps(
+                run_risk(settings, [args.ticker.upper()] if args.ticker else None, missing_only=args.missing),
+                default=str,
+            )
+        )
+    elif args.cmd == "fix-sectors":
+        from ei.sectors import fix_all
+
+        print(json.dumps(fix_all(settings)))
+    elif args.cmd == "auto-research":
+        from ei.auto import run as run_auto
+
+        print(json.dumps(run_auto(settings, max_companies=args.max), default=str))
     elif args.cmd == "options":
         from ei.options import run_all as run_options
 

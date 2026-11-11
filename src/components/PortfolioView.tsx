@@ -44,15 +44,22 @@ const pct = (v: number, d = 1) => `${(v * 100).toFixed(d)}%`;
 const date = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
 
 /** Group the many ways companies name regions into a few buckets everyone understands. */
+const US = "United States";
+const AMERICAS_ALL = "Americas (US not split out)";
+const INTL = "International, not split further";
+const ORDER = [US, AMERICAS_ALL, "Canada & Latin America", "Europe, Middle East & Africa", "China & Hong Kong", "Rest of Asia-Pacific", INTL];
 function bucket(label: string): string {
-  const l = label.toLowerCase();
+  const l = label.toLowerCase().replace(/\(.*?\)/g, " ").replace(/[“”"]/g, "").trim();
+  if (/non-?\s?u\.?s|outside the u|international|foreign|rest of (the )?world|^row$|^other\b(?!.*(americ|europ|asia|pacific|african))|all other|int[’']l|emerging|developed|high-growth/.test(l)) return INTL;
   if (/china|hong kong/.test(l)) return "China & Hong Kong";
-  if (/japan|taiwan|korea|asia|apac|pacific|india|singapore|australia/.test(l)) return "Asia-Pacific";
-  if (/europe|emea|germany|united kingdom|\buk\b|france|ireland|netherlands|switzerland|middle east|africa/.test(l)) return "Europe, Middle East & Africa";
-  if (/^(the )?(u\.?s\.?a?\.?|united states|domestic)\b|in the u\.s|^us$/.test(l)) return "United States";
-  if (/americas|north america|canada|latin|mexico|brazil/.test(l)) return "Americas (incl. or excl. US, as reported)";
-  return "Other / international (not split further)";
+  if (/^(the )?americas$|^north america|^americas\s*\d*$|in north america|us & canada/.test(l)) return AMERICAS_ALL;
+  if (/americas|canada|latin|mexico|brazil|chile|peru|caribbean|argentina|colombia/.test(l)) return "Canada & Latin America";
+  if (/^(in )?(the )?(u\.?\s?s\.?a?\.?|united states|domestic)(\s|$)/.test(l)) return US;
+  if (/europe|emea|eame|middle east|africa|germany|united kingdom|^u\.?k\.?$|france|ireland|netherlands|switzerland|spain|italy|norway|israel|russia|libya|guinea|sweden|denmark|belgium/.test(l)) return "Europe, Middle East & Africa";
+  if (/asia|apac|pacific|japan|taiwan|korea|india|singapore|australia|indonesia|malaysia|thailand|vietnam|philippines/.test(l)) return "Rest of Asia-Pacific";
+  return INTL;
 }
+const byOrder = (a: { label: string }, b: { label: string }) => ORDER.indexOf(a.label) - ORDER.indexOf(b.label);
 
 function Bars({ rows }: { rows: { label: string; share: number }[] }) {
   return (
@@ -139,7 +146,10 @@ export default function PortfolioView() {
   const ret1y = retW > 0.5 ? retRows.reduce((a, r) => a + w(r.value) * (r.h!.ret1y as number), 0) / retW : null;
 
   const sectors = new Map<string, number>();
-  for (const r of priced) sectors.set(r.h?.sector ?? "Unclassified", (sectors.get(r.h?.sector ?? "Unclassified") ?? 0) + w(r.value));
+  for (const r of priced) {
+    const k = (r.h?.sector ?? "Unclassified").replace(/ sector$/i, "");
+    sectors.set(k, (sectors.get(k) ?? 0) + w(r.value));
+  }
   const sectorRows = [...sectors.entries()].map(([label, share]) => ({ label, share })).sort((a, b) => b.share - a.share);
 
   const regions = new Map<string, number>();
@@ -149,7 +159,9 @@ export default function PortfolioView() {
     regionCovered += w(r.value);
     for (const g of r.h.regions) regions.set(bucket(g.label), (regions.get(bucket(g.label)) ?? 0) + w(r.value) * g.share);
   }
-  const regionRows = [...regions.entries()].map(([label, share]) => ({ label, share: regionCovered ? share / regionCovered : 0 })).sort((a, b) => b.share - a.share);
+  const regionRows = [...regions.entries()].map(([label, share]) => ({ label, share: regionCovered ? share / regionCovered : 0 })).sort(byOrder);
+  const usShare = regionRows.find((r) => r.label === US)?.share ?? 0;
+  const splitUs = !regionRows.some((r) => r.label === AMERICAS_ALL);
 
   const upcoming = priced
     .filter((r) => r.h?.nextEarnings)
@@ -299,6 +311,11 @@ export default function PortfolioView() {
                 </h2>
                 {regionRows.length ? (
                   <>
+                    {splitUs && (
+                      <p className="mt-3 text-sm">
+                        About <b>{pct(usShare, 0)}</b> of the sales behind your holdings come from the US and <b>{pct(1 - usShare, 0)}</b> from abroad.
+                      </p>
+                    )}
                     <Bars rows={regionRows} />
                     <p className="mt-2 text-xs text-muted">
                       Revenue by region from each company&apos;s 10-K, weighted by your holdings. Covers {pct(regionCovered, 0)} of the portfolio; companies split regions

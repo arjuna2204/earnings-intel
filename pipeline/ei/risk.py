@@ -364,13 +364,14 @@ def run_company(db: Db, company: dict[str, Any], market: Series) -> dict[str, An
     return res
 
 
-def run_all(settings: Any, tickers: list[str] | None = None) -> dict[str, Any]:
+def run_all(settings: Any, tickers: list[str] | None = None, missing_only: bool = False) -> dict[str, Any]:
     db = Db(settings.supabase_url, settings.supabase_secret_key)
+    have = {r["cik"] for r in db.select_all("risk_stats", {"select": "cik"})} if missing_only else set()
     etfs = {r["sector_etf"] for r in db.select("companies", {"select": "sector_etf"}) if r.get("sector_etf")} | {"SPY"}
     market = _series(db, "SPY")
     out: dict[str, Any] = {}
     for c in db.select("companies", {"select": "cik,ticker,sector_etf"}):
-        if c["ticker"] in etfs or (tickers and c["ticker"] not in tickers):
+        if c["ticker"] in etfs or (tickers and c["ticker"] not in tickers) or c["cik"] in have:
             continue
         try:
             res = run_company(db, c, market)

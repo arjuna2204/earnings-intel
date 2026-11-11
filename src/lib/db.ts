@@ -5,6 +5,16 @@ import "server-only";
  * Vercel env vars; the browser never sees it. Every table has RLS on with no public policies.
  */
 
+import { prettyName } from "@/lib/names";
+
+// Tables whose `name` column is an SEC registrant name: shown as people write it.
+const NAME_TABLES = new Set(["companies", "lite_companies", "tickers", "universe", "earnings_recaps"]);
+function tidy<T>(table: string, rows: T[]): T[] {
+  if (!NAME_TABLES.has(table)) return rows;
+  for (const r of rows as Record<string, unknown>[]) if (r && typeof r.name === "string") r.name = prettyName(r.name);
+  return rows;
+}
+
 function config() {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SECRET_KEY;
@@ -27,7 +37,7 @@ async function check(res: Response, what: string): Promise<Response> {
 export async function select<T>(table: string, params: Record<string, string>): Promise<T[]> {
   const { base, headers } = config();
   const res = await fetch(`${base}/${table}?${new URLSearchParams(params)}`, { headers, cache: "no-store" });
-  return (await check(res, `select ${table}`)).json() as Promise<T[]>;
+  return tidy(table, (await (await check(res, `select ${table}`)).json()) as T[]);
 }
 
 /** GET all rows, paging past PostgREST's 1,000-row response limit. */
@@ -40,7 +50,7 @@ export async function selectAll<T>(table: string, params: Record<string, string>
       cache: "no-store",
     });
     const rows = (await (await check(res, `select ${table}`)).json()) as T[];
-    out.push(...rows);
+    out.push(...tidy(table, rows));
     if (rows.length < pageSize) return out;
   }
 }

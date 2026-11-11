@@ -98,7 +98,7 @@ def _latest(nc: Any, metric: str) -> float | None:
 
 def snapshot(sec: SecClient, cik: int, price: float | None, price_date: str | None) -> dict[str, Any]:
     sub = sec.submissions(cik)
-    sector = classify(sub.get("sic"))
+    sector = classify(sub.get("sic"), (sub.get("tickers") or [None])[0])
     facts = sec.companyfacts(cik)
     nc = derive_all(
         normalize(facts, sub.get("fiscalYearEnd") or "1231", sector.pack, min_fiscal_year=date.today().year - 4),
