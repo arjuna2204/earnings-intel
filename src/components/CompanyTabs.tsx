@@ -7,7 +7,7 @@ import { useEffect, useRef } from "react";
 import { resolveTab, TABS, VIEWS, viewHref } from "@/lib/tabs";
 
 /** Five tabs in one sticky bar, with the current tab's views as pills underneath. */
-export default function CompanyTabs() {
+export default function CompanyTabs({ hide = [] }: { hide?: string[] }) {
   const path = usePathname();
   const params = useSearchParams();
   const { tab, view } = resolveTab(params.get("tab"), params.get("view"));
@@ -15,7 +15,7 @@ export default function CompanyTabs() {
   useEffect(() => {
     active.current?.scrollIntoView({ block: "nearest", inline: "center" });
   }, [tab]);
-  const views = VIEWS[tab];
+  const views = VIEWS[tab].filter((v) => !hide.includes(v.key));
   return (
     <nav className="-mx-4 border-b border-border bg-background/90 px-4 backdrop-blur" aria-label="Company sections">
       <ul className="-mb-px flex gap-6 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

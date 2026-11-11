@@ -3,6 +3,7 @@ import Link from "next/link";
 import AnalyzePanel from "@/components/AnalyzePanel";
 import CompanyTabs from "@/components/CompanyTabs";
 import { resolveTab } from "@/lib/tabs";
+import { CBOE_ON } from "@/lib/flags";
 import StreetView, { type EstimateRow } from "@/components/StreetView";
 import type { FieldRow } from "@/components/ValuationCharts";
 import FinancialsView from "@/components/FinancialsView";
@@ -160,7 +161,7 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
 
       {/* sticky here, not inside a wrapper, so the tabs stay in view while scrolling the whole page */}
       <div className="sticky top-14 z-20 mt-4">
-        <CompanyTabs />
+        <CompanyTabs hide={CBOE_ON ? [] : ["options"]} />
       </div>
 
       <div className="mt-6">

@@ -122,8 +122,9 @@ def run(db: Db, years: int = 6) -> dict[str, Any]:
         ("treasury", lambda c: treasury(c, years)),
         ("nyfed", lambda c: nyfed_effr(c, since)),
         ("bls", lambda c: bls(c, years)),
-        ("cboe_vix", lambda c: vix(c, since)),
     ]
+    if os.environ.get("CBOE_DATA") != "off":
+        sources.append(("cboe_vix", lambda c: vix(c, since)))
     if key:
         sources += [(f"fred:{s}", lambda c, s=s: fred(c, key, s, since)) for s in FRED_ONLY]
     else:

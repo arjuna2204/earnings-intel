@@ -97,6 +97,10 @@ def main(argv: list[str] | None = None) -> int:
     br.add_argument("period_b")
     br.add_argument("--job-id", type=int, default=None)
     args = p.parse_args(argv)
+    # Cboe delayed quotes need Cboe's approval for public use; CBOE_DATA=off stops fetching them
+    if os.environ.get("CBOE_DATA") == "off" and args.cmd in ("options", "lite"):
+        print(json.dumps({"skipped": "CBOE_DATA=off"}))
+        return 0
 
     settings = Settings.from_env()
     if args.cmd == "tickers":

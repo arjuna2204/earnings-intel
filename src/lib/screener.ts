@@ -1,4 +1,5 @@
 import "server-only";
+import { CBOE_ON } from "@/lib/flags";
 import { selectAll } from "@/lib/db";
 import { etfName } from "@/lib/etfs";
 import { getAllFlags, hiddenFields, sanitizeValuation, type QualityFlag } from "@/lib/quality";
@@ -109,7 +110,7 @@ export async function screenRows(): Promise<ScreenRow[]> {
         dcfUpside: dcfHidden ? null : num(dcfBy.get(c.cik)),
         nextEarnings: next,
         // the options-implied earnings-day move only applies to the report the options were priced for
-        expectedMove: o?.edate && next && o.edate === next ? num(o.move) : null,
+        expectedMove: CBOE_ON && o?.edate && next && o.edate === next ? num(o.move) : null,
         basic: false,
       };
     });
@@ -117,7 +118,7 @@ export async function screenRows(): Promise<ScreenRow[]> {
   // plausibility guards for basic rows (they skip the full daily checks)
   const sane = (v: number | null, lo: number, hi: number) => (v != null && v > lo && v < hi ? v : null);
   const basic = lite
-    .filter((l) => !researched.has(l.ticker) && num(l.snapshot.price))
+    .filter((l) => CBOE_ON && !researched.has(l.ticker) && num(l.snapshot.price))
     .map((l): ScreenRow | null => {
       const v = l.snapshot;
       // same guard as the pipeline, for rows read before it existed: > 80× sales = share-count error
@@ -195,7 +196,7 @@ export async function upcomingEarnings(days = 7): Promise<CalendarRow[]> {
         epsEstimate: e.eps_estimate != null ? Number(e.eps_estimate) : null,
         rank: u?.rank ?? null,
         loaded: Boolean(c),
-        expectedMove: o?.edate === e.report_date && typeof o?.move === "number" ? o.move : null,
+        expectedMove: CBOE_ON && o?.edate === e.report_date && typeof o?.move === "number" ? o.move : null,
         lastReport: e.last_report_date,
       };
     })
@@ -220,6 +221,9 @@ export type Recap = {
   guidance: { raised: number; lowered: number; maintained: number } | null;
 };
 
+// expected moves come from Cboe options data; basic rows' price moves from Cboe quotes
+const cboeGate = (r: Recap): Recap => (CBOE_ON ? r : { ...r, expected_move: null });
+
 const RECAP_COLS =
   "ticker,name,report_date,researched,quarter,eps_estimate,eps_actual,eps_surprise,expected_move,move,move_from,move_to,revenue,revenue_growth,guidance";
 
@@ -229,7 +233,7 @@ export async function recentRecaps(days = 7): Promise<Recap[]> {
   const rows = await selectAll<Recap>("earnings_recaps", { report_date: `gte.${since}`, select: RECAP_COLS, order: "report_date.desc" }).catch(
     () => [] as Recap[],
   );
-  return rows.filter((r) => r.move != null || r.eps_actual != null);
+  return rows.filter((r) => r.move != null || r.eps_actual != null).map(cboeGate).filter((r) => CBOE_ON || r.researched);
 }
 
 export async function latestRecap(ticker: string, days = 14): Promise<Recap | null> {
@@ -240,5 +244,6 @@ export async function latestRecap(ticker: string, days = 14): Promise<Recap | nu
     select: RECAP_COLS,
     order: "report_date.desc",
   }).catch(() => [] as Recap[]);
-  return rows.find((r) => r.move != null || r.eps_actual != null) ?? null;
+  const r = rows.find((x) => x.move != null || x.eps_actual != null);
+  return r ? cboeGate(r) : null;
 }

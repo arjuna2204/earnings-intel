@@ -1,4 +1,5 @@
 import "server-only";
+import { CBOE_ON } from "@/lib/flags";
 import { select } from "@/lib/db";
 
 type Num = number | null;
@@ -71,6 +72,7 @@ export async function getRisk(cik: number): Promise<Risk | null> {
 }
 
 export async function getOptions(cik: number): Promise<{ result: Options; as_of: string } | null> {
+  if (!CBOE_ON) return null; // see lib/flags.ts
   const rows = await select<{ result: Options; as_of: string }>("options_snapshot", { cik: `eq.${cik}`, select: "result,as_of" });
   return rows[0] ?? null;
 }

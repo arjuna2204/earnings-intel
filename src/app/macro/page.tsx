@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import MacroChart from "@/components/MacroCharts";
 import { fmtMacro, getMacro, MACRO, reading, SECTOR_MACRO } from "@/lib/macro";
 import { etfName } from "@/lib/etfs";
+import { CBOE_ON } from "@/lib/flags";
 
 export const metadata: Metadata = { title: "The economy" };
 
@@ -23,7 +24,7 @@ export default function MacroPage() {
 
 async function Macro() {
   await connection();
-  const series = await getMacro(ORDER, 5);
+  const series = await getMacro(CBOE_ON ? ORDER : ORDER.filter((id) => id !== "VIXCLS"), 5);
   const by = new Map(series.map((s) => [s.id, s]));
   return (
     <>
