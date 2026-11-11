@@ -234,7 +234,12 @@ def _metric_table(
 
 
 def run_brief(
-    settings: Settings, ticker: str, period_a: str, period_b: str, job_id: int | None = None
+    settings: Settings,
+    ticker: str,
+    period_a: str,
+    period_b: str,
+    job_id: int | None = None,
+    skip_calls: bool = False,
 ) -> dict[str, Any]:
     db = Db(settings.supabase_url, settings.supabase_secret_key)
     job = Job(db, "brief", ticker.upper(), job_id)
@@ -365,7 +370,7 @@ def run_brief(
                 "select": "result",
             },
         )
-        if not cc:
+        if not cc and not skip_calls:
             try:
                 compare_calls(settings, ticker, la, lb)
                 cc = db.select(

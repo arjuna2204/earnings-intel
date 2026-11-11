@@ -280,7 +280,7 @@ async function CallTab({
   b?: string;
 }) {
   const done = await analyzedCalls(company.cik);
-  const { ea, eb, la, lb, options } = quarterChoice(events, a, b, done.quarters);
+  const { ea, eb, la, lb, options } = quarterChoice(events, a, b, done.quarters, done.pairs);
 
   const [comparison, job, trend] = await Promise.all([
     getComparison(company.cik, la, lb),
@@ -307,7 +307,13 @@ async function CallTab({
   );
 }
 
-function quarterChoice(events: Awaited<ReturnType<typeof getEvents>>, a?: string, b?: string, analyzed: string[] = []) {
+function quarterChoice(events: Awaited<ReturnType<typeof getEvents>>, a?: string, b?: string, analyzed: string[] = [], ready: { a: string; b: string }[] = []) {
+  // With nothing picked, open on the newest pair that's already written if it's newer than the report dates on file.
+  if (!a && !b) {
+    const newest = [...ready].sort((x, y) => y.b.localeCompare(x.b))[0];
+    const top = events.length ? [...events].sort((x, y) => y.report_date.localeCompare(x.report_date))[0] : null;
+    if (newest && (!top || newest.b >= qLabel(top.fiscal_year, top.fiscal_quarter))) [a, b] = [newest.a, newest.b];
+  }
   // Quarter choices: reported quarters (once report dates are loaded), else the last 12 fiscal quarters.
   const quarters: [number, number][] = events.length
     ? [...events]
@@ -341,7 +347,7 @@ const big = (v: number | null | undefined) =>
 
 async function BriefTab({ company, events, a, b, mode = "brief" }: { company: Company; events: Events; a?: string; b?: string; mode?: "brief" | "filings" }) {
   const ready = await briefPairs(company.cik);
-  const { ea, eb, la, lb, options } = quarterChoice(events, a, b);
+  const { ea, eb, la, lb, options } = quarterChoice(events, a, b, [], ready);
   const [brief, job] = await Promise.all([getBrief(company.cik, la, lb), getLatestBriefJob(company.ticker, la, lb)]);
   const activeJob = job && ["queued", "running", "failed", "deferred"].includes(job.status) ? job : null;
   const panel = (
