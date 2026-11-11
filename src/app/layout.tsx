@@ -4,6 +4,7 @@ import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import ThemeToggle from "@/components/ThemeToggle";
 import ModeToggle from "@/components/ModeToggle";
+import { Analytics } from "@vercel/analytics/next";
 import HeaderSearch from "@/components/HeaderSearch";
 import WatchAlerts from "@/components/WatchAlerts";
 import { APP_NAME } from "@/lib/app";
@@ -67,6 +68,19 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </div>
         </header>
         {children}
+        <footer className="mt-auto border-t border-border">
+          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-5 gap-y-1 px-4 py-5 text-xs text-muted">
+            <span>Educational research, not investment advice. Data may be delayed or contain errors.</span>
+            <Link href="/terms" className="hover:text-foreground hover:underline">
+              Terms &amp; data sources
+            </Link>
+            <Link href="/status" className="hover:text-foreground hover:underline">
+              Status
+            </Link>
+          </div>
+        </footer>
+        {/* anonymous, cookie-free page views (Vercel Web Analytics); off until enabled in the Vercel project */}
+        <Analytics />
       </body>
     </html>
   );
