@@ -366,9 +366,9 @@ export default function PriceChart({
                 if (r == null) return null;
                 const d = pct - r;
                 return (
-                  <span key={l.ticker} className="inline-flex items-baseline gap-1.5">
+                  <span key={l.ticker}>
                     {/* doubles as the chart legend: same dashed line and colour as on the chart */}
-                    <svg width="16" height="4" className="shrink-0 self-center" aria-hidden>
+                    <svg width="16" height="4" className="mr-1.5 inline-block align-middle" aria-hidden>
                       <line x1="0" y1="2" x2="16" y2="2" stroke={l.color} strokeWidth="2" strokeDasharray="4 3" />
                     </svg>
                     <span className={`font-medium ${d >= 0 ? "text-up" : "text-down"}`}>

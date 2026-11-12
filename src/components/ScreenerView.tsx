@@ -276,7 +276,7 @@ export default function ScreenerView({ rows }: { rows: ScreenRow[] }) {
           ))}
         </div>
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-1.5 text-sm text-muted">
+          <label className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-sm text-muted">
             <input
               type="checkbox"
               checked={onlyFull}
@@ -302,7 +302,7 @@ export default function ScreenerView({ rows }: { rows: ScreenRow[] }) {
 
       <p className="mt-2 text-xs text-muted">
         {shown.length} of {rows.length} companies{p.hint ? ` · ${p.hint}` : ""}.
-        Tap a column to sort.
+        <span className="hidden sm:inline">Tap a column to sort.</span>
       </p>
 
       {/* phones: one card per company with three key numbers, and a sort menu instead of column headers */}
