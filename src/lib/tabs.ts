@@ -1,13 +1,13 @@
 // Company page sections (shared by the server page and the browser tab bar).
 // Five tabs; some have views (pills under the tab bar). Old tab links (?tab=call, ?tab=street, ...)
 // still work: each old key is now a view.
-export const TABS = [
+export const TABS: readonly { key: "overview" | "earnings" | "financials" | "valuation" | "risk"; label: string; short?: string }[] = [
   { key: "overview", label: "Overview" },
   { key: "earnings", label: "Earnings" },
   { key: "financials", label: "Financials" },
   { key: "valuation", label: "Valuation" },
-  { key: "risk", label: "Risk & Ownership" },
-] as const;
+  { key: "risk", label: "Risk & Ownership", short: "Risk" },
+];
 
 export type TabKey = (typeof TABS)[number]["key"];
 

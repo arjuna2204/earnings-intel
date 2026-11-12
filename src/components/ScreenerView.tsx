@@ -225,7 +225,7 @@ export default function ScreenerView({ rows }: { rows: ScreenRow[] }) {
         aria-label={`Sort by ${typeof label === "string" ? label : String(key)}`}
       >
         {label}
-        <span className="w-2 text-[10px]" aria-hidden>
+        <span className="w-2 text-xs" aria-hidden>
           {sort.key === key ? (sort.desc ? "▼" : "▲") : ""}
         </span>
       </button>
@@ -327,7 +327,7 @@ export default function ScreenerView({ rows }: { rows: ScreenRow[] }) {
                             desc: s.key === c.key ? !s.desc : true,
                           }))
                         }
-                        className="w-3 text-[10px] hover:text-foreground"
+                        className="w-3 text-xs hover:text-foreground"
                         aria-label={`Sort by ${c.label}`}
                       >
                         {sort.key === c.key ? (sort.desc ? "▼" : "▲") : "↕"}
@@ -349,7 +349,7 @@ export default function ScreenerView({ rows }: { rows: ScreenRow[] }) {
                       <span className="font-semibold">{r.ticker}</span>
                       {r.basic && (
                         <span
-                          className="ml-1.5 rounded-full border border-border px-1.5 py-px text-[10px] text-muted"
+                          className="ml-1.5 rounded-full border border-border px-1.5 py-px text-xs text-muted"
                           title="Basic data only. Open to load full research."
                         >
                           Basic

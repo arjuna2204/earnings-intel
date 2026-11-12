@@ -45,7 +45,7 @@ export default function HeaderSearch() {
           <path d="m20 20-3.5-3.5" />
         </svg>
         <span className="hidden sm:inline">Search</span>
-        <kbd className="hidden rounded border border-border px-1.5 text-[10px] leading-4 sm:inline">/</kbd>
+        <kbd className="hidden rounded border border-border px-1.5 text-xs leading-4 sm:inline">/</kbd>
       </button>
       {open && (
         <div className="fixed inset-x-3 top-16 z-50 sm:absolute sm:inset-x-auto sm:right-0 sm:top-11 sm:w-[26rem]">

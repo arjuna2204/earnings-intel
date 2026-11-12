@@ -145,7 +145,7 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
             href={`/compare?a=${encodeURIComponent(company.ticker)}`}
             className="rounded-full border border-border px-4 py-2 text-sm font-medium hover:bg-card"
           >
-            Compare
+            Compare with…
           </Link>
           <AnalyzePanel ticker={company.ticker} initialJob={job?.status === "running" || job?.status === "queued" ? job : null} mode="refresh" />
         </div>

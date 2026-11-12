@@ -6,7 +6,7 @@
 :root {
   --background: #ffffff;
   --foreground: #0b0d0e;
-  --muted: #6b7275;
+  --muted: #5c6367;
   --card: #f6f7f8;
   --border: rgba(0, 0, 0, 0.08);
   --up: #00a805;
@@ -17,7 +17,7 @@
 .dark {
   --background: #000000;
   --foreground: #f5f7f8;
-  --muted: #8e9599;
+  --muted: #a4abaf;
   --card: #111415;
   --border: rgba(255, 255, 255, 0.09);
   --up: #00c805;
@@ -36,6 +36,9 @@
   --color-accent: var(--accent);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* smallest text: 13px, not 12px — fine print still has to be readable */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.2rem;
 }
 
 body {

@@ -189,7 +189,7 @@ export default function PeersView({
                         <button
                           key={r}
                           onClick={() => setOpenFact(r)}
-                          className="px-px text-[11px] font-semibold text-accent hover:underline"
+                          className="px-px text-xs font-semibold text-accent hover:underline"
                         >
                           {order.indexOf(r) + 1}
                           {k < c.refs.length - 1 ? "," : ""}
@@ -493,7 +493,7 @@ function RankTable({
                         {me &&
                           ranks[c.key]?.[r.ticker] &&
                           Object.keys(ranks[c.key]).length > 2 && (
-                            <span className="block text-[11px] font-normal text-muted">
+                            <span className="block text-xs font-normal text-muted">
                               #{ranks[c.key][r.ticker]} of{" "}
                               {Object.keys(ranks[c.key]).length}
                             </span>
@@ -587,7 +587,7 @@ function RankStrips({
                     style={{ left: `${pos(p.v)}%` }}
                   >
                     {hover === `${c.key}:${p.t}` && (
-                      <span className="absolute bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-1.5 py-0.5 text-[11px] font-semibold text-background">
+                      <span className="absolute bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-1.5 py-0.5 text-xs font-semibold text-background">
                         {p.t} {fmt(p.v, c.fmt)}
                       </span>
                     )}

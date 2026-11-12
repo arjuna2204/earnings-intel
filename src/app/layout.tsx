@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import MobileNav from "@/components/MobileNav";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -32,15 +33,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className="flex min-h-full flex-col">
+      <body className="flex min-h-full flex-col pb-16 sm:pb-0">
         <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur">
           <div className="page-wrap flex h-14 items-center gap-4">
             <Link href="/" className="shrink-0 whitespace-nowrap font-semibold tracking-tight">
               <span className="text-accent">●</span> {APP_NAME}
             </Link>
             <nav className="ml-auto flex items-center gap-1 text-sm">
-              <Link href="/compare" className="rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground">
-                Compare
+              <Link href="/compare" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground sm:block">
+                Compare stocks
               </Link>
               <Link href="/earnings" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground sm:block">
                 Earnings
@@ -62,6 +63,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </div>
         </header>
         {children}
+        <MobileNav />
         <footer className="mt-auto border-t border-border">
           <div className="page-wrap flex flex-wrap items-center gap-x-5 gap-y-1 py-5 text-xs text-muted">
             <span>Educational research, not investment advice. Data may be delayed or contain errors.</span>

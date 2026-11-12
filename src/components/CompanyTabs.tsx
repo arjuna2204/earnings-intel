@@ -17,8 +17,8 @@ export default function CompanyTabs({ hide = [] }: { hide?: string[] }) {
   }, [tab]);
   const views = VIEWS[tab].filter((v) => !hide.includes(v.key));
   return (
-    <nav className="-mx-4 border-b border-border bg-background/90 px-4 backdrop-blur" aria-label="Company sections">
-      <ul className="-mb-px flex gap-6 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <nav className="border-b border-border bg-background/90 backdrop-blur" aria-label="Company sections">
+      <ul className="-mb-px flex gap-5 overflow-x-auto [mask-image:linear-gradient(to_right,black_85%,transparent)] [scrollbar-width:none] sm:gap-6 sm:[mask-image:none] [&::-webkit-scrollbar]:hidden">
         {TABS.map((t) => (
           <li key={t.key} className="shrink-0">
             <Link
@@ -30,7 +30,14 @@ export default function CompanyTabs({ hide = [] }: { hide?: string[] }) {
                 tab === t.key ? "border-accent text-foreground" : "border-transparent text-muted hover:text-foreground"
               }`}
             >
-              {t.label}
+              {t.short ? (
+                <>
+                  <span className="sm:hidden">{t.short}</span>
+                  <span className="hidden sm:inline">{t.label}</span>
+                </>
+              ) : (
+                t.label
+              )}
             </Link>
           </li>
         ))}
@@ -48,7 +55,7 @@ export default function CompanyTabs({ hide = [] }: { hide?: string[] }) {
                 }`}
               >
                 {v.label}
-                {v.pro && <span className="ml-1 text-[10px] uppercase text-muted">Pro</span>}
+                {v.pro && <span className="ml-1 text-xs text-muted">· detail</span>}
               </Link>
             </li>
           ))}

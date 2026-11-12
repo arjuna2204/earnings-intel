@@ -640,7 +640,7 @@ function Table({
                       {text ?? "Not reported"}
                     </span>
                     {w === mine && (
-                      <span className="ml-1.5 rounded-full bg-card px-1.5 py-0.5 text-[10px] font-medium text-foreground">
+                      <span className="ml-1.5 rounded-full bg-card px-1.5 py-0.5 text-xs font-medium text-foreground">
                         {winLabel}
                       </span>
                     )}

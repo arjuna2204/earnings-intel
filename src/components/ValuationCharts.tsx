@@ -39,10 +39,10 @@ export function FootballField({ rows, price }: { rows: FieldRow[]; price: number
                   <div className="absolute inset-y-0 w-px bg-foreground/80" style={{ left: `${pos(price)}%` }} />
                   <div className={`absolute top-2.5 h-2 rounded-full ${color}`} style={{ left: `${pos(r.lo)}%`, width: `${Math.max(pos(r.hi) - pos(r.lo), 0.8)}%` }} />
                   {r.mid != null && <div className="absolute top-1.5 h-4 w-0.5 rounded bg-foreground" style={{ left: `${pos(r.mid)}%` }} />}
-                  <span className="absolute -top-0.5 text-[11px] tabular-nums text-muted" style={{ left: `${pos(r.lo)}%`, transform: "translateX(-100%)", paddingRight: 4 }}>
+                  <span className="absolute -top-0.5 text-xs tabular-nums text-muted" style={{ left: `${pos(r.lo)}%`, transform: "translateX(-100%)", paddingRight: 4 }}>
                     {fmt(r.lo)}
                   </span>
-                  <span className="absolute -top-0.5 text-[11px] tabular-nums text-muted" style={{ left: `${pos(r.hi)}%`, paddingLeft: 4 }}>
+                  <span className="absolute -top-0.5 text-xs tabular-nums text-muted" style={{ left: `${pos(r.hi)}%`, paddingLeft: 4 }}>
                     {fmt(r.hi)}
                   </span>
                 </div>

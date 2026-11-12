@@ -544,7 +544,7 @@ function Topics({
               {[t.share_a, t.share_b].map((s, k) => (
                 <div
                   key={k}
-                  className="flex items-center gap-2 text-[11px] text-muted"
+                  className="flex items-center gap-2 text-xs text-muted"
                 >
                   <span className="w-8">{k === 0 ? "then" : "now"}</span>
                   <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-card">

@@ -39,7 +39,8 @@ export default function ModeToggle() {
           title={m === "simple" ? "The essentials, in plain English" : "Everything, including trader-level stats"}
           className={`rounded-full px-2.5 py-1 transition ${mode === m ? "bg-foreground text-background" : "text-muted hover:text-foreground"}`}
         >
-          {m === "simple" ? "Simple" : "Pro"}
+          <span className="hidden sm:inline">{m === "simple" ? "Essentials" : "Full detail"}</span>
+          <span className="sm:hidden">{m === "simple" ? "Basic" : "Full"}</span>
         </button>
       ))}
     </div>
