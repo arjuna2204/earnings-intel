@@ -120,7 +120,7 @@ async function Report() {
     `Earnings Intel — what to try (as of ${asOf} ET)`,
     full.length ? `Full research (Brief + earnings-call analysis): ${full.map((r) => r.ticker).join(", ")}` : null,
     valuation.length ? `Peers + bull/base/bear cases: ${valuation.map((r) => r.ticker).join(", ")}` : null,
-    basic.length ? `Financials, StreetView & DCF: ${basic.map((r) => r.ticker).join(", ")}` : null,
+    basic.length ? `Financials, Street estimates & DCF: ${basic.map((r) => r.ticker).join(", ")}` : null,
     recent.length ? `New in the last day: ${recent.map((r) => r.ticker).join(", ")}` : null,
     "Tip: compare any two at /compare",
   ]
@@ -153,12 +153,12 @@ async function Report() {
         {full.length ? full.map((r) => <Item key={r.ticker} r={r} />) : <Empty />}
       </Section>
 
-      <Section title="Peers & cases ready" note="Peer comparison and bull / base / bear cases, plus financials, StreetView and the DCF.">
+      <Section title="Peers & cases ready" note="Peer comparison and bull / base / bear cases, plus financials, Street estimates and the DCF.">
         {valuation.length ? valuation.map((r) => <Item key={r.ticker} r={r} />) : <Empty />}
       </Section>
 
       <Section
-        title="Financials, StreetView & DCF"
+        title="Financials, Street estimates & DCF"
         note="15 years of SEC financials, Street estimates and the DCF. Opening the Brief or Call tab for these pulls new data (uses part of the daily allowance)."
       >
         {basic.map((r) => (

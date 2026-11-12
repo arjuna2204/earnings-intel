@@ -38,7 +38,7 @@ export default function CompanyTabs({ hide = [] }: { hide?: string[] }) {
       {views.length > 1 && (
         <ul className="flex gap-1 overflow-x-auto pb-2 pt-1 [scrollbar-width:none]" aria-label="Views">
           {views.map((v) => (
-            <li key={v.key} className={`shrink-0 ${v.pro ? "pro-only" : ""}`}>
+            <li key={v.key} className="shrink-0">
               <Link
                 href={viewHref(path, v.key)}
                 scroll={false}
@@ -48,7 +48,6 @@ export default function CompanyTabs({ hide = [] }: { hide?: string[] }) {
                 }`}
               >
                 {v.label}
-                {v.pro && <span className="ml-1 text-[10px] uppercase text-muted">Pro</span>}
               </Link>
             </li>
           ))}

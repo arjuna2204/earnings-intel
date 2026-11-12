@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import AnalyzePanel from "@/components/AnalyzePanel";
+import PriceStrip from "@/components/PriceStrip";
 import CompanyTabs from "@/components/CompanyTabs";
 import { resolveTab } from "@/lib/tabs";
 import { CBOE_ON } from "@/lib/flags";
@@ -32,7 +33,7 @@ import { getDcf } from "@/lib/dcf";
 import { getLatestPeersJob, getPeerComparison, getPeerSet } from "@/lib/peers";
 import { buildExtras } from "@/lib/brief-extras";
 import { figureText, releaseFigure, type StreetRow } from "@/lib/figures";
-import FilingsView from "@/components/FilingsView";
+import FilingsView, { RiskFactorsView, type RiskSummary } from "@/components/FilingsView";
 import { briefPairs, getBrief, getCases, getDodges, getLatestBriefJob, getRiskChanges, getTakes, type Brief } from "@/lib/filings";
 import { select, selectAll } from "@/lib/db";
 import OwnershipView from "@/components/OwnershipView";
@@ -145,42 +146,45 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
           >
             Compare
           </Link>
-          <AnalyzePanel ticker={company.ticker} initialJob={job?.status === "running" || job?.status === "queued" ? job : null} mode="refresh" />
+          {/* no "Refresh data" button for visitors (data updates daily on its own); progress shows only while an update runs */}
+          {(job?.status === "running" || job?.status === "queued") && <AnalyzePanel ticker={company.ticker} initialJob={job} mode="refresh" />}
         </div>
       </header>
       <Suspense fallback={null}>
         <DataInfo company={company} priceDate={prices.at(-1)?.date ?? company.valuation?.price_date ?? null} filings={filings} />
       </Suspense>
       {company.history_note && <p className="mt-3 text-sm text-muted">ⓘ {company.history_note}</p>}
-      {company.sector_note && (
-        <p className="mt-3 rounded-xl border border-border bg-card px-4 py-3 text-sm">
-          <b>Sector check:</b> {company.sector_note}. Using general metrics for now — tell Claude if a sector pack should apply.
-        </p>
-      )}
 
       {/* sticky here, not inside a wrapper, so the tabs stay in view while scrolling the whole page */}
       <div className="sticky top-14 z-20 mt-4">
         <CompanyTabs hide={CBOE_ON ? [] : ["options"]} />
       </div>
 
-      <div className="mt-6">
-        <PriceChart
-          ticker={company.ticker}
-          prices={prices}
-          defaults={compareDefaults}
-          choices={compareChoices}
-          markers={markers}
-          currencySymbol="$"
-          markerNote={events.length ? "○ = earnings report · tap to open that call" : "○ = 10-K / 10-Q filed"}
-          emptyNote={
-            job?.status === "deferred"
-              ? "The price download was paused by the free price source's hourly limit (50 requests/hour). It retries automatically within 6 hours; per-share history is split-adjusted once prices arrive."
-              : undefined
-          }
-        />
-      </div>
+      {/* the full chart and key numbers on Overview; other tabs get a slim price line so their content starts right away */}
+      {view === "overview" ? (
+        <>
+          <div className="mt-6">
+            <PriceChart
+              ticker={company.ticker}
+              prices={prices}
+              defaults={compareDefaults}
+              choices={compareChoices}
+              markers={markers}
+              currencySymbol="$"
+              markerNote={events.length ? "○ = earnings report · tap to open that call" : "○ = 10-K / 10-Q filed"}
+              emptyNote={
+                job?.status === "deferred"
+                  ? "The price download was paused by the free price source's hourly limit (50 requests/hour). It retries automatically within 6 hours; per-share history is split-adjusted once prices arrive."
+                  : undefined
+              }
+            />
+          </div>
 
-      <ValuationStrip company={company} />
+          <ValuationStrip company={company} />
+        </>
+      ) : (
+        <PriceStrip ticker={company.ticker} prices={prices} valuation={company.valuation} />
+      )}
 
       <div className="mt-6">
         <Suspense key={`${view}-${sp.a ?? ""}-${sp.b ?? ""}`} fallback={<TabSkeleton />}>
@@ -200,11 +204,9 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
           <DocSearch cik={company.cik} ticker={company.ticker} filingLinks={Object.fromEntries(filings.map((f) => [f.accession, f.url]))} />
         )}
         {view === "call" && <CallTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />}
-        {view === "filings" && (
-          <BriefTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} mode="filings" />
-        )}
         {view === "peers" && <PeersTab company={company} prices={prices} />}
         {view === "riskstats" && <RiskTab company={company} />}
+        {view === "riskfactors" && <RiskFactorsTab company={company} />}
         {view === "options" && (
           <OptionsTab company={company} />
         )}
@@ -340,7 +342,26 @@ const usd = (v: number | null | undefined) => (v === null || v === undefined ? "
 const big = (v: number | null | undefined) =>
   v === null || v === undefined ? "—" : Math.abs(v) >= 1e9 ? `$${(v / 1e9).toFixed(1)}B` : `$${(v / 1e6).toFixed(0)}M`;
 
-async function BriefTab({ company, events, a, b, mode = "brief" }: { company: Company; events: Events; a?: string; b?: string; mode?: "brief" | "filings" }) {
+/** Risk tab → New risk factors: the latest annual-report comparison (code-matched redline) and the year-by-year trend. */
+async function RiskFactorsTab({ company }: { company: Company }) {
+  type Sum = RiskSummary & { factors_new: number; words_new: number; report_new: string };
+  const rows = await select<{ accession_new: string; accession_old: string; summary: Sum }>("risk_comparisons", {
+    cik: `eq.${company.cik}`,
+    select: "accession_new,accession_old,summary",
+  }).catch(() => []);
+  const byYear = new Map<string, RiskYear>();
+  for (const r of rows) {
+    const y = String(r.summary.report_new ?? "").slice(0, 4);
+    if (!y) continue;
+    byYear.set(y, { year: y, factors: r.summary.factors_new, added: r.summary.counts.added ?? 0, removed: r.summary.counts.removed ?? 0, escalated: r.summary.escalated, words: r.summary.words_new });
+  }
+  const riskYears = [...byYear.values()].sort((a, b) => a.year.localeCompare(b.year));
+  const latest = [...rows].sort((a, b) => String(b.summary.report_new ?? "").localeCompare(String(a.summary.report_new ?? "")))[0];
+  const risks = latest ? await getRiskChanges(company.cik, latest.accession_new, latest.accession_old) : [];
+  return <RiskFactorsView summary={latest?.summary ?? null} risks={risks} riskYears={riskYears} />;
+}
+
+async function BriefTab({ company, events, a, b }: { company: Company; events: Events; a?: string; b?: string }) {
   const ready = await briefPairs(company.cik);
   const { ea, eb, la, lb, options } = quarterChoice(events, a, b, [], ready);
   const [brief, job] = await Promise.all([getBrief(company.cik, la, lb), getLatestBriefJob(company.ticker, la, lb)]);
@@ -354,8 +375,8 @@ async function BriefTab({ company, events, a, b, mode = "brief" }: { company: Co
       initialJob={activeJob}
       hasResult={Boolean(brief)}
       endpoint="/api/brief"
-      tab={mode}
-      cta={mode === "brief" ? "Write brief" : "Analyze filings"}
+      tab="brief"
+      cta="Write brief"
       hint="Reads the 10-K/10-Q, earnings releases and call for both quarters. Takes about two minutes the first time; saved after that."
       doneStep="brief"
       ready={ready}
@@ -367,30 +388,8 @@ async function BriefTab({ company, events, a, b, mode = "brief" }: { company: Co
         {panel}
         <div className="rounded-2xl border border-dashed border-border p-8 text-center text-muted">
           The brief for the latest quarter is written automatically within a day or two of each report. To compare other quarters, pick two and
-          press <b className="text-foreground">{mode === "brief" ? "Write brief" : "Analyze filings"}</b>.
+          press <b className="text-foreground">Write brief</b>.
         </div>
-      </div>
-    );
-  }
-  if (mode === "filings") {
-    const [risks, riskHist] = await Promise.all([
-      brief.inputs.risk ? getRiskChanges(company.cik, brief.inputs.risk.accession_new, brief.inputs.risk.accession_old) : Promise.resolve([]),
-      select<{ summary: { counts: Record<string, number>; escalated: number; factors_new: number; words_new: number; report_new: string } }>("risk_comparisons", {
-        cik: `eq.${company.cik}`,
-        select: "summary",
-      }),
-    ]);
-    const byYear = new Map<string, RiskYear>();
-    for (const r of riskHist) {
-      const y = String(r.summary.report_new ?? "").slice(0, 4);
-      if (!y) continue;
-      byYear.set(y, { year: y, factors: r.summary.factors_new, added: r.summary.counts.added ?? 0, removed: r.summary.counts.removed ?? 0, escalated: r.summary.escalated, words: r.summary.words_new });
-    }
-    const riskYears = [...byYear.values()].sort((a, b) => a.year.localeCompare(b.year));
-    return (
-      <div className="space-y-8">
-        {panel}
-        <FilingsView inputs={brief.inputs} risks={risks} la={la} lb={lb} riskYears={riskYears} />
       </div>
     );
   }
@@ -429,7 +428,15 @@ async function BriefTab({ company, events, a, b, mode = "brief" }: { company: Co
   return (
     <div className="space-y-8">
       {panel}
-      <BriefView brief={brief} street={street} extras={extras} la={la} lb={lb} more={{ cik: company.cik, ticker: company.ticker, valuation, dodges, takes, cases }} />
+      <BriefView
+        brief={brief}
+        street={street}
+        extras={extras}
+        la={la}
+        lb={lb}
+        more={{ cik: company.cik, ticker: company.ticker, valuation, dodges, takes, cases }}
+        filings={<FilingsView inputs={brief.inputs} la={la} lb={lb} />}
+      />
     </div>
   );
 }

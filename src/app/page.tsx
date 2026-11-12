@@ -67,12 +67,12 @@ export default function Home() {
 }
 
 const FEATURES: [string, string][] = [
-  ["Brief", "What changed between two quarters — beat or miss, guidance, what drove the numbers, and where the call and the filing don't line up."],
-  ["StreetView", "Consensus estimates, beat history, forward valuation, bull / base / bear cases and a DCF you can download to Excel."],
-  ["Historical", "15 years of financials straight from SEC filings, charted quarter by quarter."],
-  ["Call", "Two earnings calls side by side: guidance changes, topics, tone, and the questions management dodged."],
-  ["Filings", "The company's own adjusted numbers, management's explanation of results, and a redline of new risk factors."],
-  ["Peers", "How it stacks up against competitors on valuation, growth, profitability and Street track record."],
+  ["Overview", "The price chart, what just happened at the last report, the bottom line, and four plain questions: is it growing, is it expensive, what did management say, how bumpy is the ride."],
+  ["Earnings", "What changed between two quarters — beat or miss, guidance, what drove the numbers, the company's own adjusted figures — and the earnings call side by side with the one before."],
+  ["Financials", "15 years of financials straight from SEC filings, by quarter and year, with revenue by segment and the debt schedule."],
+  ["Valuation", "Fair value from a DCF you can download to Excel, Street estimates and beat history, bull / base / bear cases, and how it compares with peers."],
+  ["Risk", "New risk factors the company added, how much the stock swings, and who owns it — funds, insiders and short sellers."],
+  ["Business", "Who its biggest customers and suppliers are, and who runs it and how they are paid."],
 ];
 
 async function Recent() {

@@ -68,12 +68,60 @@ const money = (v: number | null | undefined) =>
         ? `$${(v / 1e6).toFixed(0)}M`
         : `$${v.toFixed(2)}`;
 const SECTIONS = [
-  ["sv-value", "Valuation"],
+  ["sv-dcf", "DCF"],
+  ["sv-cases", "Bull · Base · Bear"],
+  ["sv-value", "Valuation ranges"],
   ["sv-estimates", "Estimates"],
   ["sv-guidance", "Guidance"],
-  ["sv-cases", "Bull · Base · Bear"],
-  ["sv-dcf", "DCF"],
 ] as const;
+
+/** The answer first: what the stock could be worth vs. today's price (DCF and the bull / base / bear range). */
+function FairValue({ d }: { d: StreetData }) {
+  const ps = d.dcf?.status === "ok" ? (d.dcf.result?.per_share ?? null) : null;
+  const sc = d.cases?.numbers.scenarios;
+  const val = (k: "bear" | "base" | "bull") => sc?.[k]?.value ?? null;
+  const [bear, base, bull] = [val("bear"), val("base"), val("bull")];
+  if (!d.price || (ps == null && base == null)) return null;
+  const vs = (v: number) => {
+    const u = v / d.price! - 1;
+    return (
+      <span className={`text-sm font-medium tabular-nums ${u >= 0 ? "text-up" : "text-down"}`}>
+        {u >= 0 ? "▲" : "▼"} {Math.abs(u * 100).toFixed(0)}% {u >= 0 ? "above" : "below"} the price
+      </span>
+    );
+  };
+  return (
+    <section aria-label="Fair value" className="rounded-2xl bg-card p-5">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Fair value · price ${d.price.toFixed(2)}</h2>
+      <div className="mt-3 grid gap-6 sm:grid-cols-2">
+        {ps != null && (
+          <a href="#sv-dcf" className="group block">
+            <span className="block text-sm text-muted">DCF value per share</span>
+            <span className="mt-1 flex flex-wrap items-baseline gap-x-3">
+              <span className="text-3xl font-semibold tabular-nums">${ps.toFixed(2)}</span>
+              {vs(ps)}
+            </span>
+            <span className="mt-1 block text-sm font-medium text-accent group-hover:underline">How it&apos;s built →</span>
+          </a>
+        )}
+        {base != null && (
+          <a href="#sv-cases" className="group block">
+            <span className="block text-sm text-muted">Base case (bull / bear range)</span>
+            <span className="mt-1 flex flex-wrap items-baseline gap-x-3">
+              <span className="text-3xl font-semibold tabular-nums">${base.toFixed(2)}</span>
+              {vs(base)}
+            </span>
+            <span className="mt-1 block text-sm text-muted tabular-nums">
+              {bear != null && bull != null ? `$${bear.toFixed(2)} – $${bull.toFixed(2)}` : ""}
+            </span>
+            <span className="mt-1 block text-sm font-medium text-accent group-hover:underline">See the three cases →</span>
+          </a>
+        )}
+      </div>
+      <p className="mt-4 text-xs text-muted">Models, not promises: each rests on the assumptions shown below.</p>
+    </section>
+  );
+}
 
 /** Forward-looking view: what the Street expects, what management guided, scenarios and the DCF. */
 export default function StreetView({ d }: { d: StreetData }) {
@@ -124,6 +172,8 @@ export default function StreetView({ d }: { d: StreetData }) {
         ))}
       </nav>
 
+      <FairValue d={d} />
+
       <section className="grid grid-cols-2 gap-x-8 gap-y-6 border-y border-border py-5 lg:grid-cols-4">
         <Stat
           label="Share price"
@@ -166,6 +216,18 @@ export default function StreetView({ d }: { d: StreetData }) {
       </section>
       {d.peerNote && <p className="-mt-8 text-xs text-muted">{d.peerNote}</p>}
 
+      {d.dcf && (
+        <div id="sv-dcf" className="scroll-mt-28">
+          <DcfView ticker={d.ticker} dcf={d.dcf} />
+        </div>
+      )}
+
+      {d.cases && (
+        <div id="sv-cases" className="scroll-mt-28">
+          <Cases cases={d.cases} refs={refs} />
+        </div>
+      )}
+
       {d.price && d.field.length > 0 && (
         <section id="sv-value" className="scroll-mt-28">
           <FootballField rows={d.field} price={d.price} />
@@ -183,6 +245,17 @@ export default function StreetView({ d }: { d: StreetData }) {
             current={d.peFwd}
           />
         )}
+
+      {d.price && d.epsNtm && d.epsNtm > 0 && (
+        <ValuationSlider
+          price={d.price}
+          epsNtm={d.epsNtm}
+          peerMedianPe={d.peerMedianPe}
+          ticker={d.ticker}
+        />
+      )}
+
+
 
       {d.streak.length > 1 && <Streak items={d.streak} />}
 
@@ -288,26 +361,8 @@ export default function StreetView({ d }: { d: StreetData }) {
         </section>
       )}
 
-      {d.price && d.epsNtm && d.epsNtm > 0 && (
-        <ValuationSlider
-          price={d.price}
-          epsNtm={d.epsNtm}
-          peerMedianPe={d.peerMedianPe}
-          ticker={d.ticker}
-        />
-      )}
 
-      {d.cases && (
-        <div id="sv-cases" className="scroll-mt-28">
-          <Cases cases={d.cases} refs={refs} />
-        </div>
-      )}
 
-      {d.dcf && (
-        <div id="sv-dcf" className="scroll-mt-28">
-          <DcfView ticker={d.ticker} dcf={d.dcf} />
-        </div>
-      )}
 
       {open && caseFacts[open] && (
         <SourcePanel title="Source" onClose={() => setOpen(null)}>

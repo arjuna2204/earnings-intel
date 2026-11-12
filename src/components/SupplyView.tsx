@@ -85,7 +85,7 @@ export default function SupplyView({
           <ul className="mt-3 divide-y divide-border">
             {dependents.map((d) => (
               <li key={d.ticker}>
-                <Link href={`/c/${d.ticker}?tab=risk&view=supply`} className="flex items-baseline justify-between gap-3 py-2.5 hover:text-accent">
+                <Link href={`/c/${d.ticker}?tab=business&view=supply`} className="flex items-baseline justify-between gap-3 py-2.5 hover:text-accent">
                   <span>
                     <span className="font-semibold">{d.ticker}</span> <span className="text-muted">{d.name}</span>
                   </span>

@@ -23,7 +23,10 @@ export default function BriefView({
   la,
   lb,
   more,
+  filings,
 }: {
+  /** The company's own figures and MD&A drivers ("From the filings"), formerly the Filings view. */
+  filings?: React.ReactNode;
   brief: Brief;
   street: StreetRow[];
   extras: BriefExtras;
@@ -73,10 +76,10 @@ export default function BriefView({
       </section>
 
       {more.cases?.numbers.scenarios && (
-        <Link href={`?tab=street`} className="flex items-center justify-between border-y border-border py-4 hover:text-accent">
+        <Link href={`?tab=valuation&view=street`} className="flex items-center justify-between border-y border-border py-4 hover:text-accent">
           <span>
             <span className="block font-semibold">Bull, base &amp; bear · DCF · estimates</span>
-            <span className="text-sm text-muted">Forward-looking views live in StreetView</span>
+            <span className="text-sm text-muted">Fair value and forward-looking views are on the Valuation tab</span>
           </span>
           <span aria-hidden>→</span>
         </Link>
@@ -130,12 +133,18 @@ export default function BriefView({
         </Section>
       )}
 
+      {filings && (
+        <Section id="filings" title="From the filings" subtitle="The company's own adjusted numbers and what management says drove the quarter.">
+          {filings}
+        </Section>
+      )}
+
       {claims("risks").length > 0 && (
         <Section
           id="risks"
           title="Risk factors"
           subtitle={[c.riskAdded && `${c.riskAdded} added`, c.riskRemoved && `${c.riskRemoved} removed`, c.escalated && `${c.escalated} reworded more strongly`].filter(Boolean).join(" · ") || undefined}
-          more={{ href: `?tab=filings&a=${la}&b=${lb}`, label: "Full redline" }}
+          more={{ href: `?tab=risk&view=riskfactors`, label: "Full redline" }}
         >
           <ClaimRows claims={claims("risks")} refs={refs} />
         </Section>

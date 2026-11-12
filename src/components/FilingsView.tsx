@@ -16,19 +16,16 @@ type Panel = {
   label?: string;
 } | null;
 
-/** Filings tab: company-reported (non-GAAP) figures, MD&A drivers, and the risk-factor redline. */
+/** "From the filings" (under What changed): company-reported (non-GAAP) figures and MD&A drivers.
+ *  The risk-factor redline lives on the Risk tab (RiskFactorsView). */
 export default function FilingsView({
   inputs,
-  risks,
   la,
   lb,
-  riskYears = [],
 }: {
   inputs: BriefInputs;
-  risks: RiskChange[];
   la: string;
   lb: string;
-  riskYears?: RiskYear[];
 }) {
   const [panel, setPanel] = useState<Panel>(null);
   const rb = inputs.results[lb]?.release;
@@ -155,10 +152,6 @@ export default function FilingsView({
           )}
         </section>
       )}
-
-      <RiskSection inputs={inputs} risks={risks} />
-
-      <RiskTrend years={riskYears} />
 
       {panel && (
         <SourcePanel title={panel.title} onClose={() => setPanel(null)}>
@@ -374,18 +367,30 @@ const STATUS_STYLE: Record<string, string> = {
   unchanged: "text-muted",
 };
 
+/** Risk tab: what changed in the annual report's risk factors, plus the year-by-year trend. */
+export function RiskFactorsView({ summary, risks, riskYears }: { summary: RiskSummary | null; risks: RiskChange[]; riskYears: RiskYear[] }) {
+  return (
+    <div className="space-y-10">
+      <RiskSection summary={summary} risks={risks} />
+      <RiskTrend years={riskYears} />
+    </div>
+  );
+}
+
+export type RiskSummary = NonNullable<BriefInputs["risk"]>["summary"];
+
 function RiskSection({
-  inputs,
+  summary,
   risks,
 }: {
-  inputs: BriefInputs;
+  summary: RiskSummary | null;
   risks: RiskChange[];
 }) {
   const [filter, setFilter] = useState<"changed" | "escalated" | "all">(
     "changed",
   );
   const [open, setOpen] = useState<number | null>(null);
-  if (!inputs.risk) {
+  if (!summary) {
     return (
       <section>
         <h3 className="flex items-center text-lg font-semibold">
@@ -394,14 +399,13 @@ function RiskSection({
           </Term>
         </h3>
         <p className="mt-2 text-sm text-muted">
-          Both quarters fall under the same annual report, so there is no
-          risk-factor change to compare. Pick quarters from different fiscal
-          years (for example the same quarter a year apart).
+          No comparison of this company&apos;s last two annual reports yet. It
+          is added automatically when a brief compares quarters a year apart.
         </p>
       </section>
     );
   }
-  const s = inputs.risk.summary;
+  const s = summary;
   const shown = risks.filter((r) =>
     filter === "all"
       ? true
