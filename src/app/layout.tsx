@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import MobileNav from "@/components/MobileNav";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
@@ -63,7 +64,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </div>
         </header>
         {children}
-        <MobileNav />
+        <Suspense fallback={null}>
+          <MobileNav />
+        </Suspense>
         <footer className="mt-auto border-t border-border">
           <div className="page-wrap flex flex-wrap items-center gap-x-5 gap-y-1 py-5 text-xs text-muted">
             <span>Educational research, not investment advice. Data may be delayed or contain errors.</span>
