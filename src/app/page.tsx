@@ -8,7 +8,7 @@ import type { Company } from "@/lib/types";
 
 export default function Home() {
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 sm:px-6 pb-20 pt-14 sm:pt-24">
+    <main className="page-wrap flex flex-1 flex-col pb-20 pt-14 sm:pt-24">
       <div className="max-w-3xl">
         <h1 className="text-[40px] font-semibold leading-[1.05] tracking-tight sm:text-6xl">
           Equity Research for the

@@ -39,7 +39,8 @@ import OwnershipView from "@/components/OwnershipView";
 import RiskView from "@/components/RiskView";
 import OptionsView from "@/components/OptionsView";
 import { getOptions, getRisk } from "@/lib/riskopts";
-import Overview from "@/components/Overview";
+import Overview, { OverviewSummary } from "@/components/Overview";
+import PriceStrip from "@/components/PriceStrip";
 import ProGate from "@/components/ProGate";
 import WatchButton from "@/components/WatchButton";
 import Term, { AboutNumbers } from "@/components/Term";
@@ -49,7 +50,7 @@ import { getHolders, getInsiderTrades, summarizeInsiders } from "@/lib/ownership
 
 export default function CompanyPage(props: PageProps<"/c/[ticker]">) {
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 px-4 sm:px-6 pb-16 pt-6">
+    <main className="page-wrap flex-1 pb-16 pt-6">
       <Suspense fallback={<CompanySkeleton />}>
         <CompanyContent {...props} />
       </Suspense>
@@ -164,24 +165,34 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
         <CompanyTabs hide={CBOE_ON ? [] : ["options"]} />
       </div>
 
-      <div className="mt-6">
-        <PriceChart
-          ticker={company.ticker}
-          prices={prices}
-          defaults={compareDefaults}
-          choices={compareChoices}
-          markers={markers}
-          currencySymbol="$"
-          markerNote={events.length ? "○ = earnings report · tap to open that call" : "○ = 10-K / 10-Q filed"}
-          emptyNote={
-            job?.status === "deferred"
-              ? "The price download was paused by the free price source's hourly limit (50 requests/hour). It retries automatically within 6 hours; per-share history is split-adjusted once prices arrive."
-              : undefined
-          }
-        />
-      </div>
-
-      <ValuationStrip company={company} />
+      {view === "overview" ? (
+        // Overview: chart and the quick answers side by side on wide screens, stacked on phones
+        <div className="mt-6 grid gap-x-12 gap-y-8 xl:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+          <div className="min-w-0">
+            <PriceChart
+              ticker={company.ticker}
+              prices={prices}
+              defaults={compareDefaults}
+              choices={compareChoices}
+              markers={markers}
+              currencySymbol="$"
+              height="h-60 sm:h-80"
+              markerNote={events.length ? "○ = earnings report · tap to open that call" : "○ = 10-K / 10-Q filed"}
+              emptyNote={
+                job?.status === "deferred"
+                  ? "The price download was paused by the free price source's hourly limit (50 requests/hour). It retries automatically within 6 hours; per-share history is split-adjusted once prices arrive."
+                  : undefined
+              }
+            />
+            <ValuationStrip company={company} />
+          </div>
+          <Suspense fallback={<TabSkeleton />}>
+            <OverviewSummary company={company} events={events} asOf={prices.at(-1)?.date ?? company.valuation?.price_date ?? "2026-01-01"} />
+          </Suspense>
+        </div>
+      ) : (
+        <PriceStrip ticker={company.ticker} prices={prices} valuation={company.valuation} />
+      )}
 
       <div className="mt-6">
         <Suspense key={`${view}-${sp.a ?? ""}-${sp.b ?? ""}`} fallback={<TabSkeleton />}>

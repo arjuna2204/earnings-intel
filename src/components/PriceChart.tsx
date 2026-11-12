@@ -117,7 +117,10 @@ export default function PriceChart({
   currencySymbol = "$",
   emptyNote,
   markerNote = "○ = earnings report · tap to open that call",
+  height = "h-72 sm:h-[26rem]",
 }: {
+  /** chart height classes; the overview uses a shorter chart so the answers show above the fold */
+  height?: string;
   ticker: string;
   prices: PricePoint[];
   /** shown automatically: the S&P 500 and the company's sector fund */
@@ -390,7 +393,7 @@ export default function PriceChart({
             }
           }}
           option={option}
-          className="h-72 w-full sm:h-[26rem]"
+          className={`${height} w-full`}
           ariaLabel={`Price over ${range}: ${up ? "up" : "down"} ${Math.abs(pct * 100).toFixed(1)} percent`}
         />
         <div className="mt-2 flex items-center justify-between border-b border-border pb-3">

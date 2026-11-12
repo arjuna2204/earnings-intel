@@ -69,3 +69,22 @@ html[data-mode="simple"] .pro-only {
 html[data-mode="pro"] .simple-only {
   display: none !important;
 }
+
+/* One page grid for header, footer and every page: fills wide screens, with roomier margins as the screen grows. */
+@layer components {
+  .page-wrap {
+    margin-inline: auto;
+    width: 100%;
+    max-width: 104rem;
+    padding-inline: 1rem;
+  }
+  @media (width >= 40rem) {
+    .page-wrap { padding-inline: 1.5rem; }
+  }
+  @media (width >= 64rem) {
+    .page-wrap { padding-inline: 2.5rem; }
+  }
+  @media (width >= 96rem) {
+    .page-wrap { padding-inline: 4rem; }
+  }
+}

@@ -5,7 +5,7 @@ import { select } from "@/lib/db";
 
 export default function BacktestPage() {
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 px-4 sm:px-6 pb-16 pt-8 *:max-w-3xl">
+    <main className="page-wrap flex-1 pb-16 pt-8 *:max-w-3xl">
       <h1 className="text-3xl font-semibold tracking-tight">Backtest</h1>
       <p className="mt-2 text-[15px] leading-relaxed text-muted">
         Did the app&apos;s signals come before the stock beating or lagging its sector? Each signal is checked across every company you&apos;ve
