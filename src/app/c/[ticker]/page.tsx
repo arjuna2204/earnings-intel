@@ -49,7 +49,7 @@ import { getHolders, getInsiderTrades, summarizeInsiders } from "@/lib/ownership
 
 export default function CompanyPage(props: PageProps<"/c/[ticker]">) {
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-16 pt-6">
+    <main className="mx-auto w-full max-w-6xl flex-1 px-4 sm:px-6 pb-16 pt-6">
       <Suspense fallback={<CompanySkeleton />}>
         <CompanyContent {...props} />
       </Suspense>

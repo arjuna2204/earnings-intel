@@ -34,7 +34,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="flex min-h-full flex-col">
         <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur">
-          <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-4 px-4">
+          <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-4 px-4 sm:px-6">
             <Link href="/" className="font-semibold tracking-tight">
               <span className="text-accent">●</span> {APP_NAME}
             </Link>
@@ -63,7 +63,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </header>
         {children}
         <footer className="mt-auto border-t border-border">
-          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-5 gap-y-1 px-4 py-5 text-xs text-muted">
+          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-5 gap-y-1 px-4 py-5 sm:px-6 text-xs text-muted">
             <span>Educational research, not investment advice. Data may be delayed or contain errors.</span>
             <Link href="/terms" className="hover:text-foreground hover:underline">
               Terms &amp; data sources

@@ -12,7 +12,7 @@ function H({ children }: { children: React.ReactNode }) {
 
 export default function TermsPage() {
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-16 pt-6 text-[15px] leading-relaxed">
+    <main className="mx-auto w-full max-w-6xl flex-1 px-4 sm:px-6 pb-16 pt-6 text-[15px] leading-relaxed *:max-w-3xl">
       <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Terms, disclaimer and data sources</h1>
       <p className="mt-1 text-sm text-muted">Last updated {UPDATED}</p>
 
