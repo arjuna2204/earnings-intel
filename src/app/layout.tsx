@@ -35,7 +35,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col">
         <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur">
           <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-4 px-4 sm:px-6">
-            <Link href="/" className="font-semibold tracking-tight">
+            <Link href="/" className="shrink-0 whitespace-nowrap font-semibold tracking-tight">
               <span className="text-accent">●</span> {APP_NAME}
             </Link>
             <nav className="ml-auto flex items-center gap-1 text-sm">
