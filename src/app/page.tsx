@@ -63,7 +63,7 @@ export default function Home() {
             <Recent />
           </Suspense>
         </div>
-        <section className="mt-12 lg:mt-14">
+        <section className="mt-12">
           <h2 className="border-b border-border pb-3 text-xl font-semibold tracking-tight">
             What you get for every stock
           </h2>
