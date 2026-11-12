@@ -117,10 +117,7 @@ export default function PriceChart({
   currencySymbol = "$",
   emptyNote,
   markerNote = "○ = earnings report · tap to open that call",
-  height = "h-72 sm:h-[26rem]",
 }: {
-  /** chart height classes; the overview uses a shorter chart so the answers show above the fold */
-  height?: string;
   ticker: string;
   prices: PricePoint[];
   /** shown automatically: the S&P 500 and the company's sector fund */
@@ -226,38 +223,22 @@ export default function PriceChart({
   const hi = Math.max(...drawn);
   const dates = series.map((p) => p.date);
 
-  // a handful of date labels: months for short ranges, years for long ones
-  const long = range === "5Y" || range === "15Y";
-  const dateLabel = {
-    color: colors.muted,
-    fontSize: 11,
-    hideOverlap: true,
-    interval: Math.max(0, Math.floor(dates.length / 6) - 1),
-    formatter: (d: string) =>
-      new Date(`${d}T12:00:00Z`).toLocaleDateString("en-US", long ? { year: "numeric", timeZone: "UTC" } : { month: "short", year: "2-digit", timeZone: "UTC" }),
-  };
   const option = {
     animationDuration: 300,
     grid: showVol
       ? [
-          { left: 0, right: 52, top: 8, bottom: "26%" },
-          { left: 0, right: 52, height: "14%", bottom: 22 },
+          { left: 0, right: 0, top: 8, bottom: "22%" },
+          { left: 0, right: 0, height: "16%", bottom: 0 },
         ]
-      : [{ left: 0, right: 52, top: 8, bottom: 26 }],
+      : [{ left: 0, right: 0, top: 8, bottom: 8 }],
     xAxis: [
-      { type: "category", data: dates, boundaryGap: false, axisLine: { show: false }, axisTick: { show: false }, axisLabel: showVol ? { show: false } : dateLabel },
-      ...(showVol
-        ? [{ type: "category", gridIndex: 1, data: dates, axisLine: { show: false }, axisTick: { show: false }, axisLabel: dateLabel }]
-        : []),
+      { type: "category", data: dates, show: false, boundaryGap: false },
+      ...(showVol ? [{ type: "category", gridIndex: 1, data: dates, show: false }] : []),
     ],
     yAxis: [
-      {
-        ...(opts.log ? { type: "log", logBase: 10, min: lo * 0.97, max: hi * 1.03 } : { type: "value", scale: true }),
-        position: "right",
-        splitNumber: 4,
-        axisLabel: { color: colors.muted, fontSize: 11, formatter: (v: number) => `${currencySymbol}${v >= 1000 ? Math.round(v).toLocaleString("en-US") : v >= 100 ? v.toFixed(0) : v.toFixed(2)}` },
-        splitLine: { lineStyle: { color: colors.grid } },
-      },
+      opts.log
+        ? { type: "log", logBase: 10, show: false, min: lo * 0.97, max: hi * 1.03 }
+        : { type: "value", show: false, scale: true },
       ...(showVol ? [{ type: "value", gridIndex: 1, show: false }] : []),
     ],
     axisPointer: { link: [{ xAxisIndex: "all" }] },
@@ -367,10 +348,6 @@ export default function PriceChart({
                 const d = pct - r;
                 return (
                   <span key={l.ticker}>
-                    {/* doubles as the chart legend: same dashed line and colour as on the chart */}
-                    <svg width="16" height="4" className="mr-1.5 inline-block align-middle" aria-hidden>
-                      <line x1="0" y1="2" x2="16" y2="2" stroke={l.color} strokeWidth="2" strokeDasharray="4 3" />
-                    </svg>
                     <span className={`font-medium ${d >= 0 ? "text-up" : "text-down"}`}>
                       <Term k="vs_benchmark">
                         {d >= 0 ? "▲ Beat" : "▼ Trailed"} {l.label} by {Math.abs(d * 100).toFixed(1)} pts
@@ -413,7 +390,7 @@ export default function PriceChart({
             }
           }}
           option={option}
-          className={`${height} w-full`}
+          className="h-72 w-full sm:h-[26rem]"
           ariaLabel={`Price over ${range}: ${up ? "up" : "down"} ${Math.abs(pct * 100).toFixed(1)} percent`}
         />
         <div className="mt-2 flex items-center justify-between border-b border-border pb-3">
@@ -427,7 +404,8 @@ export default function PriceChart({
                   setRange(r.key);
                   setHover(null);
                 }}
-                className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${range === r.key ? "bg-foreground text-background" : "text-muted hover:text-foreground"}`}
+                className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${range === r.key ? "text-background" : "text-muted hover:text-foreground"}`}
+                style={range === r.key ? { background: color } : undefined}
               >
                 {r.key}
               </button>
@@ -483,10 +461,10 @@ export default function PriceChart({
       </div>
 
       {/* comparisons: one short, wide strip under the chart */}
-      <div aria-label="Add to chart" className="mt-4 rounded-2xl border border-border px-4 py-3">
+      <div aria-label="Compare on chart" className="mt-4 rounded-2xl border border-border px-4 py-3">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
           <span className="flex items-center text-xs font-semibold text-muted">
-            <Term k="chart_compare" quiet>Add to chart</Term>
+            <Term k="chart_compare" quiet>Compare</Term>
           </span>
           <span className="flex items-center gap-2">
             <span className="h-0.5 w-5 shrink-0 rounded" style={{ background: color }} aria-hidden />
@@ -602,7 +580,7 @@ function AddBox({ choices, onAdd, loading }: { choices: CompareChoice[]; onAdd: 
               >
                 <span className="font-semibold">{c.ticker}</span>
                 <span className="truncate text-xs text-muted">{c.name}</span>
-                <span className="ml-auto text-xs uppercase text-muted">{c.kind === "fund" ? "ETF" : ""}</span>
+                <span className="ml-auto text-[10px] uppercase text-muted">{c.kind === "fund" ? "ETF" : ""}</span>
               </button>
             </li>
           ))}

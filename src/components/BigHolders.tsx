@@ -29,7 +29,7 @@ export default function BigHolders({ rows }: { rows: BigHolder[] }) {
             <li key={r.accession} className="flex flex-wrap items-baseline justify-between gap-x-4 py-2.5">
               <span className="font-medium">
                 {r.holder}
-                {r.activist && <span className="ml-2 rounded-full border border-border px-1.5 py-px text-xs text-muted">Active (13D)</span>}
+                {r.activist && <span className="ml-2 rounded-full border border-border px-1.5 py-px text-[10px] text-muted">Active (13D)</span>}
               </span>
               <span className="text-sm tabular-nums">
                 {r.pct != null ? `${r.pct.toFixed(1)}%` : "—"}

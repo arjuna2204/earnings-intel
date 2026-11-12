@@ -1,7 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
-import { Suspense } from "react";
-import MobileNav from "@/components/MobileNav";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -34,15 +32,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className="flex min-h-full flex-col pb-16 sm:pb-0">
+      <body className="flex min-h-full flex-col">
         <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur">
-          <div className="page-wrap flex h-14 items-center gap-4">
-            <Link href="/" className="shrink-0 whitespace-nowrap font-semibold tracking-tight">
+          <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-4 px-4">
+            <Link href="/" className="font-semibold tracking-tight">
               <span className="text-accent">●</span> {APP_NAME}
             </Link>
             <nav className="ml-auto flex items-center gap-1 text-sm">
-              <Link href="/compare" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground sm:block">
-                Compare stocks
+              <Link href="/compare" className="rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground">
+                Compare
               </Link>
               <Link href="/earnings" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground sm:block">
                 Earnings
@@ -64,11 +62,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </div>
         </header>
         {children}
-        <Suspense fallback={null}>
-          <MobileNav />
-        </Suspense>
         <footer className="mt-auto border-t border-border">
-          <div className="page-wrap flex flex-wrap items-center gap-x-5 gap-y-1 py-5 text-xs text-muted">
+          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-5 gap-y-1 px-4 py-5 text-xs text-muted">
             <span>Educational research, not investment advice. Data may be delayed or contain errors.</span>
             <Link href="/terms" className="hover:text-foreground hover:underline">
               Terms &amp; data sources

@@ -326,7 +326,7 @@ function Insiders({
                           </span>
                         )}
                         {t.plan_10b5_1 && t.code === "S" && (
-                          <span className="ml-1.5 rounded-full bg-card px-1.5 py-0.5 text-xs text-muted">
+                          <span className="ml-1.5 rounded-full bg-card px-1.5 py-0.5 text-[10px] text-muted">
                             plan
                           </span>
                         )}

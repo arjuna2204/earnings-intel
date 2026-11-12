@@ -141,7 +141,7 @@ function Forest({ data, order, h }: { data: BacktestData; order: string[]; h: Ho
           );
         })}
       </div>
-      <div className="mt-1 grid grid-cols-[minmax(0,9rem)_1fr_4.5rem] gap-3 text-xs text-muted sm:grid-cols-[14rem_1fr_5rem]">
+      <div className="mt-1 grid grid-cols-[minmax(0,9rem)_1fr_4.5rem] gap-3 text-[11px] text-muted sm:grid-cols-[14rem_1fr_5rem]">
         <span />
         <span className="flex justify-between">
           <span>{pct(-ext)}</span>

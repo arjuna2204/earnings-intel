@@ -25,9 +25,6 @@ const cap = (v: number) =>
       ? `$${(v / 1e9).toFixed(0)}B`
       : `$${(v / 1e6).toFixed(0)}M`;
 
-// Phones show three numbers per company.
-const MOBILE = ["pe", "revGrowth", "ret1y"];
-
 // Simple mode: five everyday columns. Pro mode: three column sets.
 const ESSENTIALS: Col[] = [
   { key: "marketCap", label: "Market cap", term: "market_cap", fmt: cap },
@@ -228,7 +225,7 @@ export default function ScreenerView({ rows }: { rows: ScreenRow[] }) {
         aria-label={`Sort by ${typeof label === "string" ? label : String(key)}`}
       >
         {label}
-        <span className="w-2 text-xs" aria-hidden>
+        <span className="w-2 text-[10px]" aria-hidden>
           {sort.key === key ? (sort.desc ? "▼" : "▲") : ""}
         </span>
       </button>
@@ -276,7 +273,7 @@ export default function ScreenerView({ rows }: { rows: ScreenRow[] }) {
           ))}
         </div>
         <div className="flex items-center gap-3">
-          <label className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-sm text-muted">
+          <label className="flex items-center gap-1.5 text-sm text-muted">
             <input
               type="checkbox"
               checked={onlyFull}
@@ -302,69 +299,10 @@ export default function ScreenerView({ rows }: { rows: ScreenRow[] }) {
 
       <p className="mt-2 text-xs text-muted">
         {shown.length} of {rows.length} companies{p.hint ? ` · ${p.hint}` : ""}.
-        <span className="hidden sm:inline">Tap a column to sort.</span>
+        Tap a column to sort.
       </p>
 
-      {/* phones: one card per company with three key numbers, and a sort menu instead of column headers */}
-      <div className="mt-3 sm:hidden">
-        <label className="flex items-center gap-2 text-sm text-muted">
-          Sort by
-          <select
-            value={`${String(sort.key)}:${sort.desc ? "desc" : "asc"}`}
-            onChange={(e) => {
-              const [k, d] = e.target.value.split(":");
-              setSort({ key: k as typeof sort.key, desc: d === "desc" });
-            }}
-            className="rounded-lg border border-border bg-card px-2 py-1 text-foreground"
-          >
-            {[{ key: "marketCap", label: "Market cap" }, ...cols.filter((c) => c.key !== "marketCap")].map((c) => (
-              <option key={String(c.key)} value={`${String(c.key)}:desc`}>
-                {c.label} (high → low)
-              </option>
-            ))}
-            {[{ key: "pe", label: "P/E" }].map((c) => (
-              <option key="pe-asc" value={`${c.key}:asc`}>
-                {c.label} (low → high)
-              </option>
-            ))}
-          </select>
-        </label>
-        <ul className="mt-2 divide-y divide-border">
-          {shown.slice(0, 150).map((r) => {
-            const pick = MOBILE.map((k) => [...cols, ...ESSENTIALS].find((c) => c.key === k)).filter((c): c is Col => Boolean(c));
-            return (
-              <li key={r.ticker}>
-                <Link href={`/c/${encodeURIComponent(r.ticker)}`} className="block py-3">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span className="min-w-0">
-                      <span className="font-semibold">{r.ticker}</span>
-                      <span className="ml-2 truncate text-sm text-muted">{r.name}</span>
-                    </span>
-                    <span className="shrink-0 font-semibold tabular-nums">{r.price != null ? `$${r.price.toFixed(2)}` : "—"}</span>
-                  </div>
-                  <dl className="mt-1.5 grid grid-cols-3 gap-2 text-sm tabular-nums">
-                    {pick.map((c) => {
-                      const v = r[c.key];
-                      const tone = typeof v === "number" && c.signed ? (v >= 0 ? "text-up" : "text-down") : "";
-                      return (
-                        <div key={String(c.key)}>
-                          <dt className="text-xs text-muted">{c.label}</dt>
-                          <dd className={tone}>
-                            {typeof v !== "number" ? "—" : `${c.signed ? (v >= 0 ? "▲ " : "▼ ") : ""}${c.signed ? c.fmt(Math.abs(v), r) : c.fmt(v, r)}`}
-                          </dd>
-                        </div>
-                      );
-                    })}
-                  </dl>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-        {shown.length > 150 && <p className="mt-2 text-sm text-muted">Showing the first 150 — narrow it down with the filters above.</p>}
-      </div>
-
-      <div className="mt-2 hidden overflow-x-auto sm:block">
+      <div className="mt-2 overflow-x-auto">
         <ExportTable name="screener">
           <table className="w-full min-w-[40rem] text-sm tabular-nums">
             <thead className="text-xs text-muted">
@@ -389,7 +327,7 @@ export default function ScreenerView({ rows }: { rows: ScreenRow[] }) {
                             desc: s.key === c.key ? !s.desc : true,
                           }))
                         }
-                        className="w-3 text-xs hover:text-foreground"
+                        className="w-3 text-[10px] hover:text-foreground"
                         aria-label={`Sort by ${c.label}`}
                       >
                         {sort.key === c.key ? (sort.desc ? "▼" : "▲") : "↕"}
@@ -411,7 +349,7 @@ export default function ScreenerView({ rows }: { rows: ScreenRow[] }) {
                       <span className="font-semibold">{r.ticker}</span>
                       {r.basic && (
                         <span
-                          className="ml-1.5 rounded-full border border-border px-1.5 py-px text-xs text-muted"
+                          className="ml-1.5 rounded-full border border-border px-1.5 py-px text-[10px] text-muted"
                           title="Basic data only. Open to load full research."
                         >
                           Basic

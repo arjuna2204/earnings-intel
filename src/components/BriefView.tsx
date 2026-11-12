@@ -463,7 +463,7 @@ export function Refs({ refs, note, onOpen }: { refs: string[]; note: (r: string)
         <button
           key={r}
           onClick={() => onOpen(r)}
-          className="px-px text-xs font-semibold text-accent hover:underline"
+          className="px-px text-[11px] font-semibold text-accent hover:underline"
           aria-label={`Source ${note(r)}: ${SOURCE_KIND[r[0]] ?? "source"}`}
         >
           {note(r)}
@@ -552,7 +552,7 @@ export function Streak({ items }: { items: StreakItem[] }) {
       </div>
       <div className="mt-2 flex gap-3">
         {items.map((it) => (
-          <span key={it.label} className="flex-1 text-center text-xs text-muted">
+          <span key={it.label} className="flex-1 text-center text-[11px] text-muted">
             {it.label.replace(/^FY\d{2}(\d{2})Q(\d)/, "Q$2 ’$1")}
           </span>
         ))}

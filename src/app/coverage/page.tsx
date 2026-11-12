@@ -30,7 +30,7 @@ const FEATURE_LABEL: Record<Feature, string> = {
 
 export default function CoveragePage() {
   return (
-    <main className="page-wrap flex-1 pb-16 pt-6">
+    <main className="mx-auto w-full max-w-4xl flex-1 px-4 pb-16 pt-6">
       <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">What&apos;s ready to explore</h1>
       <p className="mt-1 text-sm text-muted">
         Companies with data already pulled, best first. Live — refreshed every morning at 6:17am ET and whenever someone loads a stock.

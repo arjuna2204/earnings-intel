@@ -135,7 +135,7 @@ function Notes({ ids }: { ids?: number[] }) {
         <a
           key={n}
           href={`#dcf-fn-${n}`}
-          className="px-px text-xs font-semibold text-accent hover:underline"
+          className="px-px text-[11px] font-semibold text-accent hover:underline"
         >
           {n}
           {i < ids.length - 1 ? "," : ""}

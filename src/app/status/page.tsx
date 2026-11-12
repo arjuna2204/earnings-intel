@@ -6,7 +6,7 @@ import { getAllFlags } from "@/lib/quality";
 
 export default function StatusPage() {
   return (
-    <main className="page-wrap flex-1 pb-16 pt-8 *:max-w-3xl">
+    <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-16 pt-8">
       <h1 className="text-3xl font-semibold tracking-tight">Status</h1>
       <Suspense fallback={<div className="skeleton mt-8 h-96" />}>
         <StatusContent />

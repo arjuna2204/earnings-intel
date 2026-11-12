@@ -11,7 +11,7 @@ const SHOW = 12; // per day before "show all"
 
 export default function EarningsPage(props: PageProps<"/earnings">) {
   return (
-    <main className="page-wrap flex-1 pb-16 pt-6">
+    <main className="mx-auto w-full max-w-4xl flex-1 px-4 pb-16 pt-6">
       <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Earnings this week</h1>
       <p className="mt-1 text-sm text-muted">
         Who reports in the next 7 days, largest companies first. Dates are scheduled, not confirmed; companies sometimes move them.

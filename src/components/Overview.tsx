@@ -7,7 +7,6 @@ import { fmtMacro, getMacro, MACRO, reading, SECTOR_MACRO } from "@/lib/macro";
 import { getQuickTake, type Signal } from "@/lib/quicktake";
 import { getOptions, getRisk } from "@/lib/riskopts";
 import { latestRecap } from "@/lib/screener";
-import { briefPairs, getBrief } from "@/lib/filings";
 import { viewHref, type ViewKey } from "@/lib/tabs";
 import type { Company, EarningsEvent } from "@/lib/types";
 
@@ -30,8 +29,9 @@ export default async function Overview({ company, events, asOf }: { company: Com
   const path = `/c/${encodeURIComponent(company.ticker)}`;
   const today = new Date(`${asOf}T12:00:00Z`).toISOString().slice(0, 10);
   const since60 = new Date(Date.parse(`${today}T12:00:00Z`) - 60 * 86400000).toISOString().slice(0, 10);
-  const [q, risk, opts, revG, next, ev] = await Promise.all([
+  const [q, recap, risk, opts, revG, next, ev] = await Promise.all([
     getQuickTake(company, events, asOf),
+    latestRecap(company.ticker),
     getRisk(company.cik),
     getOptions(company.cik),
     select<{ value: number; fiscal_year: number; fiscal_period: string }>("metric_values", {
@@ -181,8 +181,31 @@ export default async function Overview({ company, events, asOf }: { company: Com
 
   return (
     <div className="space-y-8">
+      {recap && (
+        <section aria-label="Latest earnings" className="rounded-2xl bg-card p-4">
+          <div className="flex items-baseline justify-between gap-2">
+            <h2 className="font-semibold">Just reported{recap.quarter ? ` · ${recap.quarter}` : ""}</h2>
+            <span className="text-xs text-muted">{recapDate(recap.report_date)}</span>
+          </div>
+          <div className="mt-2">
+            <RecapFacts r={recap} />
+          </div>
+        </section>
+      )}
+
+      {q.bottomLine.length > 0 && (
+        <section aria-label="Bottom line">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Bottom line</h2>
+          <ul className="mt-2 space-y-1.5 text-lg leading-snug">
+            {q.bottomLine.map((l) => (
+              <li key={l}>{l}</li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <section aria-label="Four questions">
-        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <ul className="grid gap-3 sm:grid-cols-2">
           {cards.map((c) => (
             <li key={c.q}>
               <Link href={viewHref(path, c.view)} className="group flex h-full flex-col rounded-2xl border border-border p-4 transition hover:bg-card">
@@ -207,7 +230,7 @@ export default async function Overview({ company, events, asOf }: { company: Com
 
       {watch.length > 0 && (
         <section aria-label="Things to watch">
-          <h2 className="text-lg font-semibold tracking-tight">Things to watch</h2>
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Things to watch</h2>
           <ul className="mt-2 divide-y divide-border">
             {watch.map((w) => (
               <li key={w.text}>
@@ -225,78 +248,6 @@ export default async function Overview({ company, events, asOf }: { company: Com
       <p className="text-xs text-muted">
         Every answer is computed in code from the data in the other tabs. <Term k="quick_take">How this works</Term>. Not investment advice.
       </p>
-    </div>
-  );
-}
-
-
-const QLABEL = (q: string) => q.replace(/^FY(\d{4})Q(\d)$/, "Q$2 FY$1");
-
-/**
- * Beside the chart on Overview: what changed last quarter (from the brief), the earnings-day recap
- * and the bottom line. This is what most visitors came for, so it sits above the fold.
- */
-export async function OverviewSummary({ company, events, asOf }: { company: Company; events: EarningsEvent[]; asOf: string }) {
-  const path = `/c/${encodeURIComponent(company.ticker)}`;
-  const [q, recap, pairs] = await Promise.all([getQuickTake(company, events, asOf), latestRecap(company.ticker), briefPairs(company.cik)]);
-  const pair = pairs[0];
-  const brief = pair ? await getBrief(company.cik, pair.a, pair.b).catch(() => null) : null;
-  const head = brief?.claims.filter((c) => c.section === "headline").slice(0, 3) ?? [];
-  return (
-    <div className="space-y-6">
-      {head.length > 0 && pair ? (
-        <section aria-label="What changed">
-          <div className="flex items-baseline justify-between gap-2">
-            <h2 className="text-lg font-semibold tracking-tight">What changed in {QLABEL(pair.b)}</h2>
-            <span className="text-sm text-muted">vs {QLABEL(pair.a)}</span>
-          </div>
-          <ul className="mt-3 space-y-3 text-[15px] leading-relaxed">
-            {head.map((c) => (
-              <li key={c.text} className="flex gap-2.5">
-                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-hidden />
-                <span>{c.text}</span>
-              </li>
-            ))}
-          </ul>
-          <Link
-            href={`${path}?tab=earnings&view=brief&a=${pair.a}&b=${pair.b}`}
-            className="mt-3 inline-block text-sm font-medium text-accent hover:underline"
-          >
-            Read the full brief →
-          </Link>
-        </section>
-      ) : (
-        <section aria-label="What changed" className="rounded-2xl border border-border p-4">
-          <h2 className="font-semibold">What changed last quarter</h2>
-          <p className="mt-1 text-sm text-muted">The brief for the latest quarter is written within a day or two of each report.</p>
-          <Link href={viewHref(path, "brief")} className="mt-2 inline-block text-sm font-medium text-accent hover:underline">
-            Open the brief →
-          </Link>
-        </section>
-      )}
-
-      {recap && (
-        <section aria-label="Latest earnings" className="rounded-2xl bg-card p-4">
-          <div className="flex items-baseline justify-between gap-2">
-            <h2 className="font-semibold">Just reported{recap.quarter ? ` · ${recap.quarter}` : ""}</h2>
-            <span className="text-sm text-muted">{recapDate(recap.report_date)}</span>
-          </div>
-          <div className="mt-2">
-            <RecapFacts r={recap} />
-          </div>
-        </section>
-      )}
-
-      {q.bottomLine.length > 0 && (
-        <section aria-label="Bottom line" className="border-t border-border pt-5">
-          <h2 className="text-lg font-semibold tracking-tight">Bottom line</h2>
-          <ul className="mt-2 space-y-1.5 text-[15px] leading-relaxed">
-            {q.bottomLine.map((l) => (
-              <li key={l}>{l}</li>
-            ))}
-          </ul>
-        </section>
-      )}
     </div>
   );
 }
