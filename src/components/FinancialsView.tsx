@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import EChart from "@/components/EChart";
 import Term from "@/components/Term";
-import { useMode } from "@/components/ModeToggle";
 import { DownloadButton, downloadCsv } from "@/components/ExportTable";
 import SourcePanel from "@/components/SourcePanel";
 import { useThemeColors } from "@/components/useThemeColors";
@@ -51,8 +50,6 @@ export default function FinancialsView({
   const [mode, setMode] = useState<Mode>("FY");
   const [period, setPeriod] = useState<string | null>(null); // "2024|FY" — highlighted everywhere
   const [selected, setSelected] = useState<Selected>(null);
-  const proMode = useMode() === "pro";
-  const [openGroups, setOpenGroups] = useState<string[]>([]);
 
   return (
     <div>
@@ -107,9 +104,7 @@ export default function FinancialsView({
       </div>
 
       {groups.map((g) => {
-        // Simple mode: the first three numbers of each group, the rest one tap away
-        const all = proMode || openGroups.includes(g.title);
-        const shown = all ? g.metrics : g.metrics.slice(0, 3);
+        const shown = g.metrics;
         return (
           <section key={g.title} className="mt-8">
             <h2 className="mb-3 text-lg font-semibold">{g.title}</h2>
@@ -129,15 +124,6 @@ export default function FinancialsView({
                 />
               ))}
             </div>
-            {!all && g.metrics.length > 3 && (
-              <button
-                type="button"
-                onClick={() => setOpenGroups((o) => [...o, g.title])}
-                className="mt-3 text-sm font-medium text-muted hover:text-foreground"
-              >
-                Show all {g.metrics.length} numbers ▾
-              </button>
-            )}
           </section>
         );
       })}

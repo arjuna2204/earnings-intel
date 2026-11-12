@@ -40,7 +40,6 @@ import RiskView from "@/components/RiskView";
 import OptionsView from "@/components/OptionsView";
 import { getOptions, getRisk } from "@/lib/riskopts";
 import Overview from "@/components/Overview";
-import ProGate from "@/components/ProGate";
 import WatchButton from "@/components/WatchButton";
 import Term, { AboutNumbers } from "@/components/Term";
 import { COMPARE_ETFS, etfName } from "@/lib/etfs";
@@ -202,16 +201,12 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
         )}
         {view === "call" && <CallTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />}
         {view === "filings" && (
-          <ProGate what="Filings detail (adjusted numbers, MD&A, risk-factor redline)">
-            <BriefTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} mode="filings" />
-          </ProGate>
+          <BriefTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} mode="filings" />
         )}
         {view === "peers" && <PeersTab company={company} prices={prices} />}
         {view === "riskstats" && <RiskTab company={company} />}
         {view === "options" && (
-          <ProGate what="Options data">
-            <OptionsTab company={company} />
-          </ProGate>
+          <OptionsTab company={company} />
         )}
         {view === "ownership" && <OwnershipTab company={company} asOf={prices.at(-1)?.date ?? company.valuation?.price_date ?? "2026-01-01"} />}
         </Suspense>

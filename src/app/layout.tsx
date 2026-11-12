@@ -3,7 +3,6 @@ import Link from "next/link";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import ThemeToggle from "@/components/ThemeToggle";
-import ModeToggle from "@/components/ModeToggle";
 import { Analytics } from "@vercel/analytics/next";
 import HeaderSearch from "@/components/HeaderSearch";
 import WatchAlerts from "@/components/WatchAlerts";
@@ -24,11 +23,11 @@ export const viewport: Viewport = {
 };
 
 // Runs before first paint so there's no light/dark flash.
-const themeScript = `(function(){try{var t=localStorage.getItem('theme');var d=t?t==='dark':matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.classList.toggle('dark',d);}catch(e){}try{document.documentElement.dataset.mode=localStorage.getItem('mode')==='pro'?'pro':'simple';}catch(e){document.documentElement.dataset.mode='simple';}})();`;
+const themeScript = `(function(){try{var t=localStorage.getItem('theme');var d=t?t==='dark':matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.classList.toggle('dark',d);}catch(e){}})();`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" data-mode="simple" suppressHydrationWarning className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}>
+    <html lang="en" suppressHydrationWarning className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
@@ -54,7 +53,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <Link href="/macro" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground md:block">
                 Economy
               </Link>
-              <ModeToggle />
               <ThemeToggle />
               <WatchAlerts />
               <HeaderSearch />

@@ -108,8 +108,7 @@ export default function SupplyView({
             )
           </>
         )}
-        . Companies must disclose any customer worth 10% or more of revenue. Read by AI; every line is checked against the filing&apos;s exact wording
-        (switch to Pro to see the quotes).
+        . Companies must disclose any customer worth 10% or more of revenue. Read by AI; every line is checked against the filing&apos;s exact wording, quoted under each name.
       </p>
     </div>
   );

@@ -62,10 +62,3 @@ body {
   * { transition: none !important; }
 }
 
-/* Simple / Pro (ModeToggle): trader-level detail only in Pro */
-html[data-mode="simple"] .pro-only {
-  display: none !important;
-}
-html[data-mode="pro"] .simple-only {
-  display: none !important;
-}

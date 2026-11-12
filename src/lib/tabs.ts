@@ -11,7 +11,7 @@ export const TABS = [
 
 export type TabKey = (typeof TABS)[number]["key"];
 
-/** Views inside each tab. `pro`: shown only in Pro mode. The first view is the default. */
+/** Views inside each tab. `pro`: marks trader-level views (all views are shown). The first view is the default. */
 export const VIEWS: Record<TabKey, { key: ViewKey; label: string; pro?: boolean }[]> = {
   overview: [{ key: "overview", label: "Overview" }],
   earnings: [
