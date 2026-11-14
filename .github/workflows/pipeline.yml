@@ -184,7 +184,9 @@ jobs:
         if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily' || inputs.command == 'auto-research'
         working-directory: pipeline
         timeout-minutes: 45
-        run: FASTEMBED_CACHE_PATH=$HOME/.cache/fastembed python -m ei.cli auto-research || echo "::warning::auto research stopped early"
+        # if this step runs out of time, the free data steps below still run
+        continue-on-error: true
+        run: FASTEMBED_CACHE_PATH=$HOME/.cache/fastembed timeout --signal=INT 40m python -m ei.cli auto-research || echo "::warning::auto research stopped early"
       - name: Basic data for the 500 largest companies (prices daily, financials Sundays; free, no AI)
         if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily'
         working-directory: pipeline
