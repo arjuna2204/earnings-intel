@@ -34,6 +34,11 @@ on:
     # Every 6 hours: resume loads paused by a free-tier limit (exits in seconds if none; each run bills a minute).
     - cron: "41 */6 * * *"
 
+# contents: the workflow commits refreshed files; actions: a run-file "daily" request starts the full daily run
+permissions:
+  contents: write
+  actions: write
+
 concurrency:
   group: pipeline-${{ inputs.ticker || github.event_name }}
   cancel-in-progress: false
@@ -95,9 +100,14 @@ jobs:
       - name: Run request file
         if: github.event_name == 'push'
         working-directory: pipeline
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           CMD=$(python -c "import json;print(json.load(open('../ops/run.json'))['command'])")
-          if [ "$CMD" = "calls" ] || [ "$CMD" = "brief" ]; then
+          if [ "$CMD" = "daily" ]; then
+            # the full daily update has many steps; start it as its own run
+            gh workflow run pipeline.yml --ref main -f command=daily
+          elif [ "$CMD" = "calls" ] || [ "$CMD" = "brief" ]; then
             ARGS=$(python -c "import json;d=json.load(open('../ops/run.json'));print(d['ticker'], *d['periods'])")
             FASTEMBED_CACHE_PATH=$HOME/.cache/fastembed python -m ei.cli $CMD $ARGS
           elif [ "$CMD" = "analyze" ]; then
