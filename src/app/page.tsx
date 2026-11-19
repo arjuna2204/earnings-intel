@@ -8,8 +8,9 @@ import type { Company } from "@/lib/types";
 
 export default function Home() {
   return (
+    <div className="lit flex flex-1 flex-col">
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pb-20 pt-14 sm:pt-24">
-      <h1 className="text-[40px] font-semibold leading-[1.05] tracking-tight sm:text-6xl">
+      <h1 className="text-[40px] font-medium leading-[1.05] sm:text-6xl">
         Equity Research for the
         <br />
         <span className="text-accent">everyday investor</span>
@@ -63,6 +64,7 @@ export default function Home() {
         </p>
       </section>
     </main>
+    </div>
   );
 }
 
@@ -125,12 +127,12 @@ async function Recent() {
           const ch = change(c.ticker);
           return (
             <li key={c.ticker}>
-              <Link href={`/c/${c.ticker}`} className="flex items-baseline gap-4 py-3.5 hover:text-accent">
+              <Link href={`/c/${c.ticker}`} className="flex items-center gap-4 py-3 hover:text-accent">
                 <span className="w-16 shrink-0 font-semibold">{c.ticker}</span>
                 <span className="min-w-0 flex-1 truncate text-muted">{c.name}</span>
                 {c.valuation?.price != null && <span className="shrink-0 font-semibold tabular-nums">${c.valuation.price.toFixed(2)}</span>}
-                <span className={`w-16 shrink-0 text-right text-sm tabular-nums ${ch == null ? "text-muted" : ch >= 0 ? "text-up" : "text-down"}`}>
-                  {ch == null ? "" : `${ch >= 0 ? "▲" : "▼"} ${Math.abs(ch * 100).toFixed(1)}%`}
+                <span className="w-20 shrink-0 text-right">
+                  {ch != null && <Chip v={ch} />}
                 </span>
               </Link>
             </li>
@@ -138,6 +140,16 @@ async function Recent() {
         })}
       </ul>
     </section>
+  );
+}
+
+/** Day's move as a tinted pill (green up, orange-red down). */
+function Chip({ v }: { v: number }) {
+  return (
+    <span className={`inline-flex rounded-full px-2.5 py-1 text-[13px] font-medium tabular-nums ${v >= 0 ? "bg-up/15 text-up" : "bg-down/15 text-down"}`}>
+      {v >= 0 ? "+" : "−"}
+      {Math.abs(v * 100).toFixed(1)}%
+    </span>
   );
 }
 

@@ -1,7 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
-import { GeistSans } from "geist/font/sans";
-import { GeistMono } from "geist/font/mono";
+// IBM Plex, bundled with the site (Latin only), so pages don't wait on a font server
+import "@fontsource/ibm-plex-sans/latin-400.css";
+import "@fontsource/ibm-plex-sans/latin-500.css";
+import "@fontsource/ibm-plex-sans/latin-600.css";
+import "@fontsource/ibm-plex-sans/latin-700.css";
+import "@fontsource/ibm-plex-mono/latin-400.css";
+import "@fontsource/ibm-plex-mono/latin-500.css";
 import ThemeToggle from "@/components/ThemeToggle";
 import { Analytics } from "@vercel/analytics/next";
 import HeaderSearch from "@/components/HeaderSearch";
@@ -17,17 +22,17 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#000000" },
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0c0d" },
+    { media: "(prefers-color-scheme: light)", color: "#0b0c0d" },
   ],
 };
 
-// Runs before first paint so there's no light/dark flash.
-const themeScript = `(function(){try{var t=localStorage.getItem('theme');var d=t?t==='dark':matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.classList.toggle('dark',d);}catch(e){}})();`;
+// Runs before first paint so there's no light/dark flash: dark unless the visitor picked light.
+const themeScript = `(function(){try{var t=localStorage.getItem('theme');var d=t?t==='dark':true;document.documentElement.classList.toggle('dark',d);}catch(e){}})();`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}>
+    <html lang="en" suppressHydrationWarning className="dark h-full antialiased">
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

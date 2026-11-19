@@ -452,7 +452,7 @@ function RiskSection({
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`rounded-full px-3.5 py-1.5 font-semibold ${filter === f ? "bg-foreground text-background" : "text-muted hover:text-foreground"}`}
+            className={`rounded-full px-3.5 py-1.5 font-semibold ${filter === f ? "bg-accent/15 text-accent" : "text-muted hover:text-foreground"}`}
           >
             {f === "changed"
               ? "Changed"

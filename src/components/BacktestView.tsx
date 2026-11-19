@@ -69,7 +69,7 @@ export default function BacktestView({ data }: { data: BacktestData }) {
               role="tab"
               aria-selected={h === x.key}
               onClick={() => setH(x.key)}
-              className={`rounded-full px-3.5 py-1.5 font-semibold ${h === x.key ? "bg-foreground text-background" : "text-muted hover:text-foreground"}`}
+              className={`rounded-full px-3.5 py-1.5 font-semibold ${h === x.key ? "bg-accent/15 text-accent" : "text-muted hover:text-foreground"}`}
             >
               {x.label}
             </button>

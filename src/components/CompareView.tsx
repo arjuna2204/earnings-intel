@@ -778,7 +778,7 @@ function Performance({
               role="tab"
               aria-selected={range === r}
               onClick={() => setRange(r)}
-              className={`rounded-full px-3 py-1 text-xs font-medium ${range === r ? "bg-foreground text-background" : "text-muted hover:text-foreground"}`}
+              className={`rounded-full px-3 py-1 text-xs font-medium ${range === r ? "bg-accent/15 text-accent" : "text-muted hover:text-foreground"}`}
             >
               {r}
             </button>
@@ -912,7 +912,7 @@ function Trends({
             role="tab"
             aria-selected={x.key === m.key}
             onClick={() => setKey(x.key)}
-            className={`rounded-full border px-3 py-1 text-xs font-medium ${x.key === m.key ? "border-foreground bg-foreground text-background" : "border-border text-muted hover:text-foreground"}`}
+            className={`rounded-full border px-3 py-1 text-xs font-medium ${x.key === m.key ? "border-accent/40 bg-accent/15 text-accent" : "border-border text-muted hover:text-foreground"}`}
           >
             {x.label}
           </button>

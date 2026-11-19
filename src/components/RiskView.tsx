@@ -166,7 +166,7 @@ export default function RiskView({ ticker, r, sector }: { ticker: string; r: Ris
               role="tab"
               aria-selected={chart === k}
               onClick={() => setChart(k)}
-              className={`${k === "hist" ? "pro-only " : ""}rounded-full border px-3 py-1 text-xs font-medium ${chart === k ? "border-foreground bg-foreground text-background" : "border-border text-muted hover:text-foreground"}`}
+              className={`${k === "hist" ? "pro-only " : ""}rounded-full border px-3 py-1 text-xs font-medium ${chart === k ? "border-accent/40 bg-accent/15 text-accent" : "border-border text-muted hover:text-foreground"}`}
             >
               {l}
             </button>

@@ -131,7 +131,7 @@ export default function CallsPanel({
                 key={`${r.a}-${r.b}`}
                 href={`${path}?tab=${tab}&a=${r.a}&b=${r.b}`}
                 aria-current={current ? "page" : undefined}
-                className={`rounded-full px-2.5 py-1 font-medium ${current ? "bg-foreground text-background" : "bg-card hover:bg-border"}`}
+                className={`rounded-full px-2.5 py-1 font-medium ${current ? "bg-accent/15 text-accent" : "bg-card hover:bg-border"}`}
               >
                 {short(r.b)} vs {short(r.a)}
               </a>

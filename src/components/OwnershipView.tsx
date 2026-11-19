@@ -277,7 +277,7 @@ function Insiders({
                 role="tab"
                 aria-selected={all === v}
                 onClick={() => setAll(v as boolean)}
-                className={`rounded-full px-3 py-1 text-xs font-medium ${all === v ? "bg-foreground text-background" : "text-muted hover:text-foreground"}`}
+                className={`rounded-full px-3 py-1 text-xs font-medium ${all === v ? "bg-accent/15 text-accent" : "text-muted hover:text-foreground"}`}
               >
                 {label as string}
               </button>

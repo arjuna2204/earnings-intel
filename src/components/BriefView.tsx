@@ -197,7 +197,7 @@ export function Cases({ cases, refs }: { cases: StockCases; refs: (c: Claim) => 
               role="tab"
               aria-selected={pick === k}
               onClick={() => setPick(k)}
-              className={`rounded-full px-3.5 py-1.5 font-semibold ${pick === k ? "bg-foreground text-background" : "text-muted hover:text-foreground"}`}
+              className={`rounded-full px-3.5 py-1.5 font-semibold ${pick === k ? "bg-accent/15 text-accent" : "text-muted hover:text-foreground"}`}
             >
               {CASE_LABEL[k]}
             </button>
@@ -324,7 +324,7 @@ export function ValuationSlider({ price, epsNtm, peerMedianPe, ticker }: { price
         value={pct}
         onChange={(e) => setPct(Number(e.target.value))}
         aria-label={`Change ${ticker} next-12-months EPS versus consensus`}
-        className="mt-5 w-full accent-[var(--color-accent,#00c805)]"
+        className="mt-5 w-full accent-[var(--color-accent,#36d27f)]"
       />
       <div className="flex justify-between text-xs text-muted">
         <span>−30%</span>

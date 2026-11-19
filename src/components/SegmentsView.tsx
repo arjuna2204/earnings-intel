@@ -217,7 +217,7 @@ export default function SegmentsView({ rows }: { rows: SegmentRow[] }) {
               role="tab"
               aria-selected={freq === f}
               onClick={() => setFreq(f)}
-              className={`rounded-full px-3 py-1 text-sm font-semibold ${freq === f ? "bg-foreground text-background" : "text-muted hover:text-foreground"}`}
+              className={`rounded-full px-3 py-1 text-sm font-semibold ${freq === f ? "bg-accent/15 text-accent" : "text-muted hover:text-foreground"}`}
             >
               {f === "annual" ? "Annual" : "Quarterly"}
             </button>

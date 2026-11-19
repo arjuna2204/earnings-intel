@@ -56,7 +56,7 @@ async function Calendar({ searchParams }: PageProps<"/earnings">) {
           href="/earnings"
           role="tab"
           aria-selected={!mine}
-          className={`rounded-full px-3 py-1.5 font-medium ${!mine ? "bg-foreground text-background" : "text-muted hover:text-foreground"}`}
+          className={`rounded-full px-3 py-1.5 font-medium ${!mine ? "bg-accent/15 text-accent" : "text-muted hover:text-foreground"}`}
         >
           All companies
         </Link>
@@ -64,7 +64,7 @@ async function Calendar({ searchParams }: PageProps<"/earnings">) {
           href="/earnings?mine=1"
           role="tab"
           aria-selected={mine}
-          className={`rounded-full px-3 py-1.5 font-medium ${mine ? "bg-foreground text-background" : "text-muted hover:text-foreground"}`}
+          className={`rounded-full px-3 py-1.5 font-medium ${mine ? "bg-accent/15 text-accent" : "text-muted hover:text-foreground"}`}
         >
           Researched here{!mine && loadedCount ? ` (${loadedCount})` : ""}
         </Link>

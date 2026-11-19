@@ -3,26 +3,32 @@
 /* Dark mode follows a `.dark` class on <html>, set before paint from the saved choice or the system setting. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Quarrow look: near-black ground, one bright green, orange-red for losses, IBM Plex with mono numbers.
+   Light is Quarrow's pale band (#eef1f0) with a deeper green so it reads on white. */
 :root {
-  --background: #ffffff;
-  --foreground: #0b0d0e;
-  --muted: #6b7275;
-  --card: #f6f7f8;
-  --border: rgba(0, 0, 0, 0.08);
-  --up: #00a805;
-  --down: #e64500;
-  --accent: #00c805;
+  --background: #f3f5f4;
+  --foreground: #0b0c0d;
+  --muted: #565b5a;
+  --card: #e6eae8;
+  --border: rgba(11, 12, 13, 0.09);
+  --up: #13894a;
+  --down: #d4461a;
+  --accent: #13894a;
+  --lift: 0 0 0 1px rgba(11, 12, 13, 0.05), 0 14px 32px -22px rgba(11, 12, 13, 0.35);
+  --glow: rgba(19, 137, 74, 0.12);
 }
 
 .dark {
-  --background: #000000;
-  --foreground: #f5f7f8;
-  --muted: #8e9599;
-  --card: #111415;
-  --border: rgba(255, 255, 255, 0.09);
-  --up: #00c805;
-  --down: #ff5000;
-  --accent: #00c805;
+  --background: #0b0c0d;
+  --foreground: #eef1f0;
+  --muted: #9aa3a0;
+  --card: #151718;
+  --border: rgba(255, 255, 255, 0.08);
+  --up: #36d27f;
+  --down: #ff6a3d;
+  --accent: #36d27f;
+  --lift: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 18px 44px -20px rgba(0, 0, 0, 0.8);
+  --glow: rgba(54, 210, 127, 0.16);
 }
 
 @theme inline {
@@ -34,16 +40,37 @@
   --color-up: var(--up);
   --color-down: var(--down);
   --color-accent: var(--accent);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
   font-feature-settings: "tnum" 1; /* aligned digits */
 }
+
+/* headings: medium weight, tight tracking */
+h1, h2, h3 { letter-spacing: -0.02em; }
+h1 { font-weight: 500; letter-spacing: -0.035em; }
+
+/* numbers in the mono face, like a trading app */
+.tabular-nums { font-family: "IBM Plex Mono", ui-monospace, monospace; letter-spacing: -0.01em; }
+
+/* cards: a hairline ring and soft shadow instead of a flat fill */
+.bg-card { box-shadow: var(--lift); }
+.rounded-2xl { border-radius: 1.125rem; }
+
+/* hover: linked cards lift 2px, buttons press */
+a.bg-card, a.rounded-2xl { transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease; }
+a.bg-card:hover, a.rounded-2xl:hover { transform: translateY(-2px); }
+button.rounded-full:active, a.rounded-full:active { transform: scale(0.97); }
+
+/* the lit green ground behind the homepage headline */
+.lit { background: radial-gradient(60% 55% at 15% 0%, var(--glow), transparent 70%); }
+
+::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
 
 @keyframes shimmer {
   0% { background-position: -400px 0; }
@@ -59,6 +86,7 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .skeleton { animation: none; }
+  a.bg-card:hover, a.rounded-2xl:hover { transform: none; }
   * { transition: none !important; }
 }
 

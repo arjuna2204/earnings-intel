@@ -416,7 +416,7 @@ function RankTable({
                 setGroup(g.key);
                 setSort(null);
               }}
-              className={`rounded-full px-3.5 py-1.5 font-semibold ${group === g.key ? "bg-foreground text-background" : "text-muted hover:text-foreground"}`}
+              className={`rounded-full px-3.5 py-1.5 font-semibold ${group === g.key ? "bg-accent/15 text-accent" : "text-muted hover:text-foreground"}`}
             >
               {g.label}
             </button>

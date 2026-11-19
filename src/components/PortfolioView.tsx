@@ -190,7 +190,7 @@ export default function PortfolioView() {
               aria-label="Paste holdings, one per line: ticker then shares"
               className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-accent"
             />
-            <button type="button" onClick={importPaste} className="mt-1 rounded-full bg-foreground px-4 py-1.5 text-sm font-semibold text-background">
+            <button type="button" onClick={importPaste} className="mt-1 rounded-full bg-accent px-4 py-1.5 text-sm font-semibold text-black hover:brightness-110">
               Add these
             </button>
           </div>

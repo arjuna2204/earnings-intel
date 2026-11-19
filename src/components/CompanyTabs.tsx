@@ -44,7 +44,7 @@ export default function CompanyTabs({ hide = [] }: { hide?: string[] }) {
                 scroll={false}
                 aria-current={view === v.key ? "page" : undefined}
                 className={`inline-block rounded-full px-3 py-1 text-sm font-medium transition ${
-                  view === v.key ? "bg-card text-foreground" : "text-muted hover:text-foreground"
+                  view === v.key ? "bg-accent/15 text-accent" : "text-muted hover:text-foreground"
                 }`}
               >
                 {v.label}

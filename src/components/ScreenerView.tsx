@@ -224,7 +224,7 @@ export default function ScreenerView({ rows }: { rows: ScreenRow[] }) {
             aria-checked={preset === x.key}
             onClick={() => setPreset(x.key)}
             title={x.hint}
-            className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${preset === x.key ? "bg-foreground text-background" : "bg-card text-muted hover:text-foreground"}`}
+            className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${preset === x.key ? "bg-accent/15 text-accent" : "bg-card text-muted hover:text-foreground"}`}
           >
             {x.label}
           </button>
