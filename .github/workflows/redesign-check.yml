@@ -57,7 +57,9 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -q --orphan redesign-screenshots
           git rm -rq --cached .
-          git add -f shots
+          # this branch holds only pictures: tell Vercel not to try to deploy it
+          echo '{ "git": { "deploymentEnabled": false } }' > vercel.json
+          git add -f shots vercel.json
           git commit -qm "Screenshots of ${GITHUB_SHA::7}"
           git push -qf origin redesign-screenshots
       - uses: actions/upload-artifact@v4
