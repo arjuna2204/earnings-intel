@@ -141,7 +141,8 @@ export default function PriceChart({
   const router = useRouter();
   const [range, setRange] = useState<(typeof RANGES)[number]["key"]>("1Y");
   const [hover, setHover] = useState<number | null>(null);
-  const [hidden, setHidden] = useState<string[]>([]);
+  // the S&P 500 and sector lines start hidden so the stock's own line leads; their returns still show, tap to draw them
+  const [hidden, setHidden] = useState<string[]>(() => defaults.map((d) => d.ticker));
   const [added, setAdded] = useState<CompareLine[]>([]);
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -338,7 +339,7 @@ export default function PriceChart({
   };
   const fmtPx = (v: number | null | undefined) => (v == null ? "—" : `${currencySymbol}${v.toFixed(2)}`);
 
-  const vs = lines.slice(0, 2).filter((l) => !hidden.includes(l.ticker));
+  const vs = lines.slice(0, 2); // the comparison sentences show even while those lines are hidden
 
   async function add(t: string) {
     setError(null);
@@ -531,7 +532,7 @@ export default function PriceChart({
           </div>
         </div>
         {error && <p className="mt-2 text-xs text-muted">{error}</p>}
-        <p className="mt-2 text-xs text-muted">Returns over the selected range, dividends included. Tap a line to hide it; added comparisons are remembered in this browser.</p>
+        <p className="mt-2 text-xs text-muted">Returns over the selected range, dividends included. Tap a name to draw or hide its line; added comparisons are remembered in this browser.</p>
       </div>
     </section>
   );
