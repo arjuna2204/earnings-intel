@@ -74,6 +74,7 @@ def main(argv: list[str] | None = None) -> int:
     rk = sub.add_parser("risk")
     rk.add_argument("ticker", nargs="?", default=None)
     rk.add_argument("--missing", action="store_true", help="only companies with no risk stats yet")
+    rk.add_argument("--stale", action="store_true", help="missing, or older than the latest price day")
     sub.add_parser("fix-sectors")
     au = sub.add_parser("auto-research")
     au.add_argument("--max", type=int, default=15)
@@ -233,7 +234,12 @@ def main(argv: list[str] | None = None) -> int:
 
         print(
             json.dumps(
-                run_risk(settings, [args.ticker.upper()] if args.ticker else None, missing_only=args.missing),
+                run_risk(
+                    settings,
+                    [args.ticker.upper()] if args.ticker else None,
+                    missing_only=args.missing,
+                    stale_only=args.stale,
+                ),
                 default=str,
             )
         )

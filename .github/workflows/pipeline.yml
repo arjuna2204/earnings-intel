@@ -178,18 +178,18 @@ jobs:
         run: |
           python -m ei.cli sector-growth || echo "::warning::sector growth refresh failed; DCFs use the last saved rates"
           python -m ei.cli dcf || echo "::warning::dcf failed"
-      - name: Stats, risk and options, after a new trading day (free, no AI)
+      - name: Options, after a new trading day (free, no AI)
         if: (((github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily') && steps.refresh.outputs.new_trading_day == 'true') || inputs.command == 'risk-options'
         working-directory: pipeline
         run: |
-          python -m ei.cli risk || echo "::warning::risk stats failed"
           python -m ei.cli options || echo "::warning::options refresh failed"
-      - name: Sector check and risk stats for newly added companies (free, no AI)
-        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily'
+      - name: Sector check, and risk stats that are missing or older than the latest prices (free, no AI)
+        # by staleness, not this run's "new trading day": the price catch-up run often loads the new day first
+        if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily' || inputs.command == 'risk-options'
         working-directory: pipeline
         run: |
           python -m ei.cli fix-sectors || echo "::warning::sector check failed"
-          python -m ei.cli risk --missing || echo "::warning::risk stats for new companies failed"
+          python -m ei.cli risk --stale || echo "::warning::risk stats refresh failed"
       - name: Write the brief and call comparison for companies that just reported (AI, budget-capped)
         if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily' || inputs.command == 'auto-research'
         working-directory: pipeline

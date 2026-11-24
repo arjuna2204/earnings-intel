@@ -364,9 +364,21 @@ def run_company(db: Db, company: dict[str, Any], market: Series) -> dict[str, An
     return res
 
 
-def run_all(settings: Any, tickers: list[str] | None = None, missing_only: bool = False) -> dict[str, Any]:
+def run_all(
+    settings: Any, tickers: list[str] | None = None, missing_only: bool = False, stale_only: bool = False
+) -> dict[str, Any]:
+    """missing_only: companies with no stats yet. stale_only: also companies whose stats are older than the
+    latest SPY price day (the daily run refreshes these; it no longer waits for its own "new trading day")."""
     db = Db(settings.supabase_url, settings.supabase_secret_key)
-    have = {r["cik"] for r in db.select_all("risk_stats", {"select": "cik"})} if missing_only else set()
+    have: set[Any] = set()
+    if missing_only or stale_only:
+        rows = db.select_all("risk_stats", {"select": "cik,as_of"})
+        if stale_only:
+            last = db.select("prices", {"ticker": "eq.SPY", "select": "date", "order": "date.desc", "limit": "1"})
+            latest = last[0]["date"] if last else ""
+            have = {r["cik"] for r in rows if str(r.get("as_of") or "") >= latest}
+        else:
+            have = {r["cik"] for r in rows}
     etfs = {r["sector_etf"] for r in db.select("companies", {"select": "sector_etf"}) if r.get("sector_etf")} | {"SPY"}
     market = _series(db, "SPY")
     out: dict[str, Any] = {}
