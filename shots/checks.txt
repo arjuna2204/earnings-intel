@@ -1,0 +1,42 @@
+PASS  search reaches a company in one step  — http://localhost:3000/c/AAPL
+PASS  opens ?tab=overview  — status 200, tab 'Overview'
+PASS  opens ?tab=earnings  — status 200, tab 'Earnings'
+PASS  opens ?tab=valuation  — status 200, tab 'Valuation'
+PASS  opens ?tab=risk  — status 200, tab 'Risk'
+PASS  opens ?tab=financials  — status 200, tab 'Financials'
+PASS  opens ?tab=business  — status 200, tab 'Business'
+PASS  opens ?tab=earnings&view=call  — status 200, tab 'Earnings'
+PASS  opens ?tab=valuation&view=peers  — status 200, tab 'Valuation'
+PASS  opens ?tab=risk&view=riskfactors  — status 200, tab 'Risk'
+PASS  opens ?tab=risk&view=ownership  — status 200, tab 'Risk'
+PASS  opens ?tab=business&view=leaders  — status 200, tab 'Business'
+PASS  opens ?tab=call  — status 200, tab 'Earnings'
+PASS  opens ?tab=brief  — status 200, tab 'Earnings'
+PASS  opens ?tab=filings  — status 200, tab 'Earnings'
+PASS  opens ?tab=street  — status 200, tab 'Valuation'
+PASS  opens ?tab=dcf  — status 200, tab 'Valuation'
+PASS  opens ?tab=peers  — status 200, tab 'Valuation'
+PASS  opens ?tab=stats  — status 200, tab 'Risk'
+PASS  opens ?tab=insiders  — status 200, tab 'Risk'
+PASS  opens ?tab=redline  — status 200, tab 'Risk'
+PASS  opens ?tab=historical  — status 200, tab 'Financials'
+PASS  opens ?tab=supply  — status 200, tab 'Business'
+PASS  opens ?tab=events  — status 200, tab 'Overview'
+PASS  opens ?tab=earnings&view=events  — status 200, tab 'Overview'
+PASS  opens ?tab=risk&view=options  — status 200, tab 'Risk'
+PASS  opens ?tab=options  — status 200, tab 'Risk'
+PASS  opens ?tab=earnings&view=search  — status 200, tab 'Overview'
+PASS  opens ?tab=sources  — status 200, tab 'Overview'
+PASS  old /portfolio opens My stocks  — http://localhost:3000/my-stocks#portfolio
+PASS  old Company events link lands on Things to watch  — section top 150px
+PASS  hover scrub updates the price  — $349.08 → $252.82 → $308.63
+PASS  hover scrub updates the date  — '+$73.92 (+26.86%) Past year' → '−$22.84 (−8.29%) Mar 16, 2026'
+PASS  leaving the chart returns to the latest price  — $349.08
+PASS  sticky bar appears on scroll  — data-show=true
+PASS  sticky bar hides back at the top
+PASS  reduced motion: no scroll reveal  — armed=False, hidden sections=0
+PASS  reduced motion: no hover transitions  — 0s
+PASS  reduced motion: price doesn't count up  — $349.08
+PASS  motion allowed: landing reveal armed
+
+40/40 checks passed
