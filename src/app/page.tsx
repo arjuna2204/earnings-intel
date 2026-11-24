@@ -39,42 +39,58 @@ export default function Home() {
           Your portfolio
         </Link>
       </div>
+      <Why />
       <div id="watchlist" className="scroll-mt-20">
         <WatchlistPanel />
       </div>
       <Suspense fallback={<RecentSkeleton />}>
         <Recent />
       </Suspense>
-      <section className="mt-16">
-        <h2 className="border-b border-border pb-3 text-xl font-semibold tracking-tight">What you get for every stock</h2>
-        <ul className="divide-y divide-border">
-          {FEATURES.map(([title, text]) => (
-            <li key={title} className="grid gap-1 py-4 sm:grid-cols-[10rem_1fr] sm:gap-6">
-              <span className="font-semibold">{title}</span>
-              <span className="text-[15px] leading-relaxed text-muted">{text}</span>
-            </li>
-          ))}
-        </ul>
-        <p className="mt-6 text-sm text-muted">
-          Curious whether the signals work?{" "}
-          <Link href="/backtest" className="font-semibold text-accent hover:underline">
-            See the backtest
-          </Link>
-          . Research, not investment advice.
-        </p>
-      </section>
+      <p className="mt-12 text-sm text-muted">
+        Curious whether the signals work?{" "}
+        <Link href="/backtest" className="font-semibold text-accent hover:underline">
+          See the backtest
+        </Link>
+        . Research, not investment advice.
+      </p>
     </main>
     </div>
   );
 }
 
-const FEATURES: [string, string][] = [
-  ["Overview", "The price chart, what just happened at the last report, the bottom line, and four plain questions: is it growing, is it expensive, what did management say, how bumpy is the ride."],
-  ["Earnings", "What changed between two quarters — beat or miss, guidance, what drove the numbers, the company's own adjusted figures — and the earnings call side by side with the one before."],
-  ["Financials", "15 years of financials straight from SEC filings, by quarter and year, with revenue by segment and the debt schedule."],
-  ["Valuation", "Fair value from a DCF you can download to Excel, Street estimates and beat history, bull / base / bear cases, and how it compares with peers."],
-  ["Risk", "New risk factors the company added, how much the stock swings, and who owns it — funds, insiders and short sellers."],
-  ["Business", "Who its biggest customers and suppliers are, and who runs it and how they are paid."],
+/** Why the site exists, on the first page: the one-line difference, three things that set it apart, and who it's for. */
+function Why() {
+  return (
+    <section className="mt-14" aria-labelledby="why">
+      <p id="why" className="text-sm font-semibold uppercase tracking-wide text-accent">
+        Why Earnings Intel
+      </p>
+      <h2 className="mt-2 text-2xl font-medium leading-snug sm:text-3xl">
+        Finance sites show you the numbers. <span className="text-muted">We explain what changed, why, and whether it matters.</span>
+      </h2>
+      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+        {WHY.map(([title, text]) => (
+          <div key={title} className="rounded-2xl bg-card p-4">
+            <p className="font-semibold">{title}</p>
+            <p className="mt-1 text-sm leading-relaxed text-muted">{text}</p>
+          </div>
+        ))}
+      </div>
+      <p className="mt-4 text-[15px] leading-relaxed text-muted">
+        <b className="font-semibold text-foreground">Best for:</b> checking a company right after it reports, deciding whether to buy, or building a
+        stock pitch.{" "}
+        <Link href="/about" className="font-semibold text-accent hover:underline">
+          How it works and how it&apos;s different →
+        </Link>
+      </p>
+    </section>
+  );
+}
+
+const WHY: [string, string][] = [
+  ["What changed, not just what is", "Any two quarters compared: guidance, what drove the numbers, the call against the last one, and new risk factors."],
+  ["A source for every claim", "Every point links to the SEC filing or call quote it came from, so you can check it yourself."],
+  ["Analyst math, free", "Adjusted figures, a DCF you can download to Excel, bull / base / bear cases and peer comparison."],
 ];
 
 async function Recent() {

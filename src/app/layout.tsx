@@ -58,6 +58,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <Link href="/macro" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground md:block">
                 Economy
               </Link>
+              <Link href="/about" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground lg:block">
+                About
+              </Link>
               <ThemeToggle />
               <WatchAlerts />
               <HeaderSearch />
@@ -68,6 +71,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <footer className="mt-auto border-t border-border">
           <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-5 gap-y-1 px-4 py-5 text-xs text-muted">
             <span>Educational research, not investment advice. Data may be delayed or contain errors.</span>
+            <Link href="/about" className="hover:text-foreground hover:underline">
+              Why Earnings Intel
+            </Link>
             <Link href="/terms" className="hover:text-foreground hover:underline">
               Terms &amp; data sources
             </Link>
