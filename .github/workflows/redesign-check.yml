@@ -17,7 +17,8 @@ concurrency:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    # Playwright's browser download supports this image; ubuntu-latest moved ahead of it
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -34,7 +35,7 @@ jobs:
         with:
           python-version: "3.11"
       - run: npm ci
-      - run: pip install playwright==1.55.0 && python -m playwright install --with-deps chromium
+      - run: pip install playwright && python -m playwright install --with-deps chromium
       - run: npx next build
       - name: Start the site
         run: |

@@ -13,9 +13,9 @@
   --card-strong: #eceeee;
   --border: rgba(11, 12, 13, 0.07);
   --up: #00a63e;
-  --up-ink: #007d38;
+  --up-ink: #007533;
   --down: #e8590c;
-  --down-ink: #c2410c;
+  --down-ink: #b23a0a;
   --accent: var(--up);
   --accent-ink: var(--up-ink);
   --float: 0 10px 34px -14px rgba(11, 12, 13, 0.28), 0 0 0 1px rgba(11, 12, 13, 0.04);

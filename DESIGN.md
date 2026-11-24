@@ -16,9 +16,9 @@ Restrained: neutrals plus two signal colors. Green and orange-red only ever mean
 | `--card` | `#f4f5f5` | `#121314` | quiet surfaces, hovered rows, pill fills |
 | `--border` | `rgba(11,12,13,.07)` | `rgba(255,255,255,.08)` | hairlines, only where a surface would be too heavy |
 | `--up` | `#00a63e` | `#2bd46b` | gains: chart lines, big numbers, pill fills, the accent |
-| `--up-ink` | `#007d38` | `#2bd46b` | gains as small text (≥4.5:1) |
+| `--up-ink` | `#007533` | `#2bd46b` | gains as small text (≥4.5:1) |
 | `--down` | `#e8590c` | `#ff6a3d` | losses: same roles as `--up` |
-| `--down-ink` | `#c2410c` | `#ff6a3d` | losses as small text |
+| `--down-ink` | `#b23a0a` | `#ff6a3d` | losses as small text |
 | `--accent` | follows the period's direction on a company page (`--up` or `--down`), else `--up` | | links, active tab, focus ring |
 
 Pills: tinted fill (signal at 12% / 18% dark) with ink text. Never gray text on a colored fill.

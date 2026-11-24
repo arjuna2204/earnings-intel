@@ -494,7 +494,7 @@ export default function PriceChart({
           <span className="flex items-center gap-2">
             <span className="h-0.5 w-5 shrink-0 rounded" style={{ background: color }} aria-hidden />
             <span className="font-semibold">{ticker}</span>
-            <span className="tabular-nums" style={{ color }}>
+            <span className={`tabular-nums ${up ? "text-up-ink" : "text-down-ink"}`}>
               {up ? "+" : "−"}
               {Math.abs(pct * 100).toFixed(1)}%
             </span>

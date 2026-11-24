@@ -60,19 +60,19 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <footer className="mt-auto bg-card/60">
           <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-5 gap-y-1 px-4 py-6 text-[13px] text-muted">
             <span>Educational research, not investment advice. Data may be delayed or contain errors.</span>
-            <Link href="/about" className="hover:text-foreground hover:underline">
+            <Link href="/about" className="inline-block py-1.5 hover:text-foreground hover:underline">
               Why Earnings Intel
             </Link>
-            <Link href="/terms" className="hover:text-foreground hover:underline">
+            <Link href="/terms" className="inline-block py-1.5 hover:text-foreground hover:underline">
               Terms &amp; data sources
             </Link>
-            <Link href="/coverage" className="hover:text-foreground hover:underline">
+            <Link href="/coverage" className="inline-block py-1.5 hover:text-foreground hover:underline">
               Companies covered
             </Link>
-            <Link href="/backtest" className="hover:text-foreground hover:underline">
+            <Link href="/backtest" className="inline-block py-1.5 hover:text-foreground hover:underline">
               Does it work? (backtest)
             </Link>
-            <Link href="/status" className="hover:text-foreground hover:underline">
+            <Link href="/status" className="inline-block py-1.5 hover:text-foreground hover:underline">
               Status
             </Link>
           </div>
