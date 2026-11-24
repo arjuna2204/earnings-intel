@@ -172,12 +172,12 @@ export default function PortfolioView() {
 
   return (
     <div className="mt-6 space-y-10">
-      <section aria-label="Add holdings" className="rounded-2xl border border-border p-4">
+      <section aria-label="Add holdings" className="rounded-2xl bg-card p-4">
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <h2 className="text-sm font-semibold">Add a stock</h2>
             <div className="mt-2">
-              <SearchBox onPick={(t) => add(t)} placeholder="Search a ticker or company to add" />
+              <SearchBox onCard onPick={(t) => add(t)} placeholder="Search a ticker or company to add" />
             </div>
           </div>
           <div>
@@ -188,9 +188,9 @@ export default function PortfolioView() {
               rows={3}
               placeholder={"AAPL 10\nMSFT 5\nNVDA 20"}
               aria-label="Paste holdings, one per line: ticker then shares"
-              className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-accent"
+              className="mt-2 w-full rounded-xl bg-background px-3 py-2 text-sm outline-none focus:shadow-float"
             />
-            <button type="button" onClick={importPaste} className="mt-1 rounded-full bg-accent px-4 py-1.5 text-sm font-semibold text-black hover:brightness-110">
+            <button type="button" onClick={importPaste} className="mt-1 rounded-full bg-foreground px-4 py-1.5 text-sm font-semibold text-background">
               Add these
             </button>
           </div>
@@ -232,7 +232,7 @@ export default function PortfolioView() {
               </div>
               <div>
                 <dt className="text-xs text-muted">1-year return (today&apos;s mix)</dt>
-                <dd className={`mt-0.5 text-2xl font-semibold tabular-nums ${ret1y == null ? "" : ret1y >= 0 ? "text-up" : "text-down"}`}>
+                <dd className={`mt-0.5 text-2xl font-semibold tabular-nums ${ret1y == null ? "" : ret1y >= 0 ? "text-up-ink" : "text-down-ink"}`}>
                   {ret1y == null ? "—" : `${ret1y >= 0 ? "▲" : "▼"} ${pct(Math.abs(ret1y))}`}
                 </dd>
               </div>
@@ -281,7 +281,7 @@ export default function PortfolioView() {
                         <td className="py-2 text-right">{h?.price != null ? `$${h.price.toFixed(2)}` : "—"}</td>
                         <td className="py-2 text-right">{value != null ? money(value) : "—"}</td>
                         <td className="py-2 text-right">{value != null && total ? pct(w(value)) : "—"}</td>
-                        <td className={`py-2 text-right ${h?.ret1y == null ? "text-muted" : h.ret1y >= 0 ? "text-up" : "text-down"}`}>
+                        <td className={`py-2 text-right ${h?.ret1y == null ? "text-muted" : h.ret1y >= 0 ? "text-up-ink" : "text-down-ink"}`}>
                           {h?.ret1y == null ? "—" : `${h.ret1y >= 0 ? "▲" : "▼"} ${pct(Math.abs(h.ret1y))}`}
                         </td>
                         <td className="py-2 text-right">{h?.divYield != null ? pct(h.divYield, 2) : "—"}</td>

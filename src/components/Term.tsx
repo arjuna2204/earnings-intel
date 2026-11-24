@@ -168,7 +168,7 @@ function Popover({
       onMouseEnter={() => onHover(true)}
       onMouseLeave={() => onHover(false)}
       style={{ left, width: w, top: below ? anchor.bottom + 8 : anchor.top - 8, transform: below ? undefined : "translateY(-100%)" }}
-      className="fixed z-[70] rounded-2xl border border-border bg-background p-4 text-left shadow-2xl"
+      className="fixed z-[70] rounded-2xl bg-background p-4 text-left shadow-float"
     >
       <Body entry={entry} value={value} />
     </div>,

@@ -86,7 +86,7 @@ export default function FilingsView({
                 {mdna.outlook.map((o, i) => (
                   <li key={i}>
                     <button
-                      className="text-left hover:text-accent"
+                      className="text-left hover:text-accent-ink"
                       onClick={() =>
                         setPanel({
                           title: o.metric,
@@ -112,7 +112,7 @@ export default function FilingsView({
                 {mdna.capital.map((c, i) => (
                   <li key={i}>
                     <button
-                      className="text-left hover:text-accent"
+                      className="text-left hover:text-accent-ink"
                       onClick={() =>
                         setPanel({
                           title: c.label,
@@ -135,7 +135,7 @@ export default function FilingsView({
               {mdna.competitors.map((c, i) => (
                 <button
                   key={i}
-                  className="mr-2 underline decoration-dotted hover:text-accent"
+                  className="mr-2 underline decoration-dotted hover:text-accent-ink"
                   onClick={() =>
                     setPanel({
                       title: c.name,
@@ -163,7 +163,7 @@ export default function FilingsView({
               href={quoteLink(panel.link, panel.quote) ?? panel.link}
               target="_blank"
               rel="noreferrer"
-              className="text-accent underline"
+              className="text-accent-ink underline"
             >
               Open {panel.label ?? "filing"} at this passage ↗
             </a>
@@ -260,7 +260,7 @@ function ReleaseTable({
                     <td className="py-3 pr-3 text-right tabular-nums text-muted">
                       {fA ? (
                         <button
-                          className="hover:text-accent"
+                          className="hover:text-accent-ink"
                           onClick={() => onQuote(fA.quote, la)}
                         >
                           {aText}
@@ -272,7 +272,7 @@ function ReleaseTable({
                     <td className="py-3 text-right font-semibold tabular-nums">
                       {fB ? (
                         <button
-                          className="hover:text-accent"
+                          className="hover:text-accent-ink"
                           onClick={() => onQuote(fB.quote, lb)}
                         >
                           {figureText(fB)}
@@ -295,7 +295,7 @@ function ReleaseTable({
             {rb.adjustments.map((a, i) => (
               <li key={i}>
                 <button
-                  className="text-left hover:text-accent"
+                  className="text-left hover:text-accent-ink"
                   onClick={() => onQuote(a.quote, lb)}
                 >
                   • {a.label}{" "}
@@ -332,7 +332,7 @@ function DriverList({
             <div className="flex items-baseline justify-between gap-2">
               <span className="font-semibold">{metric}</span>
               <span
-                className={`text-sm ${dir === "up" ? "text-up" : dir === "down" ? "text-down" : "text-muted"}`}
+                className={`text-sm ${dir === "up" ? "text-up-ink" : dir === "down" ? "text-down-ink" : "text-muted"}`}
               >
                 {dir === "up" ? "▲ " : dir === "down" ? "▼ " : ""}
                 {ds.find((d) => d.change_text)?.change_text ?? dir}
@@ -342,7 +342,7 @@ function DriverList({
               {ds.map((d, i) => (
                 <li key={i}>
                   <button
-                    className="text-left hover:text-accent"
+                    className="text-left hover:text-accent-ink"
                     onClick={() => onQuote(d)}
                   >
                     {d.offset ? (
@@ -361,8 +361,8 @@ function DriverList({
 }
 
 const STATUS_STYLE: Record<string, string> = {
-  added: "text-up",
-  removed: "text-down",
+  added: "text-up-ink",
+  removed: "text-down-ink",
   modified: "text-foreground",
   unchanged: "text-muted",
 };
@@ -452,7 +452,7 @@ function RiskSection({
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`rounded-full px-3.5 py-1.5 font-semibold ${filter === f ? "bg-accent/15 text-accent" : "text-muted hover:text-foreground"}`}
+            className={`rounded-full px-3.5 py-1.5 font-semibold ${filter === f ? "bg-foreground text-background" : "text-muted hover:text-foreground"}`}
           >
             {f === "changed"
               ? "Changed"
@@ -481,7 +481,7 @@ function RiskSection({
                   <span className="block text-xs text-muted">{r.category}</span>
                 )}
                 {r.escalations.length > 0 && (
-                  <span className="mt-1 block text-sm text-down">
+                  <span className="mt-1 block text-sm text-down-ink">
                     Stronger wording: {r.escalations[0]}
                   </span>
                 )}
@@ -500,7 +500,7 @@ function RiskSection({
                   </p>
                 )}
                 {r.escalations.length > 1 && (
-                  <ul className="mb-3 space-y-1 text-sm text-down">
+                  <ul className="mb-3 space-y-1 text-sm text-down-ink">
                     {r.escalations.map((e, k) => (
                       <li key={k}>{e}</li>
                     ))}

@@ -113,7 +113,7 @@ export default function LeadershipView({
                           {money(r.ceo_actually_paid)}
                         </td>
                         <td
-                          className={`py-2 text-right ${r.tsr == null ? "" : r.tsr >= 100 ? "text-up" : "text-down"}`}
+                          className={`py-2 text-right ${r.tsr == null ? "" : r.tsr >= 100 ? "text-up-ink" : "text-down-ink"}`}
                         >
                           {r.tsr == null
                             ? "—"

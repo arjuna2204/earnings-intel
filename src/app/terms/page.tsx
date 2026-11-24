@@ -16,7 +16,7 @@ export default function TermsPage() {
       <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Terms, disclaimer and data sources</h1>
       <p className="mt-1 text-sm text-muted">Last updated {UPDATED}</p>
 
-      <div className="mt-6 rounded-2xl border border-border bg-card p-4">
+      <div className="mt-6 rounded-2xl bg-card p-4">
         <p className="font-semibold">Not investment advice.</p>
         <p className="mt-1">
           Earnings Intel is an educational research tool. Nothing on this site is a recommendation to buy, sell or hold any security, and it is not

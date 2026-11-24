@@ -69,7 +69,7 @@ export default function BacktestView({ data }: { data: BacktestData }) {
               role="tab"
               aria-selected={h === x.key}
               onClick={() => setH(x.key)}
-              className={`rounded-full px-3.5 py-1.5 font-semibold ${h === x.key ? "bg-accent/15 text-accent" : "text-muted hover:text-foreground"}`}
+              className={`rounded-full px-3.5 py-1.5 font-semibold ${h === x.key ? "bg-foreground text-background" : "text-muted hover:text-foreground"}`}
             >
               {x.label}
             </button>
@@ -136,7 +136,7 @@ function Forest({ data, order, h }: { data: BacktestData; order: string[]; h: Ho
                 <div className={`absolute top-2 h-1 rounded-full ${color} opacity-60`} style={{ left: `${pos(st.ci![0])}%`, width: `${pos(st.ci![1]) - pos(st.ci![0])}%` }} />
                 <div className={`absolute top-1 h-3 w-3 -translate-x-1/2 rounded-full ${color}`} style={{ left: `${pos(st.spread!)}%` }} />
               </div>
-              <span className={`text-right font-semibold tabular-nums ${!sig ? "text-muted" : st.spread! > 0 ? "text-up" : "text-down"}`}>{pct(st.spread)}</span>
+              <span className={`text-right font-semibold tabular-nums ${!sig ? "text-muted" : st.spread! > 0 ? "text-up-ink" : "text-down-ink"}`}>{pct(st.spread)}</span>
             </div>
           );
         })}
@@ -158,7 +158,7 @@ function SignalRow({ meta, stat, total, horizon }: { meta: SignalMeta; stat: Sta
   const [open, setOpen] = useState(false);
   const enough = stat?.enough;
   const spread = stat?.spread ?? null;
-  const tone = !enough ? "text-muted" : stat.significant ? (spread! > 0 ? "text-up" : "text-down") : "text-foreground";
+  const tone = !enough ? "text-muted" : stat.significant ? (spread! > 0 ? "text-up-ink" : "text-down-ink") : "text-foreground";
   const verdictText = !enough
     ? `Not enough data yet — ${stat?.n ?? 0} of ${MIN} events`
     : stat.significant

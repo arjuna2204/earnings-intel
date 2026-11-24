@@ -108,7 +108,7 @@ export default function PeersView({
           {peers.length > 0 && !job && (
             <button
               onClick={() => setEditing(!editing)}
-              className="text-sm font-semibold text-accent hover:underline"
+              className="text-sm font-semibold text-accent-ink hover:underline"
             >
               {editing ? "Cancel" : "Edit peers"}
             </button>
@@ -157,7 +157,7 @@ export default function PeersView({
               </p>
               <button
                 onClick={() => start({})}
-                className="rounded-full bg-accent px-6 py-3 font-semibold text-black hover:brightness-110"
+                className="rounded-full bg-foreground px-6 py-3 font-semibold text-background"
               >
                 Find peers
               </button>
@@ -165,7 +165,7 @@ export default function PeersView({
           )
         )}
         {job && <JobLine job={job} />}
-        {error && <p className="mt-3 text-sm text-down">{error}</p>}
+        {error && <p className="mt-3 text-sm text-down-ink">{error}</p>}
       </section>
 
       {comparison && (
@@ -189,7 +189,7 @@ export default function PeersView({
                         <button
                           key={r}
                           onClick={() => setOpenFact(r)}
-                          className="px-px text-[11px] font-semibold text-accent hover:underline"
+                          className="px-px text-[11px] font-semibold text-accent-ink hover:underline"
                         >
                           {order.indexOf(r) + 1}
                           {k < c.refs.length - 1 ? "," : ""}
@@ -234,7 +234,7 @@ function JobLine({ job }: { job: Job }) {
   const last = steps.sort((a, b) => a[1].at.localeCompare(b[1].at)).at(-1);
   return (
     <p className="mt-4 text-sm text-muted" aria-live="polite">
-      <span className="mr-2 inline-block h-2 w-2 rounded-full bg-accent" />
+      <span className="mr-2 inline-block h-2 w-2 rounded-full bg-foreground" />
       {job.status === "queued" ? "Starting…" : (last?.[1].detail ?? "Working…")}
       <span className="block pl-4 text-xs">
         Loading new peers takes a minute or two each. You can leave this page.
@@ -294,7 +294,7 @@ function PeerEditor({
             </span>
             <button
               onClick={() => setList(list.filter((x) => x.ticker !== p.ticker))}
-              className="text-sm font-semibold text-down hover:underline"
+              className="text-sm font-semibold text-down-ink hover:underline"
             >
               Remove
             </button>
@@ -314,7 +314,7 @@ function PeerEditor({
           className="w-full rounded-xl border border-border bg-background px-4 py-3 outline-none focus:border-foreground"
         />
         {q.trim() && hits.length > 0 && (
-          <ul className="absolute z-10 mt-1 w-full overflow-hidden rounded-xl border border-border bg-background shadow-xl">
+          <ul className="absolute z-10 mt-1 w-full overflow-hidden rounded-xl bg-background shadow-float">
             {hits.map((h) => (
               <li key={h.ticker}>
                 <button
@@ -337,7 +337,7 @@ function PeerEditor({
               key={c.ticker}
               onClick={() => add(c.ticker, c.name)}
               title={c.reason}
-              className="mr-3 font-semibold text-accent hover:underline"
+              className="mr-3 font-semibold text-accent-ink hover:underline"
             >
               + {c.ticker}
             </button>
@@ -348,7 +348,7 @@ function PeerEditor({
         <button
           onClick={() => onSave(list.map((x) => x.ticker))}
           disabled={list.length < 3}
-          className="rounded-full bg-accent px-6 py-2.5 font-semibold text-black hover:brightness-110 disabled:opacity-40"
+          className="rounded-full bg-foreground px-6 py-2.5 font-semibold text-background disabled:opacity-40"
         >
           Save and compare
         </button>
@@ -368,7 +368,7 @@ function PeerEditor({
           </select>
           <button
             onClick={() => onAuto(n)}
-            className="font-semibold text-accent hover:underline"
+            className="font-semibold text-accent-ink hover:underline"
           >
             Re-pick
           </button>
@@ -416,7 +416,7 @@ function RankTable({
                 setGroup(g.key);
                 setSort(null);
               }}
-              className={`rounded-full px-3.5 py-1.5 font-semibold ${group === g.key ? "bg-accent/15 text-accent" : "text-muted hover:text-foreground"}`}
+              className={`rounded-full px-3.5 py-1.5 font-semibold ${group === g.key ? "bg-foreground text-background" : "text-muted hover:text-foreground"}`}
             >
               {g.label}
             </button>
@@ -467,7 +467,7 @@ function RankTable({
                     <td className="sticky left-0 bg-background py-3 pr-4">
                       {me ? (
                         <span className="flex items-center gap-2">
-                          <span className="h-2 w-2 rounded-full bg-accent" />
+                          <span className="h-2 w-2 rounded-full bg-foreground" />
                           {r.ticker}
                         </span>
                       ) : (
@@ -583,7 +583,7 @@ function RankStrips({
                     onMouseEnter={() => setHover(`${c.key}:${p.t}`)}
                     onFocus={() => setHover(`${c.key}:${p.t}`)}
                     aria-label={`${p.t} ${fmt(p.v, c.fmt)}`}
-                    className={`absolute top-3 -translate-x-1/2 -translate-y-1/2 rounded-full ${mine ? "z-10 h-3.5 w-3.5 bg-accent ring-2 ring-background" : "h-2.5 w-2.5 bg-muted/70 hover:bg-foreground"}`}
+                    className={`absolute top-3 -translate-x-1/2 -translate-y-1/2 rounded-full ${mine ? "z-10 h-3.5 w-3.5 bg-foreground ring-2 ring-background" : "h-2.5 w-2.5 bg-muted/70 hover:bg-foreground"}`}
                     style={{ left: `${pos(p.v)}%` }}
                   >
                     {hover === `${c.key}:${p.t}` && (

@@ -6,18 +6,22 @@ import EChart from "@/components/EChart";
 import Term, { AboutNumbers } from "@/components/Term";
 import { GLOSSARY } from "@/lib/glossary";
 import { useThemeColors } from "@/components/useThemeColors";
+import { publishPrice } from "@/components/price-store";
 import type { PricePoint } from "@/lib/types";
 
 const RANGES = [
-  { key: "1M", days: 31 },
-  { key: "3M", days: 92 },
-  { key: "1Y", days: 366 },
-  { key: "5Y", days: 5 * 366 },
-  { key: "15Y", days: 15 * 366 },
+  { key: "1M", days: 31, label: "Past month" },
+  { key: "3M", days: 92, label: "Past 3 months" },
+  { key: "1Y", days: 366, label: "Past year" },
+  { key: "5Y", days: 5 * 366, label: "Past 5 years" },
+  { key: "15Y", days: 15 * 366, label: "Past 15 years" },
 ] as const;
 
-// comparison lines: dashed, never green/red (those mean up/down)
-const PALETTE = ["#9ca3af", "#5b9dff", "#a78bfa", "#f59e0b", "#22d3ee", "#f472b6", "#eab308", "#94a3b8"];
+// comparison lines: dashed, never green/orange-red (those mean up/down). Fixed order, validated for colour-blind
+// separation on the white and the black page (dataviz validate_palette); past four, extra lines fold to gray.
+const PALETTE_LIGHT = ["#2a78d6", "#eda100", "#6250d6", "#e87ba4"];
+const PALETTE_DARK = ["#3987e5", "#c98500", "#9085e9", "#d55181"];
+const OVERFLOW = "#9ca3af";
 const STORE = "ei.chartCompare";
 const OPTS = "ei.chartOpts";
 // moving averages: solid, thin, neutral (dashed lines are comparisons)
@@ -25,7 +29,7 @@ const MA50 = "#60a5fa";
 const MA200 = "#c4b5fd";
 
 type Opts = { vol: boolean; ma50: boolean; ma200: boolean; log: boolean };
-const DEFAULT_OPTS: Opts = { vol: true, ma50: false, ma200: false, log: false };
+const DEFAULT_OPTS: Opts = { vol: false, ma50: false, ma200: false, log: false };
 
 const optsListeners = new Set<() => void>();
 function subscribeOpts(cb: () => void) {
@@ -65,6 +69,10 @@ function sma(prices: PricePoint[], n: number): (number | null)[] {
     out.push(i >= n - 1 ? sum / n : null);
   }
   return out;
+}
+
+function fmtDate(iso: string): string {
+  return new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 }
 
 function fmtVol(v: number): string {
@@ -173,8 +181,23 @@ export default function PriceChart({
 
   const lines = useMemo(() => {
     const all = [...defaults, ...added];
-    return all.map((l, i) => ({ ...l, color: PALETTE[i % PALETTE.length], values: series.length ? align(series, l.prices) : [] }));
-  }, [defaults, added, series]);
+    const pal = colors.dark ? PALETTE_DARK : PALETTE_LIGHT;
+    return all.map((l, i) => ({ ...l, color: pal[i] ?? OVERFLOW, values: series.length ? align(series, l.prices) : [] }));
+  }, [defaults, added, series, colors.dark]);
+
+  // the company header's big price follows the chart: the range's change, or the scrubbed day
+  const pubIdx = hover ?? series.length - 1;
+  const pub = series.length ? series[pubIdx] : null;
+  const pubFirst = series[0];
+  const pubPct = pub && pubFirst ? pub.adj_close / pubFirst.adj_close - 1 : 0;
+  const pubPrice = pub ? (pub.close ?? pub.adj_close) : 0;
+  const pubLabel = hover !== null && pub ? fmtDate(pub.date) : RANGES.find((r) => r.key === range)!.label;
+  useEffect(() => {
+    if (!pub) return;
+    const periodUp = series.length ? series[series.length - 1].adj_close >= series[0].adj_close : true;
+    publishPrice(ticker, { price: pubPrice, change: pubPrice - pubPrice / (1 + pubPct), pct: pubPct, label: pubLabel, scrubbing: hover !== null, periodUp });
+  }, [ticker, pub, pubPrice, pubPct, pubLabel, hover, series]);
+  useEffect(() => () => publishPrice(ticker, null), [ticker]);
 
   if (!prices.length) {
     return (
@@ -188,11 +211,13 @@ export default function PriceChart({
   // Adjusted close keeps long ranges continuous across splits/dividends; the headline shows the actual close.
   const first = series[0];
   const latest = series[series.length - 1];
+  const prevClose = offset > 0 ? prices[offset - 1].adj_close : first.adj_close;
   const idx = hover ?? series.length - 1;
   const shown = series[idx];
   const change = shown.adj_close - first.adj_close;
   const pct = change / first.adj_close;
-  const up = change >= 0;
+  // the line and the page accent follow the whole period's direction (not the scrubbed point), so they don't flicker
+  const up = latest.adj_close >= first.adj_close;
   const color = up ? colors.up : colors.down;
   const ret = (v: (number | null)[]) => (v[0] && v[idx] != null ? (v[idx] as number) / (v[0] as number) - 1 : null);
 
@@ -224,13 +249,14 @@ export default function PriceChart({
   const dates = series.map((p) => p.date);
 
   const option = {
-    animationDuration: 300,
+    animationDuration: 260,
+    animationEasing: "cubicOut" as const,
     grid: showVol
       ? [
           { left: 0, right: 0, top: 8, bottom: "22%" },
           { left: 0, right: 0, height: "16%", bottom: 0 },
         ]
-      : [{ left: 0, right: 0, top: 8, bottom: 8 }],
+      : [{ left: 0, right: 0, top: 12, bottom: 8 }],
     xAxis: [
       { type: "category", data: dates, show: false, boundaryGap: false },
       ...(showVol ? [{ type: "category", gridIndex: 1, data: dates, show: false }] : []),
@@ -244,7 +270,9 @@ export default function PriceChart({
     axisPointer: { link: [{ xAxisIndex: "all" }] },
     tooltip: {
       trigger: "axis",
-      axisPointer: { type: "line", lineStyle: { color: colors.muted, width: 1 } },
+      axisPointer: { type: "line", lineStyle: { color: colors.muted, width: 1 }, label: { show: false } },
+      triggerOn: "mousemove|click",
+      confine: true,
       formatter: () => "",
       backgroundColor: "transparent",
       borderWidth: 0,
@@ -259,6 +287,15 @@ export default function PriceChart({
         showSymbol: false,
         lineStyle: { color, width: 2 },
         itemStyle: { color },
+        // dotted line at the previous close (the close just before the range starts)
+        markLine: {
+          silent: true,
+          symbol: "none",
+          animation: false,
+          label: { show: false },
+          lineStyle: { color: colors.muted, type: [2, 4], width: 1, opacity: 0.8 },
+          data: [{ yAxis: prevClose }],
+        },
         markPoint: {
           symbol: "circle",
           symbolSize: 8,
@@ -326,29 +363,16 @@ export default function PriceChart({
   return (
     <section aria-label="Price chart">
       <div>
-        <div className="mb-3">
-          <div className="figure text-4xl">
-            {currencySymbol}
-            {shown.close.toFixed(2)}
-          </div>
-          <div className="mt-1 text-sm font-medium" style={{ color }}>
-            {up ? "▲ +" : "▼ −"}
-            {currencySymbol}
-            {Math.abs(change).toFixed(2)} ({up ? "+" : "−"}
-            {Math.abs(pct * 100).toFixed(2)}%){" "}
-            <span className="text-muted">
-              <Term k="adjusted_price">{hover !== null ? shown.date : `past ${range}`} · adjusted for splits & dividends</Term>
-            </span>
-          </div>
+        <div className="mb-2 min-h-5">
           {vs.length > 0 && (
-            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-sm">
+            <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-sm">
               {vs.map((l) => {
                 const r = ret(l.values);
                 if (r == null) return null;
                 const d = pct - r;
                 return (
                   <span key={l.ticker}>
-                    <span className={`font-medium ${d >= 0 ? "text-up" : "text-down"}`}>
+                    <span className={`font-medium ${d >= 0 ? "text-up-ink" : "text-down-ink"}`}>
                       <Term k="vs_benchmark">
                         {d >= 0 ? "▲ Beat" : "▼ Trailed"} {l.label} by {Math.abs(d * 100).toFixed(1)} pts
                       </Term>
@@ -390,10 +414,10 @@ export default function PriceChart({
             }
           }}
           option={option}
-          className="h-72 w-full sm:h-[26rem]"
+          className="h-72 w-full touch-pan-y sm:h-[24rem]"
           ariaLabel={`Price over ${range}: ${up ? "up" : "down"} ${Math.abs(pct * 100).toFixed(1)} percent`}
         />
-        <div className="mt-2 flex items-center justify-between border-b border-border pb-3">
+        <div className="mt-3 flex items-center justify-between border-b border-border pb-4">
           <div className="flex gap-1" role="tablist" aria-label="Chart range">
             {RANGES.map((r) => (
               <button
@@ -404,8 +428,9 @@ export default function PriceChart({
                   setRange(r.key);
                   setHover(null);
                 }}
-                className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${range === r.key ? "text-background" : "text-muted hover:text-foreground"}`}
-                style={range === r.key ? { background: color } : undefined}
+                className={`rounded-full px-3.5 py-1.5 text-sm font-bold ${
+                  range === r.key ? (up ? "bg-up/15 text-up-ink" : "bg-down/15 text-down-ink") : "text-muted hover:text-foreground"
+                }`}
               >
                 {r.key}
               </button>
@@ -427,7 +452,7 @@ export default function PriceChart({
                   aria-pressed={opts[k]}
                   onClick={() => toggle(k)}
                   title={GLOSSARY[term]?.what}
-                  className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${opts[k] ? "border-foreground text-foreground" : "border-border text-muted hover:text-foreground"}`}
+                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ${opts[k] ? "bg-foreground text-background" : "bg-card text-muted hover:text-foreground"}`}
                 >
                   {label}
                 </button>
@@ -438,7 +463,7 @@ export default function PriceChart({
               onClick={() => setExtras((e) => !e)}
               aria-expanded={extras}
               aria-label={extras ? "Hide chart options" : "More chart options: moving averages, log scale"}
-              className="rounded-full border border-border px-2.5 py-1 text-xs font-medium text-muted hover:text-foreground"
+              className="rounded-full bg-card px-2.5 py-1 text-xs font-semibold text-muted hover:text-foreground"
             >
               {extras ? "×" : "⋯"}
             </button>
@@ -461,7 +486,7 @@ export default function PriceChart({
       </div>
 
       {/* comparisons: one short, wide strip under the chart */}
-      <div aria-label="Compare on chart" className="mt-4 rounded-2xl border border-border px-4 py-3">
+      <div aria-label="Compare on chart" className="mt-4 rounded-2xl bg-card px-4 py-3">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
           <span className="flex items-center text-xs font-semibold text-muted">
             <Term k="chart_compare" quiet>Compare</Term>
@@ -563,10 +588,10 @@ function AddBox({ choices, onAdd, loading }: { choices: CompareChoice[]; onAdd: 
         }}
         placeholder={loading ? `Adding ${loading}…` : "Add an ETF or stock"}
         aria-label="Add an ETF or stock to the chart"
-        className="w-full rounded-full border border-border bg-transparent px-4 py-1.5 text-sm outline-none placeholder:text-muted focus:border-foreground"
+        className="w-full rounded-full bg-background px-4 py-1.5 text-sm outline-none placeholder:text-muted focus:shadow-float"
       />
       {open && matches.length > 0 && (
-        <ul className="absolute inset-x-0 top-11 z-30 max-h-72 overflow-auto rounded-2xl border border-border bg-background p-1 shadow-xl">
+        <ul className="absolute inset-x-0 top-11 z-30 max-h-72 overflow-auto rounded-2xl bg-background p-1 shadow-float">
           {!query && <li className="px-3 py-1.5 text-xs text-muted">Popular funds</li>}
           {matches.map((c, i) => (
             <li key={c.ticker}>

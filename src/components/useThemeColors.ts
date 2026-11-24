@@ -10,15 +10,16 @@ function subscribe(cb: () => void) {
 
 export type ThemeColors = { dark: boolean; fg: string; muted: string; grid: string; up: string; down: string; card: string };
 
-const DARK: ThemeColors = { dark: true, fg: "#eef1f0", muted: "#9aa3a0", grid: "rgba(255,255,255,0.07)", up: "#36d27f", down: "#ff6a3d", card: "#151718" };
-const LIGHT: ThemeColors = { dark: false, fg: "#0b0c0d", muted: "#565b5a", grid: "rgba(11,12,13,0.08)", up: "#13894a", down: "#d4461a", card: "#e6eae8" };
+// keep in step with the CSS tokens in globals.css (DESIGN.md › Color)
+const DARK: ThemeColors = { dark: true, fg: "#f5f6f6", muted: "#9ca1a4", grid: "rgba(255,255,255,0.08)", up: "#2bd46b", down: "#ff6a3d", card: "#121314" };
+const LIGHT: ThemeColors = { dark: false, fg: "#0b0c0d", muted: "#5f6467", grid: "rgba(11,12,13,0.07)", up: "#00a63e", down: "#e8590c", card: "#f4f5f5" };
 
 /** Chart colors that follow the light/dark toggle. */
 export function useThemeColors(): ThemeColors {
   const dark = useSyncExternalStore(
     subscribe,
     () => document.documentElement.classList.contains("dark"),
-    () => true,
+    () => false,
   );
   return dark ? DARK : LIGHT;
 }

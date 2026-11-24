@@ -64,7 +64,7 @@ function Delta({
   if (v == null || v === 0)
     return <span className="text-muted">{v === 0 ? "No change" : "—"}</span>;
   return (
-    <span className={v > 0 ? "text-up" : "text-down"}>
+    <span className={v > 0 ? "text-up-ink" : "text-down-ink"}>
       {v > 0 ? "▲" : "▼"} {fmt(Math.abs(v))}
     </span>
   );
@@ -250,10 +250,10 @@ function Insiders({
       </p>
       <div className="mt-4 flex items-center gap-4 text-xs text-muted">
         <span>
-          <span className="text-up">▲</span> Bought
+          <span className="text-up-ink">▲</span> Bought
         </span>
         <span>
-          <span className="text-down">▼</span> Sold
+          <span className="text-down-ink">▼</span> Sold
         </span>
         <span>Open-market trades by month, last 24 months</span>
       </div>
@@ -277,7 +277,7 @@ function Insiders({
                 role="tab"
                 aria-selected={all === v}
                 onClick={() => setAll(v as boolean)}
-                className={`rounded-full px-3 py-1 text-xs font-medium ${all === v ? "bg-accent/15 text-accent" : "text-muted hover:text-foreground"}`}
+                className={`rounded-full px-3 py-1 text-xs font-medium ${all === v ? "bg-foreground text-background" : "text-muted hover:text-foreground"}`}
               >
                 {label as string}
               </button>
@@ -317,9 +317,9 @@ function Insiders({
                       </td>
                       <td className="py-2.5 pr-3">
                         {t.code === "P" ? (
-                          <span className="text-up">▲ Bought</span>
+                          <span className="text-up-ink">▲ Bought</span>
                         ) : t.code === "S" ? (
-                          <span className="text-down">▼ Sold</span>
+                          <span className="text-down-ink">▼ Sold</span>
                         ) : (
                           <span className="text-muted">
                             {CODE[t.code] ?? t.code}
@@ -493,7 +493,7 @@ function Institutions({ ticker, h }: { ticker: string; h: Holders | null }) {
                     </td>
                     <td className="py-2.5 text-right tabular-nums">
                       {x.status === "new" ? (
-                        <span className="text-up">▲ New position</span>
+                        <span className="text-up-ink">▲ New position</span>
                       ) : (
                         <Delta v={x.change} fmt={num} />
                       )}

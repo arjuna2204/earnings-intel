@@ -217,7 +217,7 @@ export default function SegmentsView({ rows }: { rows: SegmentRow[] }) {
               role="tab"
               aria-selected={freq === f}
               onClick={() => setFreq(f)}
-              className={`rounded-full px-3 py-1 text-sm font-semibold ${freq === f ? "bg-accent/15 text-accent" : "text-muted hover:text-foreground"}`}
+              className={`rounded-full px-3 py-1 text-sm font-semibold ${freq === f ? "bg-foreground text-background" : "text-muted hover:text-foreground"}`}
             >
               {f === "annual" ? "Annual" : "Quarterly"}
             </button>
@@ -293,7 +293,7 @@ export default function SegmentsView({ rows }: { rows: SegmentRow[] }) {
                       {r.share != null ? `${(r.share * 100).toFixed(0)}%` : "—"}
                     </td>
                     <td
-                      className={`py-2 text-right ${r.growth == null ? "text-muted" : r.growth >= 0 ? "text-up" : "text-down"}`}
+                      className={`py-2 text-right ${r.growth == null ? "text-muted" : r.growth >= 0 ? "text-up-ink" : "text-down-ink"}`}
                     >
                       {r.growth == null
                         ? "—"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type Ref } from "react";
 import { useRouter } from "next/navigation";
 import type { TickerHit } from "@/lib/types";
 
@@ -32,9 +32,14 @@ export default function SearchBox({
   placeholder = "Search a ticker or company",
   onPick,
   onEscape,
+  inputRef,
+  onCard = false,
 }: {
+  /** sits on a filled (card) surface: use the page color for the field */
+  onCard?: boolean;
   autoFocus?: boolean;
   large?: boolean;
+  inputRef?: Ref<HTMLInputElement>;
   placeholder?: string;
   /** Called with the chosen ticker instead of opening its page. */
   onPick?: (ticker: string) => void;
@@ -87,8 +92,24 @@ export default function SearchBox({
 
   return (
     <div className="relative w-full">
+      <svg
+        width={large ? 22 : 17}
+        height={large ? 22 : 17}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        aria-hidden
+        className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-muted ${large ? "left-5" : "left-4"}`}
+      >
+        <circle cx="11" cy="11" r="7" />
+        <path d="m20 20-3.5-3.5" />
+      </svg>
       <input
+        ref={inputRef}
         type="search"
+        aria-label={placeholder}
         value={q}
         autoFocus={autoFocus}
         onChange={(e) => setQ(e.target.value)}
@@ -117,13 +138,13 @@ export default function SearchBox({
         aria-expanded={open}
         aria-controls={listId}
         aria-autocomplete="list"
-        className={`w-full rounded-full border border-border bg-card px-5 outline-none transition focus:border-accent ${
-          large ? "py-4 text-lg" : "py-2.5 text-sm"
+        className={`w-full rounded-full ${onCard ? "bg-background" : "bg-card"} outline-none transition-[background-color,box-shadow] duration-150 placeholder:text-muted focus:bg-background focus:shadow-float [&::-webkit-search-cancel-button]:hidden ${
+          large ? "py-4 pl-14 pr-6 text-lg" : "py-2.5 pl-11 pr-4 text-[15px]"
         }`}
       />
       {error && <p className="mt-2 px-5 text-sm text-muted">{error}</p>}
       {open && visible.length > 0 && (
-        <ul id={listId} role="listbox" className="pop-in absolute z-40 mt-2 w-full overflow-hidden rounded-2xl border border-border bg-background shadow-xl">
+        <ul id={listId} role="listbox" className="pop-in absolute z-40 mt-2 w-full overflow-hidden rounded-2xl bg-background py-1 shadow-float">
           {showRecent && (
             <li role="presentation" className="flex items-center justify-between px-5 pb-1 pt-3 text-xs text-muted">
               <span>Recent searches</span>

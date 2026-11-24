@@ -11,7 +11,7 @@ import type { Bridge, BriefExtras, StreakItem, Tile, Tone } from "@/lib/brief-ex
 import type { GuidanceChange, GuidanceItem } from "@/lib/types";
 
 const SOURCE_KIND: Record<string, string> = { X: "Financials", S: "Street", C: "Call", F: "Filing", R: "Risk factors" };
-const TONE_TEXT: Record<Tone, string> = { up: "text-up", down: "text-down", neutral: "text-muted", warn: "text-down" };
+const TONE_TEXT: Record<Tone, string> = { up: "text-up-ink", down: "text-down-ink", neutral: "text-muted", warn: "text-down-ink" };
 const ARROW: Partial<Record<Tone, string>> = { up: "▲", down: "▼", warn: "▼" };
 
 
@@ -76,7 +76,7 @@ export default function BriefView({
       </section>
 
       {more.cases?.numbers.scenarios && (
-        <Link href={`?tab=valuation&view=street`} className="flex items-center justify-between border-y border-border py-4 hover:text-accent">
+        <Link href={`?tab=valuation&view=street`} className="flex items-center justify-between border-y border-border py-4 hover:text-accent-ink">
           <span>
             <span className="block font-semibold">Bull, base &amp; bear · DCF · estimates</span>
             <span className="text-sm text-muted">Fair value and forward-looking views are on the Valuation tab</span>
@@ -183,7 +183,7 @@ export function Cases({ cases, refs }: { cases: StockCases; refs: (c: Claim) => 
   const sel = sc?.[pick] ?? null;
   const caseClaims = cases.claims.filter((c) => c.section === pick);
   const watch = cases.claims.filter((c) => c.section === "watch");
-  const color = (v: number) => (v >= 0 ? "text-up" : "text-down");
+  const color = (v: number) => (v >= 0 ? "text-up-ink" : "text-down-ink");
   return (
     <section id="brief-cases" className="scroll-mt-20">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3 border-b border-border pb-3">
@@ -197,7 +197,7 @@ export function Cases({ cases, refs }: { cases: StockCases; refs: (c: Claim) => 
               role="tab"
               aria-selected={pick === k}
               onClick={() => setPick(k)}
-              className={`rounded-full px-3.5 py-1.5 font-semibold ${pick === k ? "bg-accent/15 text-accent" : "text-muted hover:text-foreground"}`}
+              className={`rounded-full px-3.5 py-1.5 font-semibold ${pick === k ? "bg-foreground text-background" : "text-muted hover:text-foreground"}`}
             >
               {CASE_LABEL[k]}
             </button>
@@ -301,7 +301,7 @@ export function ValuationSlider({ price, epsNtm, peerMedianPe, ticker }: { price
         <div>
           <div className="text-sm text-muted">Next-12-months EPS</div>
           <div className="mt-1 text-[26px] font-semibold leading-none tabular-nums">${eps.toFixed(2)}</div>
-          <div className={`mt-2 text-sm font-medium ${pct > 0 ? "text-up" : pct < 0 ? "text-down" : "text-muted"}`}>
+          <div className={`mt-2 text-sm font-medium ${pct > 0 ? "text-up-ink" : pct < 0 ? "text-down-ink" : "text-muted"}`}>
             {pct === 0 ? "Consensus" : `${pct > 0 ? "▲" : "▼"} ${Math.abs(pct)}% vs consensus`}
           </div>
         </div>
@@ -354,7 +354,7 @@ function Dodges({ items }: { items: Dodge[] }) {
                 <span className="font-medium">{d.analyst}</span>
                 <span className="mt-0.5 block text-sm text-muted">{d.reason}</span>
               </span>
-              <span className="shrink-0 text-sm font-semibold tabular-nums text-down">{d.score.toFixed(1)}</span>
+              <span className="shrink-0 text-sm font-semibold tabular-nums text-down-ink">{d.score.toFixed(1)}</span>
             </button>
             {open === i && (
               <div className="mt-3 space-y-3 text-[15px] leading-relaxed">
@@ -392,7 +392,7 @@ function YourTake({ cik, la, lb, takes }: { cik: number; la: string; lb: string;
       {prev && (
         <p className="mt-3 text-[15px] leading-relaxed">
           <span className="text-muted">Last time ({prev.period_b} vs {prev.period_a}) you said </span>
-          <b className={prev.verdict === "better" ? "text-up" : prev.verdict === "worse" ? "text-down" : ""}>{word[prev.verdict].toLowerCase()}</b>
+          <b className={prev.verdict === "better" ? "text-up-ink" : prev.verdict === "worse" ? "text-down-ink" : ""}>{word[prev.verdict].toLowerCase()}</b>
           {prev.note && <span className="text-muted">: “{prev.note}”</span>}. Does this quarter confirm it?
         </p>
       )}
@@ -455,7 +455,7 @@ function Section({
           {subtitle && <p className="mt-0.5 text-sm text-muted">{subtitle}</p>}
         </div>
         {more && (
-          <Link href={more.href} className="shrink-0 text-sm font-semibold text-accent hover:underline">
+          <Link href={more.href} className="shrink-0 text-sm font-semibold text-accent-ink hover:underline">
             {more.label}
           </Link>
         )}
@@ -472,7 +472,7 @@ export function Refs({ refs, note, onOpen }: { refs: string[]; note: (r: string)
         <button
           key={r}
           onClick={() => onOpen(r)}
-          className="px-px text-[11px] font-semibold text-accent hover:underline"
+          className="px-px text-[11px] font-semibold text-accent-ink hover:underline"
           aria-label={`Source ${note(r)}: ${SOURCE_KIND[r[0]] ?? "source"}`}
         >
           {note(r)}
@@ -498,7 +498,7 @@ function ClaimRows({ claims, refs, limit }: { claims: Claim[]; refs: (c: Claim) 
         ))}
       </ul>
       {limit && claims.length > limit && (
-        <button onClick={() => setAll(!all)} className="mt-1 text-sm font-semibold text-accent hover:underline">
+        <button onClick={() => setAll(!all)} className="mt-1 text-sm font-semibold text-accent-ink hover:underline">
           {all ? "Show less" : `Show ${claims.length - limit} more`}
         </button>
       )}
@@ -536,7 +536,7 @@ export function Streak({ items }: { items: StreakItem[] }) {
       </div>
       <div className="mt-1 text-sm tabular-nums text-muted">
         {cur.label}: <span className="text-foreground">${cur.reported.toFixed(2)}</span> actual · ${cur.estimated.toFixed(2)} est. ·{" "}
-        <span className={cur.surprisePct >= 0 ? "text-up" : "text-down"}>
+        <span className={cur.surprisePct >= 0 ? "text-up-ink" : "text-down-ink"}>
           {cur.surprisePct >= 0 ? "▲" : "▼"} {Math.abs(cur.surprisePct).toFixed(1)}%
         </span>
       </div>
@@ -612,7 +612,7 @@ function BridgeChart({ bridge, lb }: { bridge: Bridge; lb: string }) {
               <div className="relative h-1.5">
                 <div className={`absolute top-0 h-1.5 rounded-full ${color}`} style={{ left: `${left}%`, width: `${width}%` }} />
               </div>
-              <span className={`text-right tabular-nums ${r.kind === "total" ? "font-semibold" : r.kind === "add" ? "text-up" : "text-down"}`}>{r.text}</span>
+              <span className={`text-right tabular-nums ${r.kind === "total" ? "font-semibold" : r.kind === "add" ? "text-up-ink" : "text-down-ink"}`}>{r.text}</span>
             </div>
           );
         })}
@@ -727,7 +727,7 @@ function Tension({ claim, facts, onOpen }: { claim: Claim; facts: Record<string,
     <div>
       <div className="mb-1.5 text-sm text-muted">{title}</div>
       {ids.map((id) => (
-        <button key={id} onClick={() => onOpen(id)} className="mb-2 block text-left text-[15px] leading-relaxed hover:text-accent">
+        <button key={id} onClick={() => onOpen(id)} className="mb-2 block text-left text-[15px] leading-relaxed hover:text-accent-ink">
           {snippet(id)}
         </button>
       ))}
@@ -753,8 +753,8 @@ function Sources({ order, facts, onOpen }: { order: string[]; facts: Record<stri
       <ol className="divide-y divide-border text-sm">
         {shown.map((id, i) => (
           <li key={id}>
-            <button onClick={() => onOpen(id)} className="flex w-full gap-3 py-2.5 text-left hover:text-accent">
-              <span className="w-5 shrink-0 font-semibold text-accent tabular-nums">{i + 1}</span>
+            <button onClick={() => onOpen(id)} className="flex w-full gap-3 py-2.5 text-left hover:text-accent-ink">
+              <span className="w-5 shrink-0 font-semibold text-accent-ink tabular-nums">{i + 1}</span>
               <span className="min-w-0">
                 <span className="text-muted">{SOURCE_KIND[id[0]]} · </span>
                 {facts[id]?.text.length > 160 ? facts[id].text.slice(0, 157) + "…" : facts[id]?.text}
@@ -764,7 +764,7 @@ function Sources({ order, facts, onOpen }: { order: string[]; facts: Record<stri
         ))}
       </ol>
       {order.length > 5 && (
-        <button onClick={() => setAll(!all)} className="mt-1 text-sm font-semibold text-accent hover:underline">
+        <button onClick={() => setAll(!all)} className="mt-1 text-sm font-semibold text-accent-ink hover:underline">
           {all ? "Show less" : `Show all ${order.length}`}
         </button>
       )}
@@ -783,11 +783,11 @@ export function FactDetail({ fact }: { fact: Fact }) {
           Source:{" "}
           {fact.link ? (
             fact.link.startsWith("?") ? (
-              <Link href={fact.link} className="text-accent underline">
+              <Link href={fact.link} className="text-accent-ink underline">
                 {fact.link_label}
               </Link>
             ) : (
-              <a href={quoteLink(fact.link, fact.quote) ?? fact.link} target="_blank" rel="noreferrer" className="text-accent underline">
+              <a href={quoteLink(fact.link, fact.quote) ?? fact.link} target="_blank" rel="noreferrer" className="text-accent-ink underline">
                 {fact.link_label} ↗
               </a>
             )
@@ -821,7 +821,7 @@ function Scorecard({ rows, la, lb, onSource }: { rows: StreetRow[]; la: string; 
             <tr key={i}>
               <td className="py-3 pr-3">
                 {r.ref ? (
-                  <button onClick={() => onSource(r.ref!)} className="text-left hover:text-accent">
+                  <button onClick={() => onSource(r.ref!)} className="text-left hover:text-accent-ink">
                     {r.label}
                   </button>
                 ) : (
@@ -830,7 +830,7 @@ function Scorecard({ rows, la, lb, onSource }: { rows: StreetRow[]; la: string; 
                 {r.note && <span className="mt-0.5 block text-xs text-muted">{r.note}</span>}
               </td>
               <td className="py-3 pr-3 text-right align-top tabular-nums text-muted">{r.a}</td>
-              <td className={`py-3 text-right align-top font-semibold tabular-nums ${r.tone === "up" ? "text-up" : r.tone === "down" ? "text-down" : ""}`}>
+              <td className={`py-3 text-right align-top font-semibold tabular-nums ${r.tone === "up" ? "text-up-ink" : r.tone === "down" ? "text-down-ink" : ""}`}>
                 {r.tone === "up" ? "▲ " : r.tone === "down" ? "▼ " : ""}
                 {r.b}
               </td>
@@ -839,7 +839,7 @@ function Scorecard({ rows, la, lb, onSource }: { rows: StreetRow[]; la: string; 
         </tbody>
       </table>
       {rows.length > 4 && (
-        <button onClick={() => setAll(!all)} className="mt-1 text-sm font-semibold text-accent hover:underline">
+        <button onClick={() => setAll(!all)} className="mt-1 text-sm font-semibold text-accent-ink hover:underline">
           {all ? "Show less" : `Show ${rows.length - 4} more`}
         </button>
       )}

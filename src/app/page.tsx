@@ -2,169 +2,233 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import Link from "next/link";
 import SearchBox from "@/components/SearchBox";
-import WatchlistPanel from "@/components/WatchlistPanel";
+import LandingMyStocks from "@/components/LandingMyStocks";
+import MovePill from "@/components/MovePill";
+import Reveal from "@/components/Reveal";
+import Sparkline from "@/components/Sparkline";
+import { recapDate } from "@/components/RecapLine";
 import { select } from "@/lib/db";
-import type { Company } from "@/lib/types";
+import { recentRecaps, type Recap } from "@/lib/screener";
+
+const TRY = ["AAPL", "NVDA", "MSFT", "JPM"];
 
 export default function Home() {
   return (
-    <div className="lit flex flex-1 flex-col">
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pb-20 pt-14 sm:pt-24">
-      <h1 className="text-balance text-[40px] font-medium leading-[1.05] sm:text-6xl">
-        Equity Research for the <br className="hidden sm:block" />
-        <span className="text-accent">everyday investor</span>
-      </h1>
-      <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted">
-        What changed this quarter, what the Street expects, and what the stock could be worth — from SEC filings and earnings calls,
-        with every number linked to its source.
-      </p>
-      <div className="mt-8">
-        <SearchBox autoFocus large />
-      </div>
-      <p className="mt-4 text-sm text-muted">
-        New here?{" "}
-        <Link href="/coverage" className="font-semibold text-accent hover:underline">
-          See which companies are ready to explore
+    <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-24">
+      {/* 1. Headline, one-line promise, search */}
+      <section className="mx-auto max-w-3xl pt-14 text-center sm:pt-24">
+        <h1 className="text-balance text-[40px] leading-[1.02] tracking-[-0.04em] sm:text-[64px]">Equity research for the everyday investor</h1>
+        <p className="mx-auto mt-5 max-w-xl text-pretty text-lg leading-relaxed text-muted">
+          What changed this quarter, what the Street expects and what the stock could be worth — every number linked to its source.
+        </p>
+        <div className="mx-auto mt-9 max-w-xl text-left">
+          <SearchBox large placeholder="Search any US-listed stock" />
+        </div>
+        <p className="mt-4 flex flex-wrap items-center justify-center gap-2 text-sm text-muted">
+          <span>Try</span>
+          {TRY.map((t) => (
+            <Link key={t} href={`/c/${t}`} className="rounded-full bg-card px-3 py-1.5 font-semibold text-foreground hover:bg-card-strong">
+              {t}
+            </Link>
+          ))}
+        </p>
+      </section>
+
+      {/* 2. Three ways in */}
+      <Reveal className="mt-20 sm:mt-28" aria-labelledby="ways">
+        <h2 id="ways" className="sr-only">
+          Where to start
+        </h2>
+        <ul className="grid gap-3 sm:grid-cols-3">
+          {INTENTS.map((c) => (
+            <li key={c.title}>
+              <Link href={c.href} className="lift group flex h-full flex-col rounded-2xl bg-card p-6">
+                <span className="text-[22px] font-bold tracking-tight">{c.title}</span>
+                <span className="mt-2 text-[15px] leading-relaxed text-muted">{c.text}</span>
+                <span className="mt-auto flex items-center gap-1 pt-6 text-[15px] font-semibold text-accent-ink">
+                  {c.cta}
+                  <span aria-hidden className="transition-transform duration-200 group-hover:translate-x-0.5">
+                    →
+                  </span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </Reveal>
+
+      {/* 3. Reported this week */}
+      <Reveal className="mt-20 sm:mt-28" aria-labelledby="reported">
+        <div className="flex items-baseline justify-between gap-4">
+          <h2 id="reported" className="text-[28px] tracking-tight sm:text-[32px]">
+            Reported this week
+          </h2>
+          <Link href="/earnings" className="shrink-0 text-[15px] font-semibold text-accent-ink hover:underline">
+            Full calendar →
+          </Link>
+        </div>
+        <Suspense fallback={<RowsSkeleton />}>
+          <Reported />
+        </Suspense>
+      </Reveal>
+
+      {/* 4. How it works */}
+      <Reveal className="mt-20 sm:mt-28" aria-labelledby="how">
+        <h2 id="how" className="text-[28px] tracking-tight sm:text-[32px]">
+          How it works
+        </h2>
+        <ol className="mt-8 grid gap-10 sm:grid-cols-3 sm:gap-8">
+          {STEPS.map(([title, text], i) => (
+            <li key={title}>
+              <span aria-hidden className="flex h-9 w-9 items-center justify-center rounded-full bg-foreground text-[15px] font-bold text-background">
+                {i + 1}
+              </span>
+              <h3 className="mt-4 text-lg font-bold">{title}</h3>
+              <p className="mt-1.5 text-[15px] leading-relaxed text-muted">{text}</p>
+            </li>
+          ))}
+        </ol>
+      </Reveal>
+
+      {/* 5. Why Earnings Intel */}
+      <Reveal className="mt-20 rounded-3xl bg-card px-6 py-10 sm:mt-28 sm:px-10 sm:py-14" aria-labelledby="why">
+        <h2 id="why" className="max-w-3xl text-balance text-[28px] leading-tight tracking-tight sm:text-[36px]">
+          Finance sites show you the numbers. We explain what changed, why, and whether it matters.
+        </h2>
+        <dl className="mt-10 grid gap-8 sm:grid-cols-3">
+          {WHY.map(([title, text]) => (
+            <div key={title}>
+              <dt className="text-[17px] font-bold">{title}</dt>
+              <dd className="mt-1.5 text-[15px] leading-relaxed text-muted">{text}</dd>
+            </div>
+          ))}
+        </dl>
+        <Link href="/about" className="mt-10 inline-flex rounded-full bg-foreground px-5 py-3 text-[15px] font-semibold text-background">
+          Why Earnings Intel
         </Link>
-      </p>
-      <div className="mt-3 flex flex-wrap gap-2 text-sm">
-        <Link href="/earnings" className="rounded-full bg-card px-3 py-1.5 font-medium hover:bg-border">
-          Earnings this week
-        </Link>
-        <Link href="/screener" className="rounded-full bg-card px-3 py-1.5 font-medium hover:bg-border">
-          Screener
-        </Link>
-        <Link href="/portfolio" className="rounded-full bg-card px-3 py-1.5 font-medium hover:bg-border">
-          Your portfolio
-        </Link>
-      </div>
-      <Why />
-      <div id="watchlist" className="scroll-mt-20">
-        <WatchlistPanel />
-      </div>
-      <Suspense fallback={<RecentSkeleton />}>
-        <Recent />
-      </Suspense>
-      <p className="mt-12 text-sm text-muted">
+      </Reveal>
+
+      {/* 6. My stocks, only for visitors who watch something */}
+      <LandingMyStocks />
+
+      <p className="mt-20 text-center text-sm text-muted">
         Curious whether the signals work?{" "}
-        <Link href="/backtest" className="font-semibold text-accent hover:underline">
+        <Link href="/backtest" className="font-semibold text-foreground hover:underline">
           See the backtest
         </Link>
         . Research, not investment advice.
       </p>
     </main>
-    </div>
   );
 }
 
-/** Why the site exists, on the first page: the one-line difference, three things that set it apart, and who it's for. */
-function Why() {
-  return (
-    <section className="mt-16" aria-labelledby="why">
-      <h2 id="why" className="text-balance text-2xl font-medium leading-snug sm:text-3xl">
-        Finance sites show you the numbers. <span className="text-muted">We explain what changed, why, and whether it matters.</span>
-      </h2>
-      <dl className="mt-8 grid gap-x-8 gap-y-5 border-t border-border pt-5 sm:grid-cols-3">
-        {WHY.map(([title, text]) => (
-          <div key={title}>
-            <dt className="font-semibold">
-              <span className="mr-2 inline-block h-2 w-2 rounded-full bg-accent align-middle" aria-hidden="true" />
-              {title}
-            </dt>
-            <dd className="mt-1.5 text-sm leading-relaxed text-muted">{text}</dd>
-          </div>
-        ))}
-      </dl>
-      <p className="mt-6 text-[15px] leading-relaxed text-muted">
-        <b className="font-semibold text-foreground">Best for:</b> checking a company right after it reports, deciding whether to buy, or building a
-        stock pitch.{" "}
-        <Link href="/about" className="font-semibold text-accent hover:underline">
-          How it works and how it&apos;s different →
-        </Link>
-      </p>
-    </section>
-  );
-}
-
-const WHY: [string, string][] = [
-  ["What changed, not just what is", "Any two quarters compared: guidance, what drove the numbers, the call against the last one, and new risk factors."],
-  ["A source for every claim", "Every point links to the SEC filing or call quote it came from, so you can check it yourself."],
-  ["Analyst math, free", "Adjusted figures, a DCF you can download to Excel, bull / base / bear cases and peer comparison."],
+const INTENTS = [
+  {
+    title: "Just reported",
+    text: "Your stock just put out results. See the beat or miss, the guidance, what management said on the call and how it compares with last year.",
+    cta: "See this week's reports",
+    href: "/earnings",
+  },
+  {
+    title: "Thinking of buying",
+    text: "Is it growing, is it expensive, how bumpy is the ride? One-line answers for every stock, each with the evidence behind it.",
+    cta: "Find stocks to research",
+    href: "/screener",
+  },
+  {
+    title: "Building a pitch",
+    text: "Bull, base and bear cases, a DCF you can download to Excel and the closest competitors side by side.",
+    cta: "Compare companies",
+    href: "/compare",
+  },
 ];
 
-async function Recent() {
+const STEPS: [string, string][] = [
+  ["Search a stock", "Any US-listed company. If it isn't loaded yet, one tap pulls 15 years of SEC filings and prices."],
+  ["Read the one-line answers", "Every tab opens with its answer — Earnings, Valuation, Risk, Financials, Business — then the detail."],
+  ["Check the source", "Tap a number to see the filing passage, call quote or SEC figure it came from."],
+];
+
+const WHY: [string, string][] = [
+  ["What changed, not just what is", "Any two quarters compared: guidance, what drove the numbers, the call against the last one, new risk factors."],
+  ["A source for every claim", "Every point links to the SEC filing or call quote it came from, so you can check it yourself."],
+  ["Analyst math, free", "Adjusted figures, a downloadable DCF, bull / base / bear cases and peer comparison."],
+];
+
+/** Researched companies that reported in the last 7 days: price, sparkline and the day's move. */
+async function Reported() {
   await connection(); // always live data
-  let rows: Pick<Company, "ticker" | "name" | "last_ingested_at" | "valuation">[] = [];
-  let total = 0;
+  let recaps: Recap[] = [];
   try {
-    const all = await select<Pick<Company, "ticker" | "name" | "last_ingested_at" | "valuation">>("companies", {
-      select: "ticker,name,last_ingested_at,valuation",
-      order: "last_ingested_at.desc.nullslast",
-      limit: "200",
-    });
-    total = all.filter((c) => c.valuation?.price != null).length;
-    rows = all.filter((c) => c.valuation?.price != null).slice(0, 8);
+    recaps = (await recentRecaps(7)).filter((r) => r.researched);
   } catch {
+    recaps = [];
+  }
+  const seen = new Set<string>();
+  const rows = recaps.filter((r) => (seen.has(r.ticker) ? false : (seen.add(r.ticker), true))).slice(0, 8);
+  if (!rows.length) {
     return (
-      <p className="mt-10 text-sm text-muted">
-        Can&apos;t reach the database. Open{" "}
-        <a href="/api/health" className="text-accent underline">
-          the setup check
-        </a>{" "}
-        to see which setting needs fixing.
+      <p className="mt-6 rounded-2xl bg-card px-6 py-8 text-[15px] text-muted">
+        No researched company has reported in the last week.{" "}
+        <Link href="/earnings" className="font-semibold text-foreground hover:underline">
+          See who reports next
+        </Link>
+        .
       </p>
     );
   }
-  if (!rows.length) return <p className="mt-10 text-sm text-muted">No companies loaded yet — search for one to start.</p>;
-  // last two closes for each, for the day's move
-  const since = daysAgo(10);
-  const px = await select<{ ticker: string; date: string; adj_close: number }>("prices", {
+  const since = daysAgo(45);
+  const px = await select<{ ticker: string; date: string; adj_close: number; close: number | null }>("prices", {
     ticker: `in.(${rows.map((r) => r.ticker).join(",")})`,
     date: `gte.${since}`,
-    select: "ticker,date,adj_close",
+    select: "ticker,date,adj_close,close",
     order: "date.asc",
   }).catch(() => []);
-  const change = (t: string) => {
-    const p = px.filter((x) => x.ticker === t);
-    return p.length >= 2 ? p[p.length - 1].adj_close / p[p.length - 2].adj_close - 1 : null;
-  };
-  return (
-    <section className="mt-12">
-      <div className="flex items-baseline justify-between border-b border-border pb-3">
-        <h2 className="text-xl font-semibold tracking-tight">Recently updated research</h2>
-        <Link href="/coverage" className="text-sm font-medium text-accent hover:underline">
-          All {total} →
-        </Link>
-      </div>
-      <p className="mt-2 text-xs text-muted">Companies with full research on Earnings Intel, newest first. Your own list is the watchlist above.</p>
-      <ul className="divide-y divide-border">
-        {rows.map((c) => {
-          const ch = change(c.ticker);
-          return (
-            <li key={c.ticker}>
-              <Link href={`/c/${c.ticker}`} className="flex items-center gap-4 py-3 hover:text-accent">
-                <span className="w-16 shrink-0 font-semibold">{c.ticker}</span>
-                <span className="min-w-0 flex-1 truncate text-muted">{c.name}</span>
-                {c.valuation?.price != null && <span className="figure shrink-0">${c.valuation.price.toFixed(2)}</span>}
-                <span className="w-20 shrink-0 text-right">
-                  {ch != null && <Chip v={ch} />}
-                </span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
-  );
-}
+  const by = new Map<string, typeof px>();
+  for (const p of px) by.set(p.ticker, [...(by.get(p.ticker) ?? []), p]);
 
-/** Day's move as a tinted pill (green up, orange-red down). */
-function Chip({ v }: { v: number }) {
   return (
-    <span className={`figure inline-flex rounded-full px-2.5 py-1 text-[13px] ${v >= 0 ? "bg-up/15 text-up" : "bg-down/15 text-down"}`}>
-      {v >= 0 ? "+" : "−"}
-      {Math.abs(v * 100).toFixed(1)}%
-    </span>
+    <ul className="mt-6">
+      {rows.map((r) => {
+        const series = (by.get(r.ticker) ?? []).slice(-22);
+        const last = series.at(-1);
+        const prev = series.at(-2);
+        const day = last && prev ? last.adj_close / prev.adj_close - 1 : null;
+        const price = last ? (last.close ?? last.adj_close) : null;
+        return (
+          <li key={r.ticker}>
+            <Link href={`/c/${encodeURIComponent(r.ticker)}`} className="row-link -mx-3 flex items-center gap-3 rounded-2xl px-3 py-3.5 sm:gap-6">
+              <span className="min-w-0 flex-1">
+                <span className="flex items-baseline gap-2">
+                  <span className="text-[17px] font-bold">{r.ticker}</span>
+                  <span className="truncate text-[15px] text-muted">{r.name}</span>
+                </span>
+                <span className="mt-0.5 block truncate text-[13px] text-muted">
+                  Reported {recapDate(r.report_date)}
+                  {r.eps_surprise != null && (
+                    <>
+                      {" · "}
+                      {Math.abs(r.eps_surprise) < 0.0005 ? (
+                        <span>in line with estimates</span>
+                      ) : (
+                        <span className={r.eps_surprise >= 0 ? "text-up-ink" : "text-down-ink"}>
+                          {r.eps_surprise >= 0 ? "beat" : "missed"} by {Math.abs(r.eps_surprise * 100).toFixed(1)}%
+                        </span>
+                      )}
+                    </>
+                  )}
+                </span>
+              </span>
+              <Sparkline values={series.map((p) => p.adj_close)} up={day == null ? undefined : day >= 0} width={96} height={32} className="hidden sm:block" />
+              <span className="w-20 text-right text-[17px] font-semibold tabular-nums sm:w-24">{price != null ? `$${price.toFixed(2)}` : "—"}</span>
+              <span className="w-[4.75rem] text-right">
+                <MovePill v={day} />
+              </span>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -172,12 +236,11 @@ function daysAgo(n: number): string {
   return new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
 }
 
-function RecentSkeleton() {
+function RowsSkeleton() {
   return (
-    <div className="mt-12 space-y-2">
-      <div className="skeleton h-4 w-32" />
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="skeleton h-12" />
+    <div className="mt-6 space-y-2">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="skeleton h-14" />
       ))}
     </div>
   );

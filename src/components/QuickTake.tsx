@@ -25,7 +25,7 @@ export default function QuickTake({ signals, bottomLine = [] }: { signals: Signa
           <Term k="quick_take" quiet>Quick take</Term>
         </h2>
         <p className="text-xs text-muted">
-          <span className="text-up">▲ {up} positive</span> · <span className="text-down">▼ {down} negative</span> · {signals.length - up - down} neutral ·
+          <span className="text-up-ink">▲ {up} positive</span> · <span className="text-down-ink">▼ {down} negative</span> · {signals.length - up - down} neutral ·
           computed from the data in the tabs below, no AI
         </p>
       </div>
@@ -36,11 +36,11 @@ export default function QuickTake({ signals, bottomLine = [] }: { signals: Signa
               <span className="text-xs text-muted">{s.title}</span>
               <span className="mt-0.5 flex items-baseline gap-1.5 text-sm font-semibold leading-snug">
                 {s.tone === "up" ? (
-                  <span className="text-up" aria-label="positive">
+                  <span className="text-up-ink" aria-label="positive">
                     ▲
                   </span>
                 ) : s.tone === "down" ? (
-                  <span className="text-down" aria-label="negative">
+                  <span className="text-down-ink" aria-label="negative">
                     ▼
                   </span>
                 ) : (

@@ -135,7 +135,7 @@ function Notes({ ids }: { ids?: number[] }) {
         <a
           key={n}
           href={`#dcf-fn-${n}`}
-          className="px-px text-[11px] font-semibold text-accent hover:underline"
+          className="px-px text-[11px] font-semibold text-accent-ink hover:underline"
         >
           {n}
           {i < ids.length - 1 ? "," : ""}
@@ -232,7 +232,7 @@ export default function DcfView({
           />
           <a
             href={`/api/dcf/${ticker}`}
-            className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-black hover:brightness-110"
+            className="rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background"
             download
           >
             Download Excel model
@@ -249,7 +249,7 @@ export default function DcfView({
         </div>
         {price > 0 ? (
           <div
-            className={`mt-1 font-semibold tabular-nums ${up >= 0 ? "text-up" : "text-down"}`}
+            className={`mt-1 font-semibold tabular-nums ${up >= 0 ? "text-up-ink" : "text-down-ink"}`}
           >
             {up >= 0 ? "▲" : "▼"} {Math.abs(up * 100).toFixed(1)}% vs. $
             {price.toFixed(2)} today
@@ -259,7 +259,7 @@ export default function DcfView({
             Share price not loaded yet — upside appears once prices arrive.
           </div>
         )}
-        {dcf.note && <p className="mt-2 text-sm text-down">{dcf.note}</p>}
+        {dcf.note && <p className="mt-2 text-sm text-down-ink">{dcf.note}</p>}
       </div>
       <div className="grid grid-cols-2 gap-x-6 gap-y-4 border-y border-border py-4 sm:grid-cols-4">
         {[
@@ -361,7 +361,7 @@ export default function DcfView({
                     {s.values[i].map((v, j) => (
                       <td
                         key={j}
-                        className={`py-2.5 pl-3 pr-2 text-right ${v == null ? "text-muted" : v >= price ? "text-up" : "text-down"} ${i === 2 && j === 2 ? "font-bold outline outline-1 outline-foreground/40" : ""}`}
+                        className={`py-2.5 pl-3 pr-2 text-right ${v == null ? "text-muted" : v >= price ? "text-up-ink" : "text-down-ink"} ${i === 2 && j === 2 ? "font-bold outline outline-1 outline-foreground/40" : ""}`}
                         style={
                           v == null
                             ? undefined
@@ -412,7 +412,7 @@ export default function DcfView({
         </ul>
         <button
           onClick={() => setAll(!all)}
-          className="mt-1 text-sm font-semibold text-accent hover:underline"
+          className="mt-1 text-sm font-semibold text-accent-ink hover:underline"
         >
           {all ? "Show fewer" : `Show all ${keys.length} assumptions`}
         </button>
@@ -427,7 +427,7 @@ export default function DcfView({
                 id={`dcf-fn-${f.id}`}
                 className="flex scroll-mt-24 gap-3 py-2.5 target:bg-accent/10"
               >
-                <span className="w-5 shrink-0 font-semibold tabular-nums text-accent">
+                <span className="w-5 shrink-0 font-semibold tabular-nums text-accent-ink">
                   {f.id}
                 </span>
                 <span className="min-w-0 leading-relaxed">
@@ -439,7 +439,7 @@ export default function DcfView({
                         href={f.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="whitespace-nowrap font-semibold text-accent hover:underline"
+                        className="whitespace-nowrap font-semibold text-accent-ink hover:underline"
                       >
                         Open on SEC.gov ↗
                       </a>

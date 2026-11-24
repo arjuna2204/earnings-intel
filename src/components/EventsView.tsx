@@ -14,10 +14,10 @@ export default function EventsView({ events, labels }: { events: Ev[]; labels: R
   const notable = events.filter((e) => e.weight === "high").length;
   return (
     <section aria-label="Company events">
-      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border pb-3">
-        <h2 className="text-xl font-semibold tracking-tight">
-          <Term k="events_8k" quiet>Company events</Term>
-        </h2>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <h3 className="text-[17px] font-bold tracking-tight">
+          <Term k="events_8k" quiet>Company events (8-Ks)</Term>
+        </h3>
         <div className="flex gap-1" role="tablist">
           {[
             [false, "Notable"],
@@ -28,7 +28,7 @@ export default function EventsView({ events, labels }: { events: Ev[]; labels: R
               role="tab"
               aria-selected={all === v}
               onClick={() => setAll(v as boolean)}
-              className={`rounded-full px-3 py-1 text-sm font-semibold ${all === v ? "bg-accent/15 text-accent" : "text-muted hover:text-foreground"}`}
+              className={`rounded-full px-3 py-1 text-sm font-semibold ${all === v ? "bg-foreground text-background" : "bg-card text-muted hover:text-foreground"}`}
             >
               {l as string}
             </button>
@@ -48,7 +48,7 @@ export default function EventsView({ events, labels }: { events: Ev[]; labels: R
               <span className="pt-0.5 text-sm tabular-nums text-muted">{fmt(e.date)}</span>
               <div>
                 <div className="flex flex-wrap items-center gap-1.5">
-                  {e.weight === "high" && <span className="text-down" aria-label="significant">●</span>}
+                  {e.weight === "high" && <span className="text-down-ink" aria-label="significant">●</span>}
                   {e.items.map((i) => (
                     <span key={i} className="font-semibold">
                       {labels[i] ?? `Item ${i}`}

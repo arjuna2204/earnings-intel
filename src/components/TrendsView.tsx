@@ -157,7 +157,7 @@ export default function TrendsView({ rows, wacc }: { rows: TrendRow[]; wacc: num
           <p className="mt-2 text-[15px]">
             {" "}
             {change != null && (
-              <span className={change < 0 ? "font-semibold text-up" : "font-semibold text-down"}>
+              <span className={change < 0 ? "font-semibold text-up-ink" : "font-semibold text-down-ink"}>
                 {change < 0 ? "▼" : "▲"} {Math.abs(change * 100).toFixed(1)}% since FY{years[shares.findIndex((x) => x != null)]}
               </span>
             )}

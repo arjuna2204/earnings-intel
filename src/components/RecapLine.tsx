@@ -3,7 +3,7 @@ import type { Recap } from "@/lib/screener";
 
 const pct = (v: number) => `${Math.abs(v * 100).toFixed(1)}%`;
 const arrow = (v: number) => (v >= 0 ? "▲" : "▼");
-const tone = (v: number) => (v >= 0 ? "text-up" : "text-down");
+const tone = (v: number) => (v >= 0 ? "text-up-ink" : "text-down-ink");
 
 /** The facts of one report, each from code: EPS vs estimate, the stock's move vs what options priced
  * in, revenue growth and guidance counts. Shown only for the parts that are in. */
@@ -55,7 +55,7 @@ export function RecapFacts({ r }: { r: Recap }) {
       {g && (g.raised || g.lowered || g.maintained) ? (
         <span>
           Guidance{" "}
-          <span className={g.raised > g.lowered ? "text-up" : g.lowered > g.raised ? "text-down" : "text-muted"}>
+          <span className={g.raised > g.lowered ? "text-up-ink" : g.lowered > g.raised ? "text-down-ink" : "text-muted"}>
             {g.raised > g.lowered ? "▲ raised" : g.lowered > g.raised ? "▼ lowered" : "held"}
           </span>{" "}
           <span className="text-muted">

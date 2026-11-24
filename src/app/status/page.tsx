@@ -63,9 +63,9 @@ async function StatusContent() {
         >
           <div className="h-full rounded-full" style={{ width: `${pct * 100}%`, background: state === "ok" ? "var(--up)" : "var(--down)" }} />
         </div>
-        {state === "warn" && <p className="mt-2 text-sm text-down">⚠ Over ${budget.warn_at_usd} — nearing the monthly cap.</p>}
+        {state === "warn" && <p className="mt-2 text-sm text-down-ink">⚠ Over ${budget.warn_at_usd} — nearing the monthly cap.</p>}
         {state === "reached" && (
-          <p className="mt-2 text-sm text-down">■ Monthly AI budget reached — cached results still available. Resets on the 1st.</p>
+          <p className="mt-2 text-sm text-down-ink">■ Monthly AI budget reached — cached results still available. Resets on the 1st.</p>
         )}
         <p className="mt-2 text-xs text-muted">Every Claude call is estimated before it runs and refused if it would cross the cap.</p>
       </section>
@@ -91,7 +91,7 @@ async function StatusContent() {
                     <a href={`/c/${t}`} className="w-14 shrink-0 font-semibold hover:underline">
                       {t}
                     </a>
-                    <span className={`w-16 shrink-0 text-xs font-medium ${f.severity === "hide" ? "text-down" : "text-muted"}`}>
+                    <span className={`w-16 shrink-0 text-xs font-medium ${f.severity === "hide" ? "text-down-ink" : "text-muted"}`}>
                       {f.severity === "hide" ? "■ Hidden" : "⚠︎ Flag"}
                     </span>
                     <span className="text-muted">{f.message}</span>
@@ -141,7 +141,7 @@ async function StatusContent() {
                   <span className="font-semibold">{j.kind === "analyze" ? j.ticker : j.kind}</span>
                   <span
                     className={`rounded-full px-2 py-0.5 text-xs ${
-                      j.status === "done" ? "bg-card text-up" : j.status === "failed" ? "bg-card text-down" : "bg-card text-muted"
+                      j.status === "done" ? "bg-card text-up-ink" : j.status === "failed" ? "bg-card text-down-ink" : "bg-card text-muted"
                     }`}
                   >
                     {j.status}

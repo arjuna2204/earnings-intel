@@ -92,7 +92,7 @@ export default function CompareView({
           <Comparison a={a} b={b} />
         )
       ) : (
-        <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted">
+        <p className="rounded-2xl bg-card p-8 text-center text-sm text-muted">
           {a.status === "empty" || b.status === "empty"
             ? "Pick two stocks above to see them side by side."
             : "Both stocks need to be loaded before they can be compared. Loading takes a few minutes and is free."}
@@ -186,7 +186,7 @@ function Slot({
           ${v.price.toFixed(2)}
           {day != null && (
             <span
-              className={`ml-2 text-sm font-medium ${day >= 0 ? "text-up" : "text-down"}`}
+              className={`ml-2 text-sm font-medium ${day >= 0 ? "text-up-ink" : "text-down-ink"}`}
             >
               {day >= 0 ? "▲" : "▼"} {Math.abs(day * 100).toFixed(2)}%
             </span>
@@ -547,7 +547,7 @@ function Score({
 }) {
   const n = t.ca + t.cb;
   return (
-    <div className="rounded-2xl border border-border p-4">
+    <div className="rounded-2xl bg-card p-4">
       <p className="flex items-center text-xs text-muted">
         <Term k="scorecard">{title}</Term>
       </p>
@@ -778,7 +778,7 @@ function Performance({
               role="tab"
               aria-selected={range === r}
               onClick={() => setRange(r)}
-              className={`rounded-full px-3 py-1 text-xs font-medium ${range === r ? "bg-accent/15 text-accent" : "text-muted hover:text-foreground"}`}
+              className={`rounded-full px-3 py-1 text-xs font-medium ${range === r ? "bg-foreground text-background" : "text-muted hover:text-foreground"}`}
             >
               {r}
             </button>
@@ -798,7 +798,7 @@ function Performance({
                 <b className="text-foreground">{t}</b>{" "}
                 {r != null && (
                   <span
-                    className={(r as number) >= 0 ? "text-up" : "text-down"}
+                    className={(r as number) >= 0 ? "text-up-ink" : "text-down-ink"}
                   >
                     {(r as number) >= 0 ? "▲" : "▼"}{" "}
                     {Math.abs(r as number).toFixed(1)}%
@@ -912,7 +912,7 @@ function Trends({
             role="tab"
             aria-selected={x.key === m.key}
             onClick={() => setKey(x.key)}
-            className={`rounded-full border px-3 py-1 text-xs font-medium ${x.key === m.key ? "border-accent/40 bg-accent/15 text-accent" : "border-border text-muted hover:text-foreground"}`}
+            className={`rounded-full border px-3 py-1 text-xs font-medium ${x.key === m.key ? "border-accent/40 bg-foreground text-background" : "border-border text-muted hover:text-foreground"}`}
           >
             {x.label}
           </button>

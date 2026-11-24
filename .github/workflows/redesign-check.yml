@@ -1,0 +1,56 @@
+name: Redesign check
+
+# Builds the redesign branch, runs the browser checks (e2e/checks.py) against real data and saves full-page
+# screenshots (e2e/screenshots.py) as a downloadable artifact. Read-only: it opens pages, hovers and scrolls;
+# it never presses Load/Write/Analyze buttons. The database keys come from this repo's existing secrets.
+on:
+  workflow_dispatch:
+  push:
+    branches: [redesign]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: redesign-check
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      CBOE_DATA: ${{ secrets.CBOE_DATA }}
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: npm ci
+      - run: pip install playwright==1.55.0 && python -m playwright install --with-deps chromium
+      - run: npx next build
+      - name: Start the site
+        run: |
+          npx next start -p 3000 > server.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://localhost:3000/ >/dev/null && break; sleep 2; done
+      - name: Browser checks
+        run: python e2e/checks.py http://localhost:3000 AAPL | tee checks.txt
+      - name: Screenshots
+        if: always()
+        run: python e2e/screenshots.py http://localhost:3000 AAPL shots
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: redesign-screenshots
+          path: |
+            shots/
+            checks.txt
+            server.log
+          retention-days: 14

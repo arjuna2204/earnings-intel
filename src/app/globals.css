@@ -1,34 +1,46 @@
 @import "tailwindcss";
 
-/* Dark mode follows a `.dark` class on <html>, set before paint from the saved choice or the system setting. */
+/* Dark mode follows a `.dark` class on <html>, set before paint from the saved choice (light by default). */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Quarrow look: near-black ground, one bright green, orange-red for losses, IBM Plex with mono numbers.
-   Light is Quarrow's pale band (#eef1f0) with a deeper green so it reads on white. */
+/* Brokerage-style look (see DESIGN.md): white page, near-black text, one vivid green for gains, an orange-red for
+   losses, huge bold numbers, rounded pills, almost no borders. Dark mode is pure black. */
 :root {
-  --background: #f3f5f4;
+  --background: #ffffff;
   --foreground: #0b0c0d;
-  --muted: #565b5a;
-  --card: #e6eae8;
-  --border: rgba(11, 12, 13, 0.09);
-  --up: #13894a;
-  --down: #d4461a;
-  --accent: #13894a;
-  --lift: 0 0 0 1px rgba(11, 12, 13, 0.05), 0 14px 32px -22px rgba(11, 12, 13, 0.35);
-  --glow: rgba(19, 137, 74, 0.12);
+  --muted: #5f6467;
+  --card: #f4f5f5;
+  --card-strong: #eceeee;
+  --border: rgba(11, 12, 13, 0.07);
+  --up: #00a63e;
+  --up-ink: #007d38;
+  --down: #e8590c;
+  --down-ink: #c2410c;
+  --accent: var(--up);
+  --accent-ink: var(--up-ink);
+  --float: 0 10px 34px -14px rgba(11, 12, 13, 0.28), 0 0 0 1px rgba(11, 12, 13, 0.04);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .dark {
-  --background: #0b0c0d;
-  --foreground: #eef1f0;
-  --muted: #9aa3a0;
-  --card: #151718;
+  --background: #000000;
+  --foreground: #f5f6f6;
+  --muted: #9ca1a4;
+  --card: #121314;
+  --card-strong: #1b1c1e;
   --border: rgba(255, 255, 255, 0.08);
-  --up: #36d27f;
+  --up: #2bd46b;
+  --up-ink: #2bd46b;
   --down: #ff6a3d;
-  --accent: #36d27f;
-  --lift: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 18px 44px -20px rgba(0, 0, 0, 0.8);
-  --glow: rgba(54, 210, 127, 0.16);
+  --down-ink: #ff6a3d;
+  --float: 0 12px 40px -12px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.07);
+}
+
+/* On a company page the accent follows the chart period's direction (set by the price chart). */
+[data-trend="down"] {
+  --accent: var(--down);
+  --accent-ink: var(--down-ink);
 }
 
 @theme inline {
@@ -36,86 +48,120 @@
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-card: var(--card);
+  --color-card-strong: var(--card-strong);
   --color-border: var(--border);
   --color-up: var(--up);
   --color-down: var(--down);
+  --color-up-ink: var(--up-ink);
+  --color-down-ink: var(--down-ink);
   --color-accent: var(--accent);
-  --font-sans: "IBM Plex Sans", system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --color-accent-ink: var(--accent-ink);
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --shadow-float: var(--float);
+}
+
+html {
+  background: var(--background);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: "IBM Plex Sans", system-ui, sans-serif;
-  font-feature-settings: "tnum" 1; /* aligned digits */
+  font-family: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "tnum" 1; /* aligned digits everywhere */
+  -webkit-font-smoothing: antialiased;
 }
 
-/* headings: medium weight, tight tracking */
-h1, h2, h3 { letter-spacing: -0.02em; }
-h1 { font-weight: 500; letter-spacing: -0.035em; }
+/* headings: bold and tight */
+h1, h2, h3 { letter-spacing: -0.02em; font-weight: 700; }
+h1 { letter-spacing: -0.03em; }
 
-/* numbers line up (Plex Sans tabular figures); the mono face is kept for short standalone figures (.figure) */
 .tabular-nums { font-variant-numeric: tabular-nums; }
-.figure { font-family: "IBM Plex Mono", ui-monospace, monospace; font-weight: 500; letter-spacing: -0.02em; }
+/* standalone figures: bold, tight, aligned digits (the old mono face is gone) */
+.figure { font-weight: 600; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+/* the hero price: huge and bold */
+.price-hero { font-weight: 700; letter-spacing: -0.035em; line-height: 1; font-variant-numeric: tabular-nums; }
 
-/* the parts the browser draws: caret, focus ring, link underlines, scrollbars */
-input, textarea { caret-color: var(--accent); }
+/* the parts the browser draws: caret, focus ring, link underlines, scrollbars, selection */
+input, textarea { caret-color: var(--foreground); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
-/* fields already light their own border on focus; a thin ring on the border, not a second one outside it */
 input:focus-visible, select:focus-visible, textarea:focus-visible { outline-width: 1px; outline-offset: 0; border-radius: inherit; }
 a { text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
-html { scrollbar-color: color-mix(in srgb, var(--muted) 45%, transparent) transparent; }
+html { scrollbar-color: color-mix(in srgb, var(--muted) 40%, transparent) transparent; scrollbar-width: thin; }
+::selection { background: color-mix(in srgb, var(--up) 28%, transparent); }
 
-/* cards: a hairline ring and soft shadow instead of a flat fill */
-.bg-card { box-shadow: var(--lift); }
-.rounded-2xl { border-radius: 1.125rem; }
+.rounded-2xl { border-radius: 1rem; }
 
-/* hover: linked cards lift 2px, buttons press */
-a.bg-card, a.rounded-2xl { transition: transform 0.2s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.2s cubic-bezier(0.23, 1, 0.32, 1), background-color 0.15s ease; }
-@media (hover: hover) {
-  a.bg-card:hover, a.rounded-2xl:hover { transform: translateY(-2px); }
+/* gain / loss pills: tinted fill, ink text */
+.pill-up, .pill-down {
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 9999px; padding: 0.3rem 0.7rem; font-weight: 600; font-size: 13px; line-height: 1.1;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
 }
-button.rounded-full, a.rounded-full { transition: transform 0.12s cubic-bezier(0.23, 1, 0.32, 1), background-color 0.15s ease, color 0.15s ease; }
-button.rounded-full:active, a.rounded-full:active { transform: scale(0.97); }
+.pill-up { background: color-mix(in srgb, var(--up) 12%, transparent); color: var(--up-ink); }
+.pill-down { background: color-mix(in srgb, var(--down) 12%, transparent); color: var(--down-ink); }
+.dark .pill-up { background: color-mix(in srgb, var(--up) 18%, transparent); }
+.dark .pill-down { background: color-mix(in srgb, var(--down) 18%, transparent); }
 
 /* tab bars that scroll sideways fade at the right edge so the hidden tabs read as "more" */
 .scroll-fade { mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent); }
 @media (min-width: 640px) { .scroll-fade { mask-image: none; } }
 
-/* the lit green ground behind the homepage headline */
-.lit { background: radial-gradient(60% 55% at 15% 0%, var(--glow), transparent 70%); }
-
-::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
-
 @keyframes shimmer {
   0% { background-position: -400px 0; }
   100% { background-position: 400px 0; }
 }
-
 .skeleton {
   border-radius: 0.75rem;
-  background: linear-gradient(90deg, var(--card) 0%, var(--border) 50%, var(--card) 100%);
+  background: linear-gradient(90deg, var(--card) 0%, var(--card-strong) 50%, var(--card) 100%);
   background-size: 800px 100%;
   animation: shimmer 1.4s ease-in-out infinite;
 }
 
-/* Motion: quiet, fast, ease-out (no bounce). Pop-ups grow from their trigger; tab content and opened
-   "show more" sections fade in; nothing that is typed or triggered from the keyboard moves. */
-@keyframes pop-in {
-  from { opacity: 0; transform: translateY(-4px) scale(0.98); filter: blur(2px); }
+/* ---------- Motion (DESIGN.md › Motion). Transform and opacity only. ---------- */
+
+/* Pop-ups grow from their trigger; tab content and opened "show more" sections fade in. */
+@keyframes pop-in { from { opacity: 0; transform: translateY(-4px) scale(0.98); } }
+@keyframes fade-in { from { opacity: 0; transform: translateY(4px); } }
+.pop-in { transform-origin: top right; animation: pop-in 0.18s var(--ease-out); }
+.fade-in { animation: fade-in 0.22s var(--ease-out); }
+details[open] > :not(summary) { animation: fade-in 0.2s var(--ease-out); }
+
+/* Buttons and pills press. */
+button, a.rounded-full, .press { transition: transform 0.12s var(--ease-out), background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease; }
+button:active:not(:disabled), a.rounded-full:active, .press:active { transform: scale(0.97); }
+
+/* Linked cards lift 2px (devices that hover only). */
+.lift { transition: transform 0.2s var(--ease-out), background-color 0.15s ease; }
+
+/* Rows: tinted on hover, their sparkline thickens. */
+.row-link { transition: background-color 0.12s ease-out; }
+.row-link .spark path { transition: stroke-width 0.12s ease-out, opacity 0.12s ease-out; opacity: 0.85; }
+
+@media (hover: hover) and (pointer: fine) {
+  .lift:hover { transform: translateY(-2px); }
+  .row-link:hover { background: var(--card); }
+  .row-link:hover .spark path { stroke-width: 2.25; opacity: 1; }
 }
-@keyframes fade-in {
-  from { opacity: 0; transform: translateY(4px); }
-}
-.pop-in { transform-origin: top right; animation: pop-in 0.18s cubic-bezier(0.23, 1, 0.32, 1); }
-.fade-in { animation: fade-in 0.22s cubic-bezier(0.23, 1, 0.32, 1); }
-details[open] > :not(summary) { animation: fade-in 0.2s cubic-bezier(0.23, 1, 0.32, 1); }
+
+/* Tab underline: one bar that slides between tabs (positioned by CompanyTabs). */
+.tab-ink { transition: transform 0.26s var(--ease-out), width 0.26s var(--ease-out); will-change: transform; }
+
+/* Sticky company bar: slides down and fades in once the big header scrolls away. */
+.sticky-bar { transition: transform 0.22s var(--ease-out), opacity 0.22s var(--ease-out); }
+.sticky-bar[data-show="false"] { transform: translateY(-8px); opacity: 0; pointer-events: none; transition-duration: 0.15s; } /* exits quicker than it enters */
+.sticky-bar[data-show="true"] { transform: none; opacity: 1; }
+
+/* Landing sections rise 8px and fade in once as they enter. Content stays visible unless JS armed the reveal
+   (the .reveal-armed class on <html>), so no-JS visitors and crawlers see everything. */
+.reveal-armed .reveal:not([data-shown]) { opacity: 0; transform: translateY(8px); }
+.reveal-armed .reveal { transition: opacity 0.5s var(--ease-out-expo), transform 0.5s var(--ease-out-expo); }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition: none !important; }
   .skeleton { animation: none; }
-  a.bg-card:hover, a.rounded-2xl:hover, button.rounded-full:active, a.rounded-full:active { transform: none; }
-  * { transition: none !important; }
+  .reveal-armed .reveal:not([data-shown]) { opacity: 1; transform: none; }
+  .lift:hover, button:active, a.rounded-full:active, .press:active { transform: none !important; }
+  .sticky-bar[data-show="false"] { transform: none; }
 }
-

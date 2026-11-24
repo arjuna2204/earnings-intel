@@ -106,7 +106,7 @@ export default function CallsPanel({
   );
 
   return (
-    <div className="rounded-2xl border border-border p-5">
+    <div className="rounded-2xl bg-card p-5">
       <div className="flex flex-wrap items-end gap-3">
         <PeriodSelect label="Compare" value={pa} options={options} onChange={(v) => select("a", v)} />
         <span className="pb-2 text-muted">→</span>
@@ -115,7 +115,7 @@ export default function CallsPanel({
           <button
             onClick={start}
             disabled={starting || pa === pb}
-            className="ml-auto rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-black transition hover:brightness-110 disabled:opacity-50"
+            className="ml-auto rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background transition disabled:opacity-50"
           >
             {starting ? "Starting…" : hasResult ? "Re-run" : cta}
           </button>
@@ -131,7 +131,7 @@ export default function CallsPanel({
                 key={`${r.a}-${r.b}`}
                 href={`${path}?tab=${tab}&a=${r.a}&b=${r.b}`}
                 aria-current={current ? "page" : undefined}
-                className={`rounded-full px-2.5 py-1 font-medium ${current ? "bg-accent/15 text-accent" : "bg-card hover:bg-border"}`}
+                className={`rounded-full px-2.5 py-1 font-medium ${current ? "bg-foreground text-background" : "bg-background hover:bg-card-strong"}`}
               >
                 {short(r.b)} vs {short(r.a)}
               </a>
@@ -144,7 +144,7 @@ export default function CallsPanel({
           {hint}
         </p>
       )}
-      {error && <p className="mt-3 text-sm text-down">{error}</p>}
+      {error && <p className="mt-3 text-sm text-down-ink">{error}</p>}
       {job && (active || job.status === "failed" || job.status === "deferred") && (
         <div className="mt-4 border-t border-border pt-4 text-sm" aria-live="polite">
           {job.status === "queued" && <p className="text-muted">Waiting for GitHub to start the job…</p>}
@@ -162,7 +162,7 @@ export default function CallsPanel({
               );
             })}
           </ol>
-          {job.status !== "running" && job.message && <p className={`mt-2 ${job.status === "failed" ? "text-down" : "text-muted"}`}>{job.message}</p>}
+          {job.status !== "running" && job.message && <p className={`mt-2 ${job.status === "failed" ? "text-down-ink" : "text-muted"}`}>{job.message}</p>}
         </div>
       )}
     </div>
@@ -178,7 +178,7 @@ function PeriodSelect({ label, value, options, onChange }: { label: string; valu
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 block rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground"
+        className="mt-1 block rounded-xl bg-background px-3 py-2 text-sm text-foreground"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>

@@ -71,14 +71,14 @@ export default function WatchAlerts() {
         )}
       </button>
       {open && (
-        <div className="pop-in fixed inset-x-3 top-16 z-50 rounded-2xl border border-border bg-background p-2 shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-11 sm:w-80">
+        <div className="pop-in fixed inset-x-3 top-16 z-50 rounded-2xl bg-background p-2 shadow-float sm:absolute sm:inset-x-auto sm:right-0 sm:top-11 sm:w-80">
           <p className="px-3 pb-1 pt-2 text-xs text-muted">Earnings alerts for your watchlist</p>
           {alerts.length ? (
             <ul>
               {alerts.map((a) => (
                 <li key={a.ticker}>
                   <Link
-                    href={a.kind === "reported" ? `/c/${a.ticker}?tab=brief` : `/c/${a.ticker}?tab=street`}
+                    href={a.kind === "reported" ? `/c/${a.ticker}?tab=earnings` : `/c/${a.ticker}?tab=valuation`}
                     onClick={() => setOpen(false)}
                     className="block rounded-xl px-3 py-2.5 hover:bg-card"
                   >
@@ -87,7 +87,7 @@ export default function WatchAlerts() {
                       <>
                         reported {fmtDay(a.date)}
                         {a.item.surprise != null && (
-                          <span className={a.item.surprise >= 0 ? "text-up" : "text-down"}>
+                          <span className={a.item.surprise >= 0 ? "text-up-ink" : "text-down-ink"}>
                             {" "}
                             {a.item.surprise >= 0 ? "▲ beat" : "▼ missed"} {Math.abs(a.item.surprise * 100).toFixed(1)}%
                           </span>
@@ -116,7 +116,7 @@ export default function WatchAlerts() {
               Also notify me on this computer when the site is open
             </button>
           )}
-          <Link href="/#watchlist" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-2 text-xs text-muted hover:bg-card hover:text-foreground">
+          <Link href="/my-stocks" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-2 text-xs text-muted hover:bg-card hover:text-foreground">
             Manage watchlist ({list.length})
           </Link>
         </div>

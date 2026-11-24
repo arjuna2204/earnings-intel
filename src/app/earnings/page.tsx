@@ -5,14 +5,14 @@ import Term from "@/components/Term";
 import { RecapFacts, recapDate } from "@/components/RecapLine";
 import { recentRecaps, upcomingEarnings, type CalendarRow, type Recap } from "@/lib/screener";
 
-export const metadata: Metadata = { title: "Earnings this week" };
+export const metadata: Metadata = { title: "This week" };
 
 const SHOW = 12; // per day before "show all"
 
 export default function EarningsPage(props: PageProps<"/earnings">) {
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-4 pb-16 pt-6">
-      <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Earnings this week</h1>
+      <h1 className="text-[32px] tracking-tight sm:text-[40px]">This week</h1>
       <p className="mt-1 text-sm text-muted">
         Who reports in the next 7 days, largest companies first. Dates are scheduled, not confirmed; companies sometimes move them.
       </p>
@@ -56,7 +56,7 @@ async function Calendar({ searchParams }: PageProps<"/earnings">) {
           href="/earnings"
           role="tab"
           aria-selected={!mine}
-          className={`rounded-full px-3 py-1.5 font-medium ${!mine ? "bg-accent/15 text-accent" : "text-muted hover:text-foreground"}`}
+          className={`rounded-full px-3 py-1.5 font-medium ${!mine ? "bg-foreground text-background" : "text-muted hover:text-foreground"}`}
         >
           All companies
         </Link>
@@ -64,7 +64,7 @@ async function Calendar({ searchParams }: PageProps<"/earnings">) {
           href="/earnings?mine=1"
           role="tab"
           aria-selected={mine}
-          className={`rounded-full px-3 py-1.5 font-medium ${mine ? "bg-accent/15 text-accent" : "text-muted hover:text-foreground"}`}
+          className={`rounded-full px-3 py-1.5 font-medium ${mine ? "bg-foreground text-background" : "text-muted hover:text-foreground"}`}
         >
           Researched here{!mine && loadedCount ? ` (${loadedCount})` : ""}
         </Link>

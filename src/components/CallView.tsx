@@ -77,17 +77,17 @@ const CHANGE_STYLE: Record<
   string,
   { icon: string; cls: string; text: string }
 > = {
-  raised: { icon: "▲", cls: "text-up", text: "Raised" },
-  lowered: { icon: "▼", cls: "text-down", text: "Lowered" },
+  raised: { icon: "▲", cls: "text-up-ink", text: "Raised" },
+  lowered: { icon: "▼", cls: "text-down-ink", text: "Lowered" },
   maintained: { icon: "●", cls: "text-muted", text: "Maintained" },
   new: { icon: "✚", cls: "text-foreground", text: "New" },
-  withdrawn: { icon: "✕", cls: "text-down", text: "Withdrawn" },
+  withdrawn: { icon: "✕", cls: "text-down-ink", text: "Withdrawn" },
   "not repeated": { icon: "○", cls: "text-muted", text: "Not repeated" },
   "changed basis": { icon: "≠", cls: "text-muted", text: "Different basis" },
   qualitative: { icon: "~", cls: "text-muted", text: "Qualitative" },
-  expanded: { icon: "▲", cls: "text-up", text: "More airtime" },
-  reduced: { icon: "▼", cls: "text-down", text: "Less airtime" },
-  dropped: { icon: "✕", cls: "text-down", text: "Dropped" },
+  expanded: { icon: "▲", cls: "text-up-ink", text: "More airtime" },
+  reduced: { icon: "▼", cls: "text-down-ink", text: "Less airtime" },
+  dropped: { icon: "✕", cls: "text-down-ink", text: "Dropped" },
   steady: { icon: "●", cls: "text-muted", text: "Steady" },
 };
 
@@ -132,8 +132,8 @@ export default function CallView({
   return (
     <div className="space-y-10">
       {comparison.partial && (
-        <p className="flex gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm">
-          <Icon name="alert" className="mt-0.5 text-down" />
+        <p className="flex gap-2 rounded-xl bg-card px-4 py-3 text-sm">
+          <Icon name="alert" className="mt-0.5 text-down-ink" />
           <span>
           Part of this comparison is incomplete:{" "}
           {[a.note, b.note].filter(Boolean).join(" · ")}
@@ -321,7 +321,7 @@ function PriceReactions({
 }) {
   const colors = useThemeColors();
   const card = (label: string, p: PriceReaction) => (
-    <div key={label} className="rounded-2xl border border-border p-4">
+    <div key={label} className="rounded-2xl bg-card p-4">
       <div className="text-xs text-muted">
         Stock reaction after the {label} call
       </div>
@@ -553,7 +553,7 @@ function Topics({
                   <span className="w-8">{k === 0 ? "then" : "now"}</span>
                   <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-card">
                     <span
-                      className="block h-full rounded-full bg-accent"
+                      className="block h-full rounded-full bg-foreground"
                       style={{
                         width: `${(s / max) * 100}%`,
                         opacity: k === 0 ? 0.45 : 1,
@@ -645,7 +645,7 @@ function ToneTable({
           {k === "net_tone" ? (vb?.toFixed(2) ?? "—") : pct(vb, 2)}
         </span>
         {up != null && va !== vb && (
-          <span className={`ml-1 text-xs ${good ? "text-up" : "text-down"}`}>
+          <span className={`ml-1 text-xs ${good ? "text-up-ink" : "text-down-ink"}`}>
             {up ? "▲" : "▼"}
           </span>
         )}
@@ -813,7 +813,7 @@ function ToneTrend({
     ],
   };
   return (
-    <div className="rounded-2xl border border-border p-4">
+    <div className="rounded-2xl bg-card p-4">
       <EChart
         option={option}
         className="h-56 w-full"
@@ -947,7 +947,7 @@ function QuotedList<T extends Quoted>({
 
 function Empty({ text }: { text: string }) {
   return (
-    <p className="rounded-2xl border border-dashed border-border p-5 text-sm text-muted">
+    <p className="rounded-2xl bg-card p-5 text-sm text-muted">
       {text}
     </p>
   );

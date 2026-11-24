@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { DocHit } from "@/app/api/doc-search/route";
 
 const SECTION: Record<string, string> = { business: "Business", risk_factors: "Risk factors", mdna: "Management's discussion", release: "Earnings release" };
@@ -42,13 +42,23 @@ function Passage({ text, q }: { text: string; q: string }) {
 }
 
 /** Search what the company has said: its 10-K/10-Q sections, earnings releases and call transcripts. */
-export default function DocSearch({ cik, ticker, filingLinks }: { cik: number; ticker: string; filingLinks: Record<string, string> }) {
-  const [q, setQ] = useState("");
+export default function DocSearch({
+  cik,
+  ticker,
+  filingLinks,
+  initialQuery = "",
+}: {
+  cik: number;
+  ticker: string;
+  filingLinks: Record<string, string>;
+  /** from the search box in the company header: run straight away */
+  initialQuery?: string;
+}) {
+  const [q, setQ] = useState(initialQuery);
   const [hits, setHits] = useState<DocHit[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const run = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const search = useCallback(async (q: string) => {
     if (q.trim().length < 2) return;
     setBusy(true);
     setError(null);
@@ -62,20 +72,31 @@ export default function DocSearch({ cik, ticker, filingLinks }: { cik: number; t
     } finally {
       setBusy(false);
     }
+  }, [cik]);
+  const run = (e: React.FormEvent) => {
+    e.preventDefault();
+    void search(q);
   };
+  const ran = useRef("");
+  useEffect(() => {
+    if (initialQuery && ran.current !== initialQuery) {
+      ran.current = initialQuery;
+      void search(initialQuery);
+    }
+  }, [initialQuery, search]);
   const secUrl = `https://www.sec.gov/edgar/search/#/q=${encodeURIComponent(q.trim() ? `"${q.trim()}"` : "")}&ciks=${String(cik).padStart(10, "0")}`;
   return (
     <section aria-label="Search filings and calls">
-      <h2 className="border-b border-border pb-3 text-xl font-semibold tracking-tight">Search what {ticker} has said</h2>
+      <h2 className="text-[22px] tracking-tight">Search what {ticker} has said</h2>
       <form onSubmit={run} className="mt-4 flex gap-2">
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder='Try "tariffs", "AI", "buyback" or "China"'
           aria-label="Search words"
-          className="min-w-0 flex-1 rounded-full border border-border bg-card px-4 py-2.5 text-sm outline-none focus:border-accent"
+          className="min-w-0 flex-1 rounded-full bg-card px-4 py-2.5 text-[15px] outline-none transition-shadow focus:bg-background focus:shadow-float"
         />
-        <button type="submit" disabled={busy} className="rounded-full bg-accent px-5 text-sm font-semibold text-black hover:brightness-110 disabled:opacity-50">
+        <button type="submit" disabled={busy} className="rounded-full bg-foreground px-5 text-[15px] font-semibold text-background disabled:opacity-50">
           {busy ? "Searching…" : "Search"}
         </button>
       </form>
@@ -85,7 +106,7 @@ export default function DocSearch({ cik, ticker, filingLinks }: { cik: number; t
           Search every SEC filing ↗
         </a>
       </p>
-      {error && <p className="mt-4 text-sm text-down">{error}</p>}
+      {error && <p className="mt-4 text-sm text-down-ink">{error}</p>}
       {hits && (
         <>
           <p className="mt-5 text-[15px]">
