@@ -34,16 +34,16 @@ export default async function DataInfo({ company, priceDate, filings }: { compan
 
   return (
     <details className="group relative mt-2 inline-block text-xs">
-      <summary className={`inline-flex cursor-pointer list-none items-center gap-1.5 rounded-full px-2 py-0.5 hover:bg-card ${alert ? "text-down" : "text-muted"}`}>
+      <summary className={`inline-flex cursor-pointer list-none items-center gap-1.5 rounded-full px-2 py-0.5 hover:bg-card ${alert ? "text-down-ink" : "text-muted"}`}>
         <Icon name={alert ? "alert" : "info"} />
         {held.length ? "Some numbers held back" : stale.length ? `Needs an update: ${stale[0].label.toLowerCase()}` : priceDate ? `Data as of ${fmt(priceDate)}` : "About this data"}
       </summary>
-      <div className="pop-in absolute left-0 z-30 mt-1 w-[min(26rem,90vw)] space-y-3 rounded-2xl border border-border bg-background p-4 text-sm shadow-lg">
+      <div className="pop-in absolute left-0 z-30 mt-1 w-[min(26rem,90vw)] space-y-3 rounded-2xl bg-background p-4 text-sm shadow-float">
         <div>
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">How fresh</h3>
           <ul className="mt-1 space-y-0.5">
             {items.map((i) => (
-              <li key={i.label} className={`flex justify-between gap-4 ${age(i.date, today) > i.staleAfter ? "text-down" : ""}`}>
+              <li key={i.label} className={`flex justify-between gap-4 ${age(i.date, today) > i.staleAfter ? "text-down-ink" : ""}`}>
                 <span>{i.label}</span>
                 <span className="tabular-nums">
                   {age(i.date, today) > i.staleAfter ? <Icon name="alert" className="mr-1" /> : null}
@@ -58,7 +58,7 @@ export default async function DataInfo({ company, priceDate, filings }: { compan
             <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">Today&apos;s data checks</h3>
             <ul className="mt-1 space-y-1">
               {flags.map((f) => (
-                <li key={f.check} className={f.severity === "hide" ? "text-down" : ""}>
+                <li key={f.check} className={f.severity === "hide" ? "text-down-ink" : ""}>
                   {f.severity === "hide" ? "Hidden: " : <Icon name="alert" className="mr-1" />}
                   {f.message}
                 </li>

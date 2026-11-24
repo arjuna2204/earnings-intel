@@ -26,6 +26,8 @@ echarts.use([
   CanvasRenderer,
 ]);
 
+const FONT = '"Geist Variable", ui-sans-serif, system-ui, sans-serif';
+
 type Props = {
   option: echarts.EChartsCoreOption;
   className?: string;
@@ -56,17 +58,28 @@ export default function EChart({ option, className, onClick, ariaLabel, onHoverI
       hoverRef.current?.(info ? Number(info.value) : null);
     });
     c.getZr().on("globalout", () => hoverRef.current?.(null));
+    // touch: lifting the finger ends a scrub and returns to the latest value
+    const el = ref.current;
+    const release = () => {
+      c.dispatchAction({ type: "hideTip" });
+      c.dispatchAction({ type: "updateAxisPointer", currTrigger: "leave" });
+      hoverRef.current?.(null);
+    };
+    el.addEventListener("touchend", release, { passive: true });
+    el.addEventListener("touchcancel", release, { passive: true });
     const ro = new ResizeObserver(() => c.resize());
     ro.observe(ref.current);
     return () => {
       ro.disconnect();
+      el.removeEventListener("touchend", release);
+      el.removeEventListener("touchcancel", release);
       c.dispose();
       chart.current = null;
     };
   }, []);
 
   useEffect(() => {
-    chart.current?.setOption(option, { notMerge: true });
+    chart.current?.setOption({ textStyle: { fontFamily: FONT }, ...option }, { notMerge: true });
   }, [option]);
 
   return <div ref={ref} role="img" aria-label={ariaLabel} className={className} />;

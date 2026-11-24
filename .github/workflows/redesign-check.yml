@@ -1,0 +1,73 @@
+name: Redesign check
+
+# Builds the redesign branch, runs the browser checks (e2e/checks.py) against real data and saves full-page
+# screenshots (e2e/screenshots.py) as a downloadable artifact. Read-only: it opens pages, hovers and scrolls;
+# it never presses Load/Write/Analyze buttons. The database keys come from this repo's existing secrets.
+on:
+  workflow_dispatch:
+  push:
+    branches: [redesign]
+
+permissions:
+  contents: write # only to publish the screenshots to the redesign-screenshots branch
+
+concurrency:
+  group: redesign-check
+  cancel-in-progress: true
+
+jobs:
+  check:
+    # Playwright's browser download supports this image; ubuntu-latest moved ahead of it
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      CBOE_DATA: ${{ secrets.CBOE_DATA }}
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: npm ci
+      - run: pip install playwright && python -m playwright install --with-deps chromium
+      - run: npx next build
+      - name: Start the site
+        run: |
+          npx next start -p 3000 > server.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://localhost:3000/ >/dev/null && break; sleep 2; done
+      - name: Browser checks
+        run: |
+          set -o pipefail
+          python e2e/checks.py http://localhost:3000 AAPL | tee checks.txt
+      - name: Screenshots
+        if: always()
+        run: python e2e/screenshots.py http://localhost:3000 AAPL shots
+      # same credentials actions/checkout set up (as in fixtures.yml); a separate branch, never main or redesign
+      - name: Publish screenshots to the redesign-screenshots branch
+        if: always()
+        run: |
+          cp checks.txt shots/ 2>/dev/null || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -q --orphan redesign-screenshots
+          git rm -rq --cached .
+          # this branch holds only pictures: tell Vercel not to try to deploy it
+          echo '{ "git": { "deploymentEnabled": false } }' > vercel.json
+          git add -f shots vercel.json
+          git commit -qm "Screenshots of ${GITHUB_SHA::7}"
+          git push -qf origin redesign-screenshots
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: redesign-screenshots
+          path: |
+            shots/
+            checks.txt
+            server.log
+          retention-days: 14

@@ -85,7 +85,7 @@ function FairValue({ d }: { d: StreetData }) {
   const vs = (v: number) => {
     const u = v / d.price! - 1;
     return (
-      <span className={`text-sm font-medium tabular-nums ${u >= 0 ? "text-up" : "text-down"}`}>
+      <span className={`text-sm font-medium tabular-nums ${u >= 0 ? "text-up-ink" : "text-down-ink"}`}>
         {u >= 0 ? "▲" : "▼"} {Math.abs(u * 100).toFixed(0)}% {u >= 0 ? "above" : "below"} the price
       </span>
     );
@@ -101,7 +101,7 @@ function FairValue({ d }: { d: StreetData }) {
               <span className="figure text-3xl">${ps.toFixed(2)}</span>
               {vs(ps)}
             </span>
-            <span className="mt-1 block text-sm font-medium text-accent group-hover:underline">How it&apos;s built →</span>
+            <span className="mt-1 block text-sm font-medium text-accent-ink group-hover:underline">How it&apos;s built →</span>
           </a>
         )}
         {base != null && (
@@ -114,7 +114,7 @@ function FairValue({ d }: { d: StreetData }) {
             <span className="mt-1 block text-sm text-muted tabular-nums">
               {bear != null && bull != null ? `$${bear.toFixed(2)} – $${bull.toFixed(2)}` : ""}
             </span>
-            <span className="mt-1 block text-sm font-medium text-accent group-hover:underline">See the three cases →</span>
+            <span className="mt-1 block text-sm font-medium text-accent-ink group-hover:underline">See the three cases →</span>
           </a>
         )}
       </div>
@@ -371,7 +371,7 @@ export default function StreetView({ d }: { d: StreetData }) {
       )}
       <p className="text-xs text-muted">
         Looking for what already happened? See{" "}
-        <Link href="?tab=historical" className="text-accent underline">
+        <Link href="?tab=historical" className="text-accent-ink underline">
           Historical
         </Link>
         .
@@ -423,7 +423,7 @@ function Stat({
       </div>
       {sub && (
         <div
-          className={`mt-2 text-sm ${tone === "up" ? "text-up" : tone === "down" ? "text-down" : "text-muted"}`}
+          className={`mt-2 text-sm ${tone === "up" ? "text-up-ink" : tone === "down" ? "text-down-ink" : "text-muted"}`}
         >
           {sub}
         </div>
@@ -456,7 +456,7 @@ function Head({
       {more && (
         <Link
           href={more.href}
-          className="shrink-0 text-sm font-semibold text-accent hover:underline"
+          className="shrink-0 text-sm font-semibold text-accent-ink hover:underline"
         >
           {more.label}
         </Link>

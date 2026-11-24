@@ -12,6 +12,7 @@ export type WatchItem = {
   lastReport: string | null; // most recent results release (8-K item 2.02 or reported quarter)
   lastQuarter: string | null; // e.g. FY2026Q1, when known
   surprise: number | null; // EPS vs estimate, last reported quarter
+  spark: number[]; // last ~22 closes, oldest first (for the row's sparkline)
 };
 
 const T = /^[A-Z][A-Z0-9.\-]{0,9}$/;
@@ -61,7 +62,7 @@ export async function GET(req: NextRequest) {
         : [],
       Promise.all(
         companies.map((c) =>
-          select<{ date: string; close: number }>("prices", { ticker: `eq.${c.ticker}`, select: "date,close", order: "date.desc", limit: "2" }).then((p) => [c.ticker, p] as const),
+          select<{ date: string; close: number }>("prices", { ticker: `eq.${c.ticker}`, select: "date,close", order: "date.desc", limit: "22" }).then((p) => [c.ticker, p] as const),
         ),
       ),
     ]);
@@ -77,12 +78,13 @@ export async function GET(req: NextRequest) {
         name: c?.name ?? names.find((n) => n.ticker === t)?.name ?? t,
         loaded: !!c,
         price: p[0]?.close ?? null,
-        change: p.length === 2 && p[1].close ? p[0].close / p[1].close - 1 : null,
+        change: p.length >= 2 && p[1].close ? p[0].close / p[1].close - 1 : null,
         priceDate: p[0]?.date ?? null,
         nextReport: nextFor(t),
         lastReport: last,
         lastQuarter: ev && ev.report_date === last ? `FY${ev.fiscal_year}Q${ev.fiscal_quarter}` : null,
         surprise: ev && ev.report_date === last && ev.eps_reported != null && ev.eps_estimated ? ev.eps_reported / ev.eps_estimated - 1 : null,
+        spark: p.map((x) => x.close).reverse(),
       };
     });
     return Response.json({ items }, { headers: { "Cache-Control": "no-store" } });

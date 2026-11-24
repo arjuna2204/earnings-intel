@@ -1,16 +1,14 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
-// IBM Plex, bundled with the site (Latin only), so pages don't wait on a font server
-import "@fontsource/ibm-plex-sans/latin-400.css";
-import "@fontsource/ibm-plex-sans/latin-500.css";
-import "@fontsource/ibm-plex-sans/latin-600.css";
-import "@fontsource/ibm-plex-sans/latin-700.css";
-import "@fontsource/ibm-plex-mono/latin-400.css";
-import "@fontsource/ibm-plex-mono/latin-500.css";
-import ThemeToggle from "@/components/ThemeToggle";
+// Geist (variable), bundled with the site; browsers only download the Latin file
+import "@fontsource-variable/geist/wght.css";
 import { Analytics } from "@vercel/analytics/next";
 import HeaderSearch from "@/components/HeaderSearch";
 import WatchAlerts from "@/components/WatchAlerts";
+import MoreMenu from "@/components/MoreMenu";
+import NavLinks, { NavLinksStatic } from "@/components/NavLinks";
+import { Suspense } from "react";
+import Logo from "@/components/Logo";
 import { APP_NAME } from "@/lib/app";
 import "./globals.css";
 
@@ -22,68 +20,59 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#0b0c0d" },
-    { media: "(prefers-color-scheme: light)", color: "#0b0c0d" },
+    { media: "(prefers-color-scheme: dark)", color: "#000000" },
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
   ],
 };
 
-// Runs before first paint so there's no light/dark flash: dark unless the visitor picked light.
-const themeScript = `(function(){try{var t=localStorage.getItem('theme');var d=t?t==='dark':true;document.documentElement.classList.toggle('dark',d);}catch(e){}})();`;
+// Runs before first paint so there's no light/dark flash: light unless the visitor picked dark.
+// It also arms the scroll reveal (content is visible by default; motion only once JS is running and allowed).
+const themeScript = `(function(){try{var t=localStorage.getItem('theme');document.documentElement.classList.toggle('dark',t==='dark');}catch(e){}try{if(window.IntersectionObserver&&!matchMedia('(prefers-reduced-motion: reduce)').matches)document.documentElement.classList.add('reveal-armed');}catch(e){}})();`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" suppressHydrationWarning className="dark h-full antialiased">
+    <html lang="en" suppressHydrationWarning className="h-full antialiased">
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="flex min-h-full flex-col">
-        <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur">
-          <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-4 px-4">
-            <Link href="/" className="font-semibold tracking-tight">
-              <span className="text-accent">●</span> {APP_NAME}
+        <header className="sticky top-0 z-30 bg-background/90 backdrop-blur-md">
+          <div className="mx-auto grid h-16 w-full max-w-6xl grid-cols-[auto_1fr_auto] items-center gap-3 px-4 sm:gap-6">
+            <Link href="/" aria-label={`${APP_NAME} home`} className="flex items-center gap-2 text-[17px] font-bold tracking-tight">
+              <Logo />
+              <span className="hidden lg:inline">{APP_NAME}</span>
             </Link>
-            <nav className="ml-auto flex items-center gap-1 text-sm">
-              <Link href="/compare" className="rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground">
-                Compare
-              </Link>
-              <Link href="/earnings" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground sm:block">
-                Earnings
-              </Link>
-              <Link href="/screener" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground sm:block">
-                Screener
-              </Link>
-              <Link href="/portfolio" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground sm:block">
-                Portfolio
-              </Link>
-              <Link href="/macro" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground md:block">
-                Economy
-              </Link>
-              <Link href="/about" className="hidden rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground lg:block">
-                About
-              </Link>
-              <ThemeToggle />
+            <div className="flex justify-end md:justify-center">
+              <div className="flex w-full max-w-xl justify-end">
+                <HeaderSearch />
+              </div>
+            </div>
+            <nav className="flex items-center gap-0.5" aria-label="Main">
+              <Suspense fallback={<NavLinksStatic />}>
+                <NavLinks />
+              </Suspense>
+              <MoreMenu />
               <WatchAlerts />
-              <HeaderSearch />
             </nav>
           </div>
         </header>
         {children}
-        <footer className="mt-auto border-t border-border">
-          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-5 gap-y-1 px-4 py-5 text-xs text-muted">
+        <footer className="mt-auto bg-card/60">
+          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-5 gap-y-1 px-4 py-6 text-[13px] text-muted">
             <span>Educational research, not investment advice. Data may be delayed or contain errors.</span>
-            <Link href="/about" className="hover:text-foreground hover:underline">
+            <Link href="/about" className="inline-block py-1.5 hover:text-foreground hover:underline">
               Why Earnings Intel
             </Link>
-            <Link href="/terms" className="hover:text-foreground hover:underline">
+            <Link href="/terms" className="inline-block py-1.5 hover:text-foreground hover:underline">
               Terms &amp; data sources
             </Link>
-            <Link href="/coverage" className="hover:text-foreground hover:underline">
+            <Link href="/coverage" className="inline-block py-1.5 hover:text-foreground hover:underline">
               Companies covered
             </Link>
-            <Link href="/backtest" className="hover:text-foreground hover:underline">
+            <Link href="/backtest" className="inline-block py-1.5 hover:text-foreground hover:underline">
               Does it work? (backtest)
             </Link>
-            <Link href="/status" className="hover:text-foreground hover:underline">
+            <Link href="/status" className="inline-block py-1.5 hover:text-foreground hover:underline">
               Status
             </Link>
           </div>

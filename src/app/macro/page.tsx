@@ -35,7 +35,7 @@ async function Macro() {
           if (!m || !r) return null;
           const up = r.change != null && r.change > 0;
           return (
-            <li key={s.id} className="rounded-2xl border border-border p-4">
+            <li key={s.id} className="rounded-2xl bg-card p-4">
               <div className="text-sm text-muted">{m.name}</div>
               <div className="mt-0.5 flex items-baseline gap-2">
                 <span className="text-2xl font-semibold tabular-nums">{fmtMacro(s.id, r.last[1])}</span>

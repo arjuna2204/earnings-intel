@@ -46,7 +46,7 @@ export default function AboutPage() {
               <tr className="border-b border-border text-muted">
                 <th className="w-28 px-4 py-3 font-medium" />
                 <th className="px-4 py-3 font-medium">A typical finance site</th>
-                <th className="px-4 py-3 font-semibold text-accent">Earnings Intel</th>
+                <th className="px-4 py-3 font-semibold text-accent-ink">Earnings Intel</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -70,7 +70,7 @@ export default function AboutPage() {
         <ol className="space-y-4">
           {STEPS.map(([title, text], i) => (
             <li key={title} className="flex gap-4">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/15 text-sm font-semibold text-accent tabular-nums">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/15 text-sm font-semibold text-accent-ink tabular-nums">
                 {i + 1}
               </span>
               <span>
@@ -98,14 +98,14 @@ export default function AboutPage() {
           <li>AI does the reading, so it can be wrong. That&apos;s why every claim links to the quote it came from — check anything that matters.</li>
           <li>
             Curious whether the signals mean anything? The{" "}
-            <Link href="/backtest" className="font-semibold text-accent hover:underline">
+            <Link href="/backtest" className="font-semibold text-accent-ink hover:underline">
               backtest
             </Link>{" "}
             shows how they would have done.
           </li>
           <li>
             It&apos;s research, not investment advice. See{" "}
-            <Link href="/terms" className="font-semibold text-accent hover:underline">
+            <Link href="/terms" className="font-semibold text-accent-ink hover:underline">
               terms &amp; data sources
             </Link>
             .
@@ -114,7 +114,7 @@ export default function AboutPage() {
       </Section>
 
       <div className="mt-14 flex flex-wrap items-center gap-3">
-        <Link href="/" className="rounded-full bg-accent px-6 py-3 font-semibold text-black hover:brightness-110">
+        <Link href="/" className="rounded-full bg-foreground px-6 py-3 font-semibold text-background">
           Look up a stock
         </Link>
         <Link href="/coverage" className="rounded-full px-4 py-3 font-medium text-muted hover:text-foreground">

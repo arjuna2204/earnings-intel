@@ -61,7 +61,7 @@ export default function AnalyzePanel({
 
   if (active || (job && job.status === "failed")) {
     return (
-      <div className="rounded-2xl border border-border p-5" aria-live="polite">
+      <div className="rounded-2xl bg-card p-5" aria-live="polite">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold">{job!.status === "failed" ? "Loading failed" : `Loading ${ticker}…`}</h3>
           <span className="text-xs text-muted">usually 1–2 minutes</span>
@@ -82,8 +82,8 @@ export default function AnalyzePanel({
         {job!.status === "queued" && <p className="mt-3 text-xs text-muted">Waiting for GitHub to start the job…</p>}
         {job!.status === "failed" && (
           <>
-            <p className="mt-3 text-sm text-down">{job!.message}</p>
-            <button onClick={start} className="mt-3 rounded-full bg-accent px-5 py-2 text-sm font-semibold text-black">
+            <p className="mt-3 text-sm text-down-ink">{job!.message}</p>
+            <button onClick={start} className="mt-3 rounded-full bg-foreground px-5 py-2 text-sm font-semibold text-background">
               Try again
             </button>
           </>
@@ -99,13 +99,13 @@ export default function AnalyzePanel({
         disabled={starting}
         className={
           mode === "load"
-            ? "rounded-full bg-accent px-6 py-3 font-semibold text-black transition hover:brightness-110 disabled:opacity-60"
+            ? "rounded-full bg-foreground px-6 py-3 font-semibold text-background transition disabled:opacity-60"
             : "rounded-full border border-border px-4 py-1.5 text-sm text-muted hover:text-foreground disabled:opacity-60"
         }
       >
         {starting ? "Starting…" : mode === "load" ? `Load ${ticker} data` : "Refresh data"}
       </button>
-      {error && <p className="mt-2 text-sm text-down">{error}</p>}
+      {error && <p className="mt-2 text-sm text-down-ink">{error}</p>}
     </div>
   );
 }

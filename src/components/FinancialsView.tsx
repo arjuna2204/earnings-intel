@@ -181,7 +181,7 @@ function MetricCard({
 
   if (!shown.length) {
     return (
-      <div className="rounded-2xl border border-border p-5">
+      <div className="rounded-2xl bg-card p-5">
         <div className="flex items-center text-sm text-muted">
           <Term k={metric.key}>{metric.label}</Term>
         </div>
@@ -249,7 +249,7 @@ function MetricCard({
   };
 
   return (
-    <div className="rounded-2xl border border-border p-5">
+    <div className="rounded-2xl bg-card p-5">
       <div className="flex items-baseline justify-between gap-2">
         <div className="flex items-center text-sm text-muted">
           <Term k={metric.key}>{metric.label}</Term>
@@ -331,7 +331,7 @@ function SourceDetails({
               {filing ? `${filing.form} filed ${filing.filed}` : accession}
               <br />
               <a
-                className="text-accent underline"
+                className="text-accent-ink underline"
                 href={
                   filing
                     ? filingIndexFromDocUrl(filing.url, accession)

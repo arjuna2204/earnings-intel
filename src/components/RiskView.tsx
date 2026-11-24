@@ -166,7 +166,7 @@ export default function RiskView({ ticker, r, sector }: { ticker: string; r: Ris
               role="tab"
               aria-selected={chart === k}
               onClick={() => setChart(k)}
-              className={`${k === "hist" ? "pro-only " : ""}rounded-full border px-3 py-1 text-xs font-medium ${chart === k ? "border-accent/40 bg-accent/15 text-accent" : "border-border text-muted hover:text-foreground"}`}
+              className={`${k === "hist" ? "pro-only " : ""}rounded-full border px-3 py-1 text-xs font-medium ${chart === k ? "border-accent/40 bg-foreground text-background" : "border-border text-muted hover:text-foreground"}`}
             >
               {l}
             </button>
@@ -175,10 +175,10 @@ export default function RiskView({ ticker, r, sector }: { ticker: string; r: Ris
         {chart === "hist" && (
           <div className="mt-3 flex gap-4 text-xs text-muted">
             <span>
-              <span className="text-up">▲</span> Up days
+              <span className="text-up-ink">▲</span> Up days
             </span>
             <span>
-              <span className="text-down">▼</span> Down days
+              <span className="text-down-ink">▼</span> Down days
             </span>
           </div>
         )}
@@ -199,7 +199,7 @@ export default function RiskView({ ticker, r, sector }: { ticker: string; r: Ris
                 {rows.map(([d, v]) => (
                   <li key={d} className="flex justify-between py-2">
                     <span className="text-muted">{d}</span>
-                    <span className={v >= 0 ? "text-up" : "text-down"}>
+                    <span className={v >= 0 ? "text-up-ink" : "text-down-ink"}>
                       {v >= 0 ? "▲" : "▼"} {pct(Math.abs(v))}
                     </span>
                   </li>
@@ -224,10 +224,10 @@ export default function RiskView({ ticker, r, sector }: { ticker: string; r: Ris
           <>
             <div className="flex gap-4 text-xs text-muted">
               <span>
-                <span className="text-up">▲</span> Rose
+                <span className="text-up-ink">▲</span> Rose
               </span>
               <span>
-                <span className="text-down">▼</span> Fell
+                <span className="text-down-ink">▼</span> Fell
               </span>
             </div>
             <EChart option={earnChart} className="mt-2 h-56 w-full" ariaLabel={`${ticker} stock moves on earnings days`} />
@@ -238,10 +238,10 @@ export default function RiskView({ ticker, r, sector }: { ticker: string; r: Ris
       <Section id="rk-season" pro info="seasonality" title="Seasonality" note="Average return by calendar month over the full price history. Patterns like these are often noise — treat them as context, not a forecast.">
         <div className="flex gap-4 text-xs text-muted">
           <span>
-            <span className="text-up">▲</span> Up on average
+            <span className="text-up-ink">▲</span> Up on average
           </span>
           <span>
-            <span className="text-down">▼</span> Down on average
+            <span className="text-down-ink">▼</span> Down on average
           </span>
         </div>
         <EChart option={season} className="mt-2 h-56 w-full" ariaLabel={`${ticker} average return by month`} />
@@ -258,7 +258,7 @@ export default function RiskView({ ticker, r, sector }: { ticker: string; r: Ris
           <ul className="pro-only mt-5 grid gap-x-8 gap-y-1 text-sm sm:grid-cols-2">
             {f.piotroski.checks.map((c) => (
               <li key={c.label} className="flex items-baseline gap-2 py-1">
-                {c.pass == null ? <span className="text-muted">–</span> : c.pass ? <span className="text-up">▲</span> : <span className="text-down">▼</span>}
+                {c.pass == null ? <span className="text-muted">–</span> : c.pass ? <span className="text-up-ink">▲</span> : <span className="text-down-ink">▼</span>}
                 <span className={c.pass == null ? "text-muted" : ""}>{c.label}</span>
               </li>
             ))}

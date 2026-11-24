@@ -42,7 +42,7 @@ export default function ShortInterest({ rows, sharesOut }: { rows: ShortRow[]; s
         </div>
         <div>
           <dt className="text-xs text-muted">vs a year ago</dt>
-          <dd className={`mt-0.5 text-lg font-semibold tabular-nums ${yearAgo ? (now.short_shares >= yearAgo.short_shares ? "text-down" : "text-up") : ""}`}>
+          <dd className={`mt-0.5 text-lg font-semibold tabular-nums ${yearAgo ? (now.short_shares >= yearAgo.short_shares ? "text-down-ink" : "text-up-ink") : ""}`}>
             {yearAgo ? `${now.short_shares >= yearAgo.short_shares ? "▲" : "▼"} ${Math.abs((now.short_shares / yearAgo.short_shares - 1) * 100).toFixed(0)}%` : "—"}
           </dd>
         </div>

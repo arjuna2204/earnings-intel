@@ -1,67 +1,87 @@
 "use client";
 
 import Link from "next/link";
+import MovePill from "@/components/MovePill";
+import Sparkline from "@/components/Sparkline";
 import { setWatched, useWatchlist } from "@/components/watchlist-store";
 import { fmtDay, useWatchData } from "@/components/useWatchData";
 
-/** Homepage watchlist: price, next earnings date, and a "see what changed" link right after a report. */
-export default function WatchlistPanel() {
+/**
+ * The visitor's watchlist as price rows: ticker, name and earnings status, sparkline, price, day's move.
+ * `compact` (landing page) drops the remove buttons and the empty-state help.
+ */
+export default function WatchlistPanel({ compact = false }: { compact?: boolean }) {
   const list = useWatchlist();
   const { items, alerts, loading } = useWatchData(list);
-  return (
-    <section className="mt-12">
-      <h2 className="border-b border-border pb-3 text-xl font-semibold tracking-tight">Your watchlist</h2>
-      {!list.length ? (
-        <p className="mt-3 text-sm text-muted">
-          Tap <b className="text-foreground">Watch</b> on any stock. You&apos;ll see its next earnings date here, and an alert (bell, top right) when it
+  if (!list.length) {
+    if (compact) return null;
+    return (
+      <div className="mt-6 rounded-2xl bg-card px-6 py-8">
+        <p className="text-lg font-semibold">Nothing watched yet</p>
+        <p className="mt-1 max-w-xl text-[15px] leading-relaxed text-muted">
+          Tap <b className="text-foreground">Watch</b> on any stock. It shows up here with its price and next earnings date, and the bell lights up the week it
           reports. Saved in this browser — no account needed.
         </p>
-      ) : loading ? (
-        <div className="mt-3 h-24 skeleton rounded-xl" />
-      ) : (
-        <ul className="divide-y divide-border">
-          {items.map((it) => {
-            const a = alerts.find((x) => x.ticker === it.ticker);
-            return (
-              <li key={it.ticker} className="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-3.5">
-                <Link href={`/c/${it.ticker}`} className="w-16 shrink-0 font-semibold hover:underline">
-                  {it.ticker}
-                </Link>
-                <span className="min-w-0 flex-1 truncate text-sm text-muted">{it.name}</span>
-                <span className="text-sm">
-                  {a?.kind === "reported" ? (
-                    <Link href={`/c/${it.ticker}?tab=brief`} className="font-medium text-accent hover:underline">
-                      Reported {fmtDay(a.date)}
-                      {it.surprise != null && ` · ${it.surprise >= 0 ? "beat" : "missed"} by ${Math.abs(it.surprise * 100).toFixed(1)}%`} — see what changed →
-                    </Link>
-                  ) : it.nextReport ? (
-                    <span className={a ? "font-medium" : "text-muted"}>{a?.kind === "today" ? "Reports today" : `Reports ${fmtDay(it.nextReport)}`}</span>
-                  ) : (
-                    <span className="text-muted">No date announced</span>
-                  )}
+      </div>
+    );
+  }
+  if (loading) {
+    return (
+      <div className="mt-6 space-y-2">
+        {list.slice(0, 4).map((t) => (
+          <div key={t} className="skeleton h-14" />
+        ))}
+      </div>
+    );
+  }
+  return (
+    <ul className="mt-6">
+      {items.map((it) => {
+        const a = alerts.find((x) => x.ticker === it.ticker);
+        const status =
+          a?.kind === "reported"
+            ? `Reported ${fmtDay(a.date)}${it.surprise != null ? ` · ${it.surprise >= 0 ? "beat" : "missed"} by ${Math.abs(it.surprise * 100).toFixed(1)}%` : ""}`
+            : it.nextReport
+              ? a?.kind === "today"
+                ? "Reports today"
+                : `Reports ${fmtDay(it.nextReport)}`
+              : "No earnings date announced";
+        return (
+          <li key={it.ticker} className="group/row relative">
+            <Link
+              href={a?.kind === "reported" ? `/c/${it.ticker}?tab=earnings` : `/c/${it.ticker}`}
+              className="row-link -mx-3 flex items-center gap-3 rounded-2xl px-3 py-3.5 sm:gap-6"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="flex items-baseline gap-2">
+                  <span className="text-[17px] font-bold">{it.ticker}</span>
+                  <span className="truncate text-[15px] text-muted">{it.name}</span>
                 </span>
-                <span className="w-28 text-right text-sm tabular-nums">
-                  {it.price != null ? `$${it.price.toFixed(2)}` : ""}
-                  {it.change != null && (
-                    <span className={`ml-1.5 ${it.change >= 0 ? "text-up" : "text-down"}`}>
-                      {it.change >= 0 ? "▲" : "▼"}
-                      {Math.abs(it.change * 100).toFixed(1)}%
-                    </span>
-                  )}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setWatched(it.ticker, false)}
-                  aria-label={`Remove ${it.ticker}`}
-                  className="text-xs text-muted hover:text-foreground"
-                >
-                  ✕
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </section>
+                <span className={`mt-0.5 block truncate text-[13px] ${a ? "font-medium text-foreground" : "text-muted"}`}>{status}</span>
+              </span>
+              <Sparkline values={it.spark ?? []} up={it.change == null ? undefined : it.change >= 0} width={96} height={32} className="hidden sm:block" />
+              <span className="w-20 text-right text-[17px] font-semibold tabular-nums sm:w-24">{it.price != null ? `$${it.price.toFixed(2)}` : "—"}</span>
+              <span className="w-[4.75rem] text-right">
+                <MovePill v={it.change} />
+              </span>
+              {!compact && <span className="w-8" aria-hidden />}
+            </Link>
+            {!compact && (
+              <button
+                type="button"
+                onClick={() => setWatched(it.ticker, false)}
+                aria-label={`Stop watching ${it.ticker}`}
+                title="Stop watching"
+                className="absolute right-0 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-muted hover:bg-card-strong hover:text-foreground"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden>
+                  <path d="M6 6l12 12M18 6 6 18" />
+                </svg>
+              </button>
+            )}
+          </li>
+        );
+      })}
+    </ul>
   );
 }

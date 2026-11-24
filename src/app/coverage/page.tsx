@@ -129,7 +129,7 @@ async function Report() {
 
   return (
     <div className="mt-6 space-y-10">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-card p-4">
         <dl className="flex gap-8">
           <Stat label="Companies loaded" value={all.length} />
           <Stat label="Full research" value={full.length} />

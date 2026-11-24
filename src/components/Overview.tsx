@@ -1,10 +1,12 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import Term from "@/components/Term";
 import { RecapFacts, recapDate } from "@/components/RecapLine";
 import { select } from "@/lib/db";
 import { getEvents8k, ITEMS } from "@/lib/events";
 import { fmtMacro, getMacro, MACRO, reading, SECTOR_MACRO } from "@/lib/macro";
-import { getQuickTake, type Signal } from "@/lib/quicktake";
+import type { Signal } from "@/lib/quicktake";
+import { quickTake } from "@/components/TabAnswer";
 import { getOptions, getRisk } from "@/lib/riskopts";
 import { latestRecap } from "@/lib/screener";
 import { viewHref, type ViewKey } from "@/lib/tabs";
@@ -16,8 +18,8 @@ type Card = { q: string; term: string; answer: string; tone: Tone; support: stri
 const pct = (v: number, d = 1) => `${Math.abs(v * 100).toFixed(d)}%`;
 
 function Arrow({ tone }: { tone: Tone }) {
-  if (tone === "up") return <span className="text-up" aria-label="positive">▲</span>;
-  if (tone === "down") return <span className="text-down" aria-label="negative">▼</span>;
+  if (tone === "up") return <span className="text-up-ink" aria-label="positive">▲</span>;
+  if (tone === "down") return <span className="text-down-ink" aria-label="negative">▼</span>;
   return <span className="text-muted" aria-label="neutral">●</span>;
 }
 
@@ -25,12 +27,23 @@ function Arrow({ tone }: { tone: Tone }) {
  * The first screen for a company: the bottom line, four everyday questions answered in one line each,
  * and what to watch next. Every answer is computed in code from the other tabs and links to them.
  */
-export default async function Overview({ company, events, asOf }: { company: Company; events: EarningsEvent[]; asOf: string }) {
+export default async function Overview({
+  company,
+  events,
+  asOf,
+  eventsSlot,
+}: {
+  company: Company;
+  events: EarningsEvent[];
+  asOf: string;
+  /** the company's 8-K events, shown inside Things to watch */
+  eventsSlot?: ReactNode;
+}) {
   const path = `/c/${encodeURIComponent(company.ticker)}`;
   const today = new Date(`${asOf}T12:00:00Z`).toISOString().slice(0, 10);
   const since60 = new Date(Date.parse(`${today}T12:00:00Z`) - 60 * 86400000).toISOString().slice(0, 10);
   const [q, recap, risk, opts, revG, next, ev] = await Promise.all([
-    getQuickTake(company, events, asOf),
+    quickTake(company, events, asOf),
     latestRecap(company.ticker),
     getRisk(company.cik),
     getOptions(company.cik),
@@ -153,7 +166,7 @@ export default async function Overview({ company, events, asOf }: { company: Com
       text: big.items.map((i) => ITEMS[i]?.label ?? `Item ${i}`).join(" · "),
       sub: `8-K filed ${recapDate(big.date)}`,
       tone: big.weight === "high" ? "down" : "neutral",
-      href: viewHref(path, "events"),
+      href: "#company-events",
     });
   }
   for (const k of ["insiders", "funds", "revisions"]) {
@@ -180,12 +193,14 @@ export default async function Overview({ company, events, asOf }: { company: Com
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-12">
       {recap && (
-        <section aria-label="Latest earnings" className="rounded-2xl bg-card p-4">
+        <section aria-labelledby="ov-recap" className="rounded-2xl bg-card p-5 sm:p-6">
           <div className="flex items-baseline justify-between gap-2">
-            <h2 className="font-semibold">Just reported{recap.quarter ? ` · ${recap.quarter}` : ""}</h2>
-            <span className="text-xs text-muted">{recapDate(recap.report_date)}</span>
+            <h2 id="ov-recap" className="text-lg">
+              Just reported{recap.quarter ? ` · ${recap.quarter}` : ""}
+            </h2>
+            <span className="text-[13px] text-muted">{recapDate(recap.report_date)}</span>
           </div>
           <div className="mt-2">
             <RecapFacts r={recap} />
@@ -193,24 +208,13 @@ export default async function Overview({ company, events, asOf }: { company: Com
         </section>
       )}
 
-      {q.bottomLine.length > 0 && (
-        <section aria-label="Bottom line">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Bottom line</h2>
-          <ul className="mt-2 space-y-1.5 text-lg leading-snug">
-            {q.bottomLine.map((l) => (
-              <li key={l}>{l}</li>
-            ))}
-          </ul>
-        </section>
-      )}
-
       <section aria-label="Four questions">
         <ul className="grid gap-3 sm:grid-cols-2">
           {cards.map((c) => (
             <li key={c.q}>
-              <Link href={viewHref(path, c.view)} className="group flex h-full flex-col rounded-2xl border border-border p-4 transition hover:bg-card">
-                <span className="text-sm text-muted">{c.q}</span>
-                <span className="mt-1 flex items-baseline gap-2 text-lg font-semibold leading-snug">
+              <Link href={viewHref(path, c.view)} scroll={false} className="lift group flex h-full flex-col rounded-2xl bg-card p-5 sm:p-6">
+                <span className="text-[15px] text-muted">{c.q}</span>
+                <span className="mt-1.5 flex items-baseline gap-2 text-[19px] font-semibold leading-snug tracking-[-0.01em]">
                   <Arrow tone={c.tone} />
                   {c.answer}
                 </span>
@@ -221,31 +225,43 @@ export default async function Overview({ company, events, asOf }: { company: Com
                     ))}
                   </ul>
                 )}
-                <span className="mt-auto pt-3 text-sm font-medium text-accent group-hover:underline">{c.cta} →</span>
+                <span className="mt-auto flex items-center gap-1 pt-4 text-sm font-semibold text-accent-ink">
+                  {c.cta}
+                  <span aria-hidden className="transition-transform duration-200 group-hover:translate-x-0.5">
+                    →
+                  </span>
+                </span>
               </Link>
             </li>
           ))}
         </ul>
       </section>
 
-      {watch.length > 0 && (
-        <section aria-label="Things to watch">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Things to watch</h2>
-          <ul className="mt-2 divide-y divide-border">
+      <section id="things-to-watch" aria-labelledby="ttw" className="scroll-mt-40">
+        <h2 id="ttw" className="text-[22px] tracking-tight">
+          Things to watch
+        </h2>
+        {watch.length > 0 && (
+          <ul className="mt-3">
             {watch.map((w) => (
               <li key={w.text}>
-                <Link href={w.href} className="flex items-baseline gap-2 py-2.5 hover:text-accent">
+                <Link href={w.href} className="row-link -mx-3 flex items-baseline gap-2.5 rounded-xl px-3 py-3">
                   <Arrow tone={w.tone} />
-                  <span className="font-medium">{w.text}</span>
+                  <span className="font-semibold">{w.text}</span>
                   {w.sub && <span className="text-sm text-muted">{w.sub}</span>}
                 </Link>
               </li>
             ))}
           </ul>
-        </section>
-      )}
+        )}
+        {eventsSlot && (
+          <div id="company-events" className="mt-8 scroll-mt-40">
+            {eventsSlot}
+          </div>
+        )}
+      </section>
 
-      <p className="text-xs text-muted">
+      <p className="text-[13px] text-muted">
         Every answer is computed in code from the data in the other tabs. <Term k="quick_take">How this works</Term>. Not investment advice.
       </p>
     </div>

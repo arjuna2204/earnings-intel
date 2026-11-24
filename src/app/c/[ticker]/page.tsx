@@ -1,9 +1,11 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import AnalyzePanel from "@/components/AnalyzePanel";
-import PriceStrip from "@/components/PriceStrip";
+import CompanyHeader from "@/components/CompanyHeader";
+import ScrollToAnchor from "@/components/ScrollToAnchor";
+import TabAnswer from "@/components/TabAnswer";
 import CompanyTabs from "@/components/CompanyTabs";
-import { resolveTab } from "@/lib/tabs";
+import { movedAnchor, resolveTab } from "@/lib/tabs";
 import { CBOE_ON } from "@/lib/flags";
 import StreetView, { type EstimateRow } from "@/components/StreetView";
 import type { FieldRow } from "@/components/ValuationCharts";
@@ -42,7 +44,6 @@ import Icon from "@/components/Icon";
 import OptionsView from "@/components/OptionsView";
 import { getOptions, getRisk } from "@/lib/riskopts";
 import Overview from "@/components/Overview";
-import WatchButton from "@/components/WatchButton";
 import Term, { AboutNumbers } from "@/components/Term";
 import { COMPARE_ETFS, etfName } from "@/lib/etfs";
 import { comparablePeerPe } from "@/lib/peer-check";
@@ -62,7 +63,7 @@ export default function CompanyPage(props: PageProps<"/c/[ticker]">) {
 async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">) {
   const ticker = decodeURIComponent((await params).ticker).toUpperCase();
   const sp = await searchParams;
-  const { view } = resolveTab(typeof sp.tab === "string" ? sp.tab : null, typeof sp.view === "string" ? sp.view : null);
+  const { tab, view } = resolveTab(typeof sp.tab === "string" ? sp.tab : null, typeof sp.view === "string" ? sp.view : null);
 
   const company = await getCompanyByTicker(ticker);
   if (!company) {
@@ -72,7 +73,7 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
         <div className="py-16 text-center">
           <h1 className="text-2xl font-semibold">{ticker} not found</h1>
           <p className="mt-2 text-muted">It isn&apos;t in the SEC&apos;s list of US-listed companies.</p>
-          <Link href="/" className="mt-6 inline-block text-accent underline">
+          <Link href="/" className="mt-6 inline-block text-accent-ink underline">
             Back to search
           </Link>
         </div>
@@ -129,28 +130,32 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
       }))
     : filings.filter((f) => ["10-K", "10-Q", "20-F", "40-F"].includes(f.form)).map((f) => ({ date: f.filed_date, label: f.form }));
 
+  const last = prices.at(-1);
+  const prev = prices.at(-2);
+  const lastClose = last ? (last.close ?? last.adj_close) : company.valuation?.price ?? null;
+  const dayPct = last && prev && prev.adj_close ? last.adj_close / prev.adj_close - 1 : null;
+  const day =
+    lastClose != null && dayPct != null
+      ? { price: lastClose, change: lastClose - lastClose / (1 + dayPct), pct: dayPct, date: last?.date ?? "" }
+      : null;
+  const dcf = await getDcf(company.cik).catch(() => null);
+  const asOf = prices.at(-1)?.date ?? company.valuation?.price_date ?? "2026-01-01";
+  const meta = [company.ticker, company.exchange ?? "US", etfName(company.sector_etf)].filter(Boolean).join(" · ");
+  const anchor = movedAnchor(typeof sp.tab === "string" ? sp.tab : null, typeof sp.view === "string" ? sp.view : null);
+  const q = typeof sp.q === "string" ? sp.q : "";
+
   return (
-    <>
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-sm text-muted">
-            {company.ticker} · {company.exchange ?? "US"}
-            {etfName(company.sector_etf) ? ` · ${etfName(company.sector_etf)}` : ""}
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">{company.name}</h1>
-        </div>
-        <div className="flex flex-wrap items-start gap-2">
-          <WatchButton ticker={company.ticker} />
-          <Link
-            href={`/compare?a=${encodeURIComponent(company.ticker)}`}
-            className="rounded-full border border-border px-4 py-2 text-sm font-medium hover:bg-card"
-          >
-            Compare
-          </Link>
-          {/* no "Refresh data" button for visitors (data updates daily on its own); progress shows only while an update runs */}
-          {(job?.status === "running" || job?.status === "queued") && <AnalyzePanel ticker={company.ticker} initialJob={job} mode="refresh" />}
-        </div>
-      </header>
+    <CompanyHeader
+      ticker={company.ticker}
+      name={company.name}
+      meta={meta}
+      day={day}
+      downloadHref={dcf?.status === "ok" && dcf.result ? `/api/dcf/${encodeURIComponent(company.ticker)}` : null}
+      actions={
+        // no "Refresh data" button for visitors (data updates daily on its own); progress shows only while an update runs
+        job?.status === "running" || job?.status === "queued" ? <AnalyzePanel ticker={company.ticker} initialJob={job} mode="refresh" /> : null
+      }
+    >
       <Suspense fallback={null}>
         <DataInfo company={company} priceDate={prices.at(-1)?.date ?? company.valuation?.price_date ?? null} filings={filings} />
       </Suspense>
@@ -161,72 +166,91 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
         </p>
       )}
 
-      {/* sticky here, not inside a wrapper, so the tabs stay in view while scrolling the whole page */}
-      <div className="sticky top-14 z-20 mt-4">
-        <CompanyTabs hide={CBOE_ON ? [] : ["options"]} />
-      </div>
-
-      {/* the full chart and key numbers on Overview; other tabs get a slim price line so their content starts right away */}
-      {view === "overview" ? (
-        <>
-          <div className="mt-6">
-            <PriceChart
-              ticker={company.ticker}
-              prices={prices}
-              defaults={compareDefaults}
-              choices={compareChoices}
-              markers={markers}
-              currencySymbol="$"
-              markerNote={events.length ? "○ = earnings report · tap to open that call" : "○ = 10-K / 10-Q filed"}
-              emptyNote={
-                job?.status === "deferred"
-                  ? "The price download was paused by the free price source's hourly limit (50 requests/hour). It retries automatically within 6 hours; per-share history is split-adjusted once prices arrive."
-                  : undefined
-              }
-            />
-          </div>
-
-          <ValuationStrip company={company} />
-        </>
-      ) : (
-        <PriceStrip ticker={company.ticker} prices={prices} valuation={company.valuation} />
+      {/* the price chart lives on Overview, above the tabs, so scrubbing it drives the big price in the header */}
+      {view === "overview" && (
+        <div className="mt-8">
+          <PriceChart
+            ticker={company.ticker}
+            prices={prices}
+            defaults={compareDefaults}
+            choices={compareChoices}
+            markers={markers}
+            currencySymbol="$"
+            markerNote={events.length ? "○ = earnings report · tap to open that call" : "○ = 10-K / 10-Q filed"}
+            emptyNote={
+              job?.status === "deferred"
+                ? "The price download was paused by the free price source's hourly limit (50 requests/hour). It retries automatically within 6 hours; per-share history is split-adjusted once prices arrive."
+                : undefined
+            }
+          />
+        </div>
       )}
 
+      <div className="mt-8">
+        <CompanyTabs />
+      </div>
+
       {/* keyed by view so switching tabs fades the new content in */}
-      <div key={view} className="fade-in mt-6">
+      <div key={`${view}-${q}`} className="fade-in mt-8">
+        {anchor && <ScrollToAnchor id={anchor} />}
         <Suspense key={`${view}-${sp.a ?? ""}-${sp.b ?? ""}`} fallback={<TabSkeleton />}>
-        {view === "overview" && (
-          <Overview company={company} events={events} asOf={prices.at(-1)?.date ?? company.valuation?.price_date ?? "2026-01-01"} />
-        )}
-        {view === "historical" && <FinancialsTab company={company} filings={filings} />}
-        {view === "street" && <StreetTab company={company} events={events} prices={prices} />}
-        {view === "sources" && <SourcesTab company={company} filings={filings} />}
-        {view === "brief" && (
-          <BriefTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />
-        )}
-        {view === "events" && <EventsTab company={company} />}
-        {view === "supply" && <SupplyTab company={company} />}
-        {view === "leaders" && <LeadersTab company={company} />}
-        {view === "search" && (
-          <DocSearch cik={company.cik} ticker={company.ticker} filingLinks={Object.fromEntries(filings.map((f) => [f.accession, f.url]))} />
-        )}
-        {view === "call" && <CallTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />}
-        {view === "peers" && <PeersTab company={company} prices={prices} />}
-        {view === "riskstats" && <RiskTab company={company} />}
-        {view === "riskfactors" && <RiskFactorsTab company={company} />}
-        {view === "options" && (
-          <OptionsTab company={company} />
-        )}
-        {view === "ownership" && <OwnershipTab company={company} asOf={prices.at(-1)?.date ?? company.valuation?.price_date ?? "2026-01-01"} />}
+          {view !== "search" && view !== "sources" && (
+            <div className="mb-10">
+              <TabAnswer tab={tab} company={company} events={events} asOf={asOf} />
+            </div>
+          )}
+          {view === "overview" && (
+            <>
+              <ValuationStrip company={company} />
+              <div className="mt-10">
+                <Overview company={company} events={events} asOf={asOf} eventsSlot={<EventsTab company={company} />} />
+              </div>
+            </>
+          )}
+          {view === "historical" && <FinancialsTab company={company} filings={filings} />}
+          {view === "street" && <StreetTab company={company} events={events} prices={prices} />}
+          {view === "sources" && <SourcesTab company={company} filings={filings} />}
+          {view === "brief" && (
+            <BriefTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />
+          )}
+          {view === "supply" && <SupplyTab company={company} />}
+          {view === "leaders" && <LeadersTab company={company} />}
+          {view === "search" && (
+            <DocSearch
+              key={q}
+              cik={company.cik}
+              ticker={company.ticker}
+              initialQuery={q}
+              filingLinks={Object.fromEntries(filings.map((f) => [f.accession, f.url]))}
+            />
+          )}
+          {view === "call" && <CallTab company={company} events={events} a={typeof sp.a === "string" ? sp.a : undefined} b={typeof sp.b === "string" ? sp.b : undefined} />}
+          {view === "peers" && <PeersTab company={company} prices={prices} />}
+          {view === "riskstats" && (
+            <div className="space-y-16">
+              <RiskTab company={company} />
+              {/* Options sit under Price risk, only while the Cboe data is on */}
+              {CBOE_ON && (
+                <section id="options" className="scroll-mt-40" aria-labelledby="options-h">
+                  <h2 id="options-h" className="mb-6 text-[22px] tracking-tight">
+                    Options
+                  </h2>
+                  <OptionsTab company={company} />
+                </section>
+              )}
+            </div>
+          )}
+          {view === "riskfactors" && <RiskFactorsTab company={company} />}
+          {view === "ownership" && <OwnershipTab company={company} asOf={asOf} />}
         </Suspense>
       </div>
-      <p className="mt-12 border-t border-border pt-4 text-xs text-muted">
+      <p className="mt-16 text-[13px] text-muted">
         Every number links to where it came from.{" "}
-        <Link href={`/c/${encodeURIComponent(company.ticker)}?tab=sources`} className="font-medium text-foreground hover:underline">
+        <Link href={`/c/${encodeURIComponent(company.ticker)}?tab=sources`} className="font-semibold text-foreground hover:underline">
           All sources for {company.ticker} →
         </Link>
       </p>
-    </>
+    </CompanyHeader>
   );
 }
 
@@ -245,7 +269,7 @@ async function OptionsTab({ company }: { company: Company }) {
 
 function Pending({ what, note }: { what: string; note?: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted">
+    <div className="rounded-2xl bg-card p-8 text-center text-sm text-muted">
       {what} for this stock will appear after the next morning refresh (it&apos;s computed daily for every loaded stock). {note}
     </div>
   );
@@ -302,7 +326,7 @@ async function CallTab({
       {comparison && anA && anB ? (
         <CallView cik={company.cik} comparison={comparison} a={anA} b={anB} trend={trend} />
       ) : (
-        <div className="rounded-2xl border border-dashed border-border p-8 text-center text-muted">
+        <div className="rounded-2xl bg-card p-8 text-center text-muted">
           The latest call is analyzed automatically within a day or two of each report. To compare other quarters, pick two and press{" "}
           <b className="text-foreground">Analyze calls</b>.
         </div>
@@ -393,7 +417,7 @@ async function BriefTab({ company, events, a, b }: { company: Company; events: E
     return (
       <div className="space-y-8">
         {panel}
-        <div className="rounded-2xl border border-dashed border-border p-8 text-center text-muted">
+        <div className="rounded-2xl bg-card p-8 text-center text-muted">
           The brief for the latest quarter is written automatically within a day or two of each report. To compare other quarters, pick two and
           press <b className="text-foreground">Write brief</b>.
         </div>
@@ -846,7 +870,7 @@ function SourcesTab({ company, filings }: { company: Company; filings: Filing[] 
             <span className="text-muted">filed {f.filed_date}</span>
             {f.report_date && <span className="text-muted">period {f.report_date}</span>}
             <span className="ml-auto flex gap-3">
-              <a href={f.url} target="_blank" rel="noreferrer" className="text-accent underline">
+              <a href={f.url} target="_blank" rel="noreferrer" className="text-accent-ink underline">
                 Document ↗
               </a>
               <a href={filingIndexFromDocUrl(f.url, f.accession)} target="_blank" rel="noreferrer" className="text-muted underline">

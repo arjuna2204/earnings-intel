@@ -264,7 +264,7 @@ export default function OptionsView({
           {asOf.slice(0, 10)}; stock ${o.spot.toFixed(2)}.
         </p>
         {o.earnings && (
-          <div className="mt-4 rounded-2xl border border-border p-4">
+          <div className="mt-4 rounded-2xl bg-card p-4">
             <p className="flex items-center text-xs text-muted">
               <Term k="earnings_day_move">Earnings {day(o.earnings.date)}</Term>
             </p>
