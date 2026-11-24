@@ -18,7 +18,7 @@ export default function CompanyTabs({ hide = [] }: { hide?: string[] }) {
   const views = VIEWS[tab].filter((v) => !hide.includes(v.key));
   return (
     <nav className="-mx-4 border-b border-border bg-background/90 px-4 backdrop-blur" aria-label="Company sections">
-      <ul className="-mb-px flex gap-6 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <ul className="scroll-fade -mb-px flex gap-6 overflow-x-auto pr-8 [scrollbar-width:none] sm:pr-0 [&::-webkit-scrollbar]:hidden">
         {TABS.map((t) => (
           <li key={t.key} className="shrink-0">
             <Link
@@ -36,7 +36,7 @@ export default function CompanyTabs({ hide = [] }: { hide?: string[] }) {
         ))}
       </ul>
       {views.length > 1 && (
-        <ul className="flex gap-1 overflow-x-auto pb-2 pt-1 [scrollbar-width:none]" aria-label="Views">
+        <ul className="scroll-fade flex gap-1 overflow-x-auto pb-2 pr-8 pt-1 [scrollbar-width:none] sm:pr-0" aria-label="Views">
           {views.map((v) => (
             <li key={v.key} className="shrink-0">
               <Link

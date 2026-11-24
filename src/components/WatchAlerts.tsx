@@ -71,7 +71,7 @@ export default function WatchAlerts() {
         )}
       </button>
       {open && (
-        <div className="fixed inset-x-3 top-16 z-50 rounded-2xl border border-border bg-background p-2 shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-11 sm:w-80">
+        <div className="pop-in fixed inset-x-3 top-16 z-50 rounded-2xl border border-border bg-background p-2 shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-11 sm:w-80">
           <p className="px-3 pb-1 pt-2 text-xs text-muted">Earnings alerts for your watchlist</p>
           {alerts.length ? (
             <ul>

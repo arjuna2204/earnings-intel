@@ -16,7 +16,7 @@ export default function EarningsPage(props: PageProps<"/earnings">) {
       <p className="mt-1 text-sm text-muted">
         Who reports in the next 7 days, largest companies first. Dates are scheduled, not confirmed; companies sometimes move them.
       </p>
-      <Suspense fallback={<div className="mt-8 h-96 animate-pulse rounded-2xl bg-card" />}>
+      <Suspense fallback={<div className="mt-8 h-96 skeleton rounded-2xl" />}>
         <Calendar {...props} />
       </Suspense>
     </main>

@@ -15,7 +15,7 @@ export default function MacroPage() {
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-16 pt-6">
       <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">The economy</h1>
       <p className="mt-1 text-sm text-muted">The numbers that move whole sectors at once — rates, inflation, jobs, growth — over the last five years, from official sources.</p>
-      <Suspense fallback={<div className="mt-8 h-96 animate-pulse rounded-2xl bg-card" />}>
+      <Suspense fallback={<div className="mt-8 h-96 skeleton rounded-2xl" />}>
         <Macro />
       </Suspense>
     </main>

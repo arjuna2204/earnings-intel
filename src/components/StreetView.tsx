@@ -98,7 +98,7 @@ function FairValue({ d }: { d: StreetData }) {
           <a href="#sv-dcf" className="group block">
             <span className="block text-sm text-muted">DCF value per share</span>
             <span className="mt-1 flex flex-wrap items-baseline gap-x-3">
-              <span className="text-3xl font-semibold tabular-nums">${ps.toFixed(2)}</span>
+              <span className="figure text-3xl">${ps.toFixed(2)}</span>
               {vs(ps)}
             </span>
             <span className="mt-1 block text-sm font-medium text-accent group-hover:underline">How it&apos;s built →</span>
@@ -108,7 +108,7 @@ function FairValue({ d }: { d: StreetData }) {
           <a href="#sv-cases" className="group block">
             <span className="block text-sm text-muted">Base case (bull / bear range)</span>
             <span className="mt-1 flex flex-wrap items-baseline gap-x-3">
-              <span className="text-3xl font-semibold tabular-nums">${base.toFixed(2)}</span>
+              <span className="figure text-3xl">${base.toFixed(2)}</span>
               {vs(base)}
             </span>
             <span className="mt-1 block text-sm text-muted tabular-nums">
@@ -218,7 +218,7 @@ export default function StreetView({ d }: { d: StreetData }) {
 
       {d.dcf && (
         <div id="sv-dcf" className="scroll-mt-28">
-          <DcfView ticker={d.ticker} dcf={d.dcf} />
+          <DcfView ticker={d.ticker} dcf={d.dcf} livePrice={d.price} />
         </div>
       )}
 

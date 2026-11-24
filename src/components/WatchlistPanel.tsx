@@ -13,11 +13,11 @@ export default function WatchlistPanel() {
       <h2 className="border-b border-border pb-3 text-xl font-semibold tracking-tight">Your watchlist</h2>
       {!list.length ? (
         <p className="mt-3 text-sm text-muted">
-          Tap <b className="text-foreground">☆ Watch</b> on any stock. You&apos;ll see its next earnings date here, and an alert (bell, top right) when it
+          Tap <b className="text-foreground">Watch</b> on any stock. You&apos;ll see its next earnings date here, and an alert (bell, top right) when it
           reports. Saved in this browser — no account needed.
         </p>
       ) : loading ? (
-        <div className="mt-3 h-24 animate-pulse rounded-xl bg-card" />
+        <div className="mt-3 h-24 skeleton rounded-xl" />
       ) : (
         <ul className="divide-y divide-border">
           {items.map((it) => {

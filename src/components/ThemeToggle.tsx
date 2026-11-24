@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import Icon from "@/components/Icon";
 
 function subscribe(cb: () => void) {
   const obs = new MutationObserver(cb);
@@ -26,9 +27,9 @@ export default function ThemeToggle() {
       type="button"
       onClick={toggle}
       aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
-      className="rounded-full px-3 py-1.5 text-muted hover:bg-card hover:text-foreground"
+      className="rounded-full px-3 py-2 text-muted hover:bg-card hover:text-foreground"
     >
-      {dark ? "☀︎" : "☾"}
+      <Icon name={dark ? "sun" : "moon"} />
     </button>
   );
 }

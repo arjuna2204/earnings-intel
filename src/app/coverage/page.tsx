@@ -35,7 +35,7 @@ export default function CoveragePage() {
       <p className="mt-1 text-sm text-muted">
         Companies with data already pulled, best first. Live — refreshed every morning at 6:17am ET and whenever someone loads a stock.
       </p>
-      <Suspense fallback={<div className="mt-8 h-96 animate-pulse rounded-2xl bg-card" />}>
+      <Suspense fallback={<div className="mt-8 h-96 skeleton rounded-2xl" />}>
         <Report />
       </Suspense>
     </main>

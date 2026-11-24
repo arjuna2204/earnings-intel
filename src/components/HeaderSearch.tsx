@@ -48,7 +48,7 @@ export default function HeaderSearch() {
         <kbd className="hidden rounded border border-border px-1.5 text-[10px] leading-4 sm:inline">/</kbd>
       </button>
       {open && (
-        <div className="fixed inset-x-3 top-16 z-50 sm:absolute sm:inset-x-auto sm:right-0 sm:top-11 sm:w-[26rem]">
+        <div className="pop-in fixed inset-x-3 top-16 z-50 sm:absolute sm:inset-x-auto sm:right-0 sm:top-11 sm:w-[26rem]">
           <SearchBox
             autoFocus
             placeholder="Search a ticker or company"

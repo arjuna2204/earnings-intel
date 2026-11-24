@@ -38,6 +38,7 @@ import { briefPairs, getBrief, getCases, getDodges, getLatestBriefJob, getRiskCh
 import { select, selectAll } from "@/lib/db";
 import OwnershipView from "@/components/OwnershipView";
 import RiskView from "@/components/RiskView";
+import Icon from "@/components/Icon";
 import OptionsView from "@/components/OptionsView";
 import { getOptions, getRisk } from "@/lib/riskopts";
 import Overview from "@/components/Overview";
@@ -153,7 +154,12 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
       <Suspense fallback={null}>
         <DataInfo company={company} priceDate={prices.at(-1)?.date ?? company.valuation?.price_date ?? null} filings={filings} />
       </Suspense>
-      {company.history_note && <p className="mt-3 text-sm text-muted">ⓘ {company.history_note}</p>}
+      {company.history_note && (
+        <p className="mt-3 flex gap-1.5 text-sm text-muted">
+          <Icon name="info" className="mt-[0.2em]" />
+          {company.history_note}
+        </p>
+      )}
 
       {/* sticky here, not inside a wrapper, so the tabs stay in view while scrolling the whole page */}
       <div className="sticky top-14 z-20 mt-4">
@@ -186,7 +192,8 @@ async function CompanyContent({ params, searchParams }: PageProps<"/c/[ticker]">
         <PriceStrip ticker={company.ticker} prices={prices} valuation={company.valuation} />
       )}
 
-      <div className="mt-6">
+      {/* keyed by view so switching tabs fades the new content in */}
+      <div key={view} className="fade-in mt-6">
         <Suspense key={`${view}-${sp.a ?? ""}-${sp.b ?? ""}`} fallback={<TabSkeleton />}>
         {view === "overview" && (
           <Overview company={company} events={events} asOf={prices.at(-1)?.date ?? company.valuation?.price_date ?? "2026-01-01"} />

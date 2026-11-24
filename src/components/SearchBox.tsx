@@ -29,7 +29,7 @@ function writeRecent(list: Recent[]) {
 export default function SearchBox({
   autoFocus = false,
   large = false,
-  placeholder = "Search any US-listed ticker or company",
+  placeholder = "Search a ticker or company",
   onPick,
   onEscape,
 }: {
@@ -123,7 +123,7 @@ export default function SearchBox({
       />
       {error && <p className="mt-2 px-5 text-sm text-muted">{error}</p>}
       {open && visible.length > 0 && (
-        <ul id={listId} role="listbox" className="absolute z-40 mt-2 w-full overflow-hidden rounded-2xl border border-border bg-background shadow-xl">
+        <ul id={listId} role="listbox" className="pop-in absolute z-40 mt-2 w-full overflow-hidden rounded-2xl border border-border bg-background shadow-xl">
           {showRecent && (
             <li role="presentation" className="flex items-center justify-between px-5 pb-1 pt-3 text-xs text-muted">
               <span>Recent searches</span>

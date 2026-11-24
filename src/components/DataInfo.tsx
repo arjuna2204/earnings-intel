@@ -1,5 +1,6 @@
 import { select } from "@/lib/db";
 import type { Company, Filing } from "@/lib/types";
+import Icon from "@/components/Icon";
 
 const fmt = (d: string) => new Date(`${d.slice(0, 10)}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
@@ -33,11 +34,11 @@ export default async function DataInfo({ company, priceDate, filings }: { compan
 
   return (
     <details className="group relative mt-2 inline-block text-xs">
-      <summary className={`cursor-pointer list-none rounded-full px-2 py-0.5 hover:bg-card ${alert ? "text-down" : "text-muted"}`}>
-        {alert ? "⚠︎ " : "ⓘ "}
-        {held.length ? "Some numbers held back" : stale.length ? `${stale[0].label} is out of date` : priceDate ? `Data as of ${fmt(priceDate)}` : "About this data"}
+      <summary className={`inline-flex cursor-pointer list-none items-center gap-1.5 rounded-full px-2 py-0.5 hover:bg-card ${alert ? "text-down" : "text-muted"}`}>
+        <Icon name={alert ? "alert" : "info"} />
+        {held.length ? "Some numbers held back" : stale.length ? `Needs an update: ${stale[0].label.toLowerCase()}` : priceDate ? `Data as of ${fmt(priceDate)}` : "About this data"}
       </summary>
-      <div className="absolute left-0 z-30 mt-1 w-[min(26rem,90vw)] space-y-3 rounded-2xl border border-border bg-background p-4 text-sm shadow-lg">
+      <div className="pop-in absolute left-0 z-30 mt-1 w-[min(26rem,90vw)] space-y-3 rounded-2xl border border-border bg-background p-4 text-sm shadow-lg">
         <div>
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">How fresh</h3>
           <ul className="mt-1 space-y-0.5">
@@ -45,7 +46,7 @@ export default async function DataInfo({ company, priceDate, filings }: { compan
               <li key={i.label} className={`flex justify-between gap-4 ${age(i.date, today) > i.staleAfter ? "text-down" : ""}`}>
                 <span>{i.label}</span>
                 <span className="tabular-nums">
-                  {age(i.date, today) > i.staleAfter ? "⚠︎ " : ""}
+                  {age(i.date, today) > i.staleAfter ? <Icon name="alert" className="mr-1" /> : null}
                   {fmt(i.date)}
                 </span>
               </li>
@@ -58,7 +59,7 @@ export default async function DataInfo({ company, priceDate, filings }: { compan
             <ul className="mt-1 space-y-1">
               {flags.map((f) => (
                 <li key={f.check} className={f.severity === "hide" ? "text-down" : ""}>
-                  {f.severity === "hide" ? "■ Hidden: " : "⚠︎ "}
+                  {f.severity === "hide" ? "Hidden: " : <Icon name="alert" className="mr-1" />}
                   {f.message}
                 </li>
               ))}

@@ -148,7 +148,10 @@ function Notes({ ids }: { ids?: number[] }) {
 export default function DcfView({
   ticker,
   dcf,
+  livePrice,
 }: {
+  /** today's price; the model's stored price can be a few days old, and every "vs. price" line on the page should agree */
+  livePrice?: number | null;
   ticker: string;
   dcf: DcfModel;
 }) {
@@ -165,8 +168,8 @@ export default function DcfView({
   }
   const r = dcf.result;
   const a = dcf.assumptions;
-  const price = a.price.value;
-  const up = r.upside ?? 0;
+  const price = livePrice && livePrice > 0 ? livePrice : a.price.value;
+  const up = r.per_share != null && price > 0 ? r.per_share / price - 1 : (r.upside ?? 0);
   const fy0 = Number(dcf.history[dcf.history.length - 1].fiscal_year);
   const s = r.sensitivity;
   const keys = Object.keys(a).filter(

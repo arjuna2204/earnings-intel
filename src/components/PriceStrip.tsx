@@ -29,7 +29,7 @@ export default function PriceStrip({ ticker, prices, valuation }: { ticker: stri
   return (
     <div className="mt-5 flex flex-wrap items-center gap-x-8 gap-y-3 rounded-2xl border border-border px-4 py-3">
       <div className="flex items-baseline gap-3">
-        <span className="text-2xl font-semibold tabular-nums">${price.toFixed(2)}</span>
+        <span className="figure text-2xl">${price.toFixed(2)}</span>
         <span className={`text-sm font-medium tabular-nums ${up ? "text-up" : "text-down"}`}>
           {up ? "▲" : "▼"} {Math.abs(chg * 100).toFixed(1)}% <span className="font-normal text-muted">past year</span>
         </span>

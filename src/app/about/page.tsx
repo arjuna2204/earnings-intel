@@ -10,8 +10,7 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-20 pt-10 text-[15px] leading-relaxed sm:pt-16">
-      <p className="text-sm font-semibold uppercase tracking-wide text-accent">Why Earnings Intel</p>
-      <h1 className="mt-3 text-[34px] font-medium leading-[1.1] sm:text-5xl">
+      <h1 className="text-balance text-[34px] font-medium leading-[1.1] sm:text-5xl">
         Finance sites show you the numbers.
         <br />
         <span className="text-muted">We explain what changed.</span>
@@ -30,11 +29,11 @@ export default function AboutPage() {
       </Section>
 
       <Section title="What it's best for">
-        <div className="grid gap-3 sm:grid-cols-3">
+        <dl className="grid gap-x-8 gap-y-5 border-t border-border pt-5 sm:grid-cols-3">
           <UseCard title="Right after a report" text="A company you own just reported. Was it good, and did anything change since last quarter?" />
           <UseCard title="Before you buy" text="Is it growing, is it expensive against its own history and its peers, and what could go wrong?" />
           <UseCard title="Building a pitch" text="For a class, an investment club or an interview: a DCF you can download to Excel and sources you can cite." />
-        </div>
+        </dl>
         <p className="mt-4 text-sm text-muted">
           Not built for day trading, live quotes, breaking news or scanning the whole market. Brokerage apps and data sites do those better.
         </p>
@@ -137,9 +136,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function UseCard({ title, text }: { title: string; text: string }) {
   return (
-    <div className="rounded-2xl bg-card p-4">
-      <p className="font-semibold">{title}</p>
-      <p className="mt-1 text-sm text-muted">{text}</p>
+    <div>
+      <dt className="font-semibold">{title}</dt>
+      <dd className="mt-1.5 text-sm text-muted">{text}</dd>
     </div>
   );
 }

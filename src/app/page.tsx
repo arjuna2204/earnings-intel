@@ -10,9 +10,8 @@ export default function Home() {
   return (
     <div className="lit flex flex-1 flex-col">
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pb-20 pt-14 sm:pt-24">
-      <h1 className="text-[40px] font-medium leading-[1.05] sm:text-6xl">
-        Equity Research for the
-        <br />
+      <h1 className="text-balance text-[40px] font-medium leading-[1.05] sm:text-6xl">
+        Equity Research for the <br className="hidden sm:block" />
         <span className="text-accent">everyday investor</span>
       </h1>
       <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted">
@@ -61,22 +60,22 @@ export default function Home() {
 /** Why the site exists, on the first page: the one-line difference, three things that set it apart, and who it's for. */
 function Why() {
   return (
-    <section className="mt-14" aria-labelledby="why">
-      <p id="why" className="text-sm font-semibold uppercase tracking-wide text-accent">
-        Why Earnings Intel
-      </p>
-      <h2 className="mt-2 text-2xl font-medium leading-snug sm:text-3xl">
+    <section className="mt-16" aria-labelledby="why">
+      <h2 id="why" className="text-balance text-2xl font-medium leading-snug sm:text-3xl">
         Finance sites show you the numbers. <span className="text-muted">We explain what changed, why, and whether it matters.</span>
       </h2>
-      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+      <dl className="mt-8 grid gap-x-8 gap-y-5 border-t border-border pt-5 sm:grid-cols-3">
         {WHY.map(([title, text]) => (
-          <div key={title} className="rounded-2xl bg-card p-4">
-            <p className="font-semibold">{title}</p>
-            <p className="mt-1 text-sm leading-relaxed text-muted">{text}</p>
+          <div key={title}>
+            <dt className="font-semibold">
+              <span className="mr-2 inline-block h-2 w-2 rounded-full bg-accent align-middle" aria-hidden="true" />
+              {title}
+            </dt>
+            <dd className="mt-1.5 text-sm leading-relaxed text-muted">{text}</dd>
           </div>
         ))}
-      </div>
-      <p className="mt-4 text-[15px] leading-relaxed text-muted">
+      </dl>
+      <p className="mt-6 text-[15px] leading-relaxed text-muted">
         <b className="font-semibold text-foreground">Best for:</b> checking a company right after it reports, deciding whether to buy, or building a
         stock pitch.{" "}
         <Link href="/about" className="font-semibold text-accent hover:underline">
@@ -146,7 +145,7 @@ async function Recent() {
               <Link href={`/c/${c.ticker}`} className="flex items-center gap-4 py-3 hover:text-accent">
                 <span className="w-16 shrink-0 font-semibold">{c.ticker}</span>
                 <span className="min-w-0 flex-1 truncate text-muted">{c.name}</span>
-                {c.valuation?.price != null && <span className="shrink-0 font-semibold tabular-nums">${c.valuation.price.toFixed(2)}</span>}
+                {c.valuation?.price != null && <span className="figure shrink-0">${c.valuation.price.toFixed(2)}</span>}
                 <span className="w-20 shrink-0 text-right">
                   {ch != null && <Chip v={ch} />}
                 </span>
@@ -162,7 +161,7 @@ async function Recent() {
 /** Day's move as a tinted pill (green up, orange-red down). */
 function Chip({ v }: { v: number }) {
   return (
-    <span className={`inline-flex rounded-full px-2.5 py-1 text-[13px] font-medium tabular-nums ${v >= 0 ? "bg-up/15 text-up" : "bg-down/15 text-down"}`}>
+    <span className={`figure inline-flex rounded-full px-2.5 py-1 text-[13px] ${v >= 0 ? "bg-up/15 text-up" : "bg-down/15 text-down"}`}>
       {v >= 0 ? "+" : "−"}
       {Math.abs(v * 100).toFixed(1)}%
     </span>

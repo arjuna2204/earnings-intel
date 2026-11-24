@@ -327,7 +327,7 @@ export default function PriceChart({
     <section aria-label="Price chart">
       <div>
         <div className="mb-3">
-          <div className="text-4xl font-semibold tracking-tight">
+          <div className="figure text-4xl">
             {currencySymbol}
             {shown.close.toFixed(2)}
           </div>

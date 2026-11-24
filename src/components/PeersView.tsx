@@ -234,7 +234,7 @@ function JobLine({ job }: { job: Job }) {
   const last = steps.sort((a, b) => a[1].at.localeCompare(b[1].at)).at(-1);
   return (
     <p className="mt-4 text-sm text-muted" aria-live="polite">
-      <span className="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-accent" />
+      <span className="mr-2 inline-block h-2 w-2 rounded-full bg-accent" />
       {job.status === "queued" ? "Starting…" : (last?.[1].detail ?? "Working…")}
       <span className="block pl-4 text-xs">
         Loading new peers takes a minute or two each. You can leave this page.

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import EChart from "@/components/EChart";
 import SourcePanel from "@/components/SourcePanel";
 import { useThemeColors } from "@/components/useThemeColors";
+import Icon from "@/components/Icon";
 import type {
   CallAnalysis,
   CallComparison,
@@ -131,9 +132,12 @@ export default function CallView({
   return (
     <div className="space-y-10">
       {comparison.partial && (
-        <p className="rounded-xl border border-border bg-card px-4 py-3 text-sm">
-          ⚠ Part of this comparison is incomplete:{" "}
+        <p className="flex gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm">
+          <Icon name="alert" className="mt-0.5 text-down" />
+          <span>
+          Part of this comparison is incomplete:{" "}
           {[a.note, b.note].filter(Boolean).join(" · ")}
+          </span>
         </p>
       )}
 
