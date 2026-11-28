@@ -7,21 +7,29 @@ Runs daily, newest reports first, then largest companies. It stops early to stay
     cap for visitors who press the button themselves. Whatever is left continues next month.
   - Alpha Vantage (call transcripts, 25 free a day): only starts a company when there are enough
     requests left for both calls, keeping `av_reserve` free for visitors.
+
+AI calls here go through the Batches API at half price (see ei.ai). A batch can take a few minutes,
+so several companies run side by side to overlap the waiting; every rate limiter then allows only
+its share (EI_RATE_SHARE), so SEC, Alpha Vantage and the price feeds see the same pace as before.
 """
 
 from __future__ import annotations
 
 import logging
 import multiprocessing as mp
+import os
+import time
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
-from ei.ai import budget_state
+from ei.ai import BATCH_ENV, BATCH_WAIT_ENV, budget_state
 from ei.calls.extract import ANALYSIS_VERSION
 from ei.calls.run import label
 from ei.config import Settings
 from ei.db import Db
 from ei.filings.brief import VERSION as BRIEF_VERSION
+from ei.http import RATE_SHARE_ENV
 from ei.jobs import _today_et
 
 log = logging.getLogger(__name__)
@@ -32,6 +40,13 @@ AV_LIMIT = 25
 COMPANY_TIMEOUT_S = 8 * 60
 PARK_DAYS = 14
 PARK_KEY = "auto_research_parked"
+# Batch mode: companies at once, the longest one batch may take before a normal call is made, and
+# a per-company limit that leaves room for batch waits. A timeout may be a slow batch rather than a
+# stuck filing, so it parks the company for days, not weeks.
+WORKERS = 4
+BATCH_WAIT_S = 240
+BATCH_COMPANY_TIMEOUT_S = 20 * 60
+BATCH_PARK_DAYS = 3
 
 
 def _brief_worker(settings: Settings, ticker: str, a: str, b: str, skip_calls: bool, out: Any) -> None:
@@ -43,25 +58,48 @@ def _brief_worker(settings: Settings, ticker: str, a: str, b: str, skip_calls: b
         out.put({"ok": False, "error": f"{type(e).__name__}: {e}"})
 
 
-def brief_with_timeout(
-    settings: Settings, ticker: str, a: str, b: str, skip_calls: bool, timeout_s: int = COMPANY_TIMEOUT_S
-) -> dict[str, Any]:
-    """run_brief in a child process, stopped after `timeout_s` (a stuck parse can't be interrupted in-process)."""
+@dataclass
+class Running:
+    company: dict[str, Any]
+    proc: Any
+    out: Any
+    started: float
+    calls: int  # transcript requests reserved for this company
+
+
+def start_brief(settings: Settings, ticker: str, a: str, b: str, skip_calls: bool) -> tuple[Any, Any]:
+    """run_brief in a child process (a stuck parse can't be interrupted in-process)."""
     ctx = mp.get_context("fork")
     out = ctx.Queue()
     p = ctx.Process(target=_brief_worker, args=(settings, ticker, a, b, skip_calls, out), daemon=True)
     p.start()
-    p.join(timeout_s)
+    return p, out
+
+
+def stop(p: Any) -> None:
+    p.terminate()
+    p.join(10)
     if p.is_alive():
-        p.terminate()
-        p.join(10)
-        if p.is_alive():
-            p.kill()
-        return {"ok": False, "error": f"timed out after {timeout_s // 60} min", "timeout": True}
+        p.kill()
+
+
+def result_of(p: Any, out: Any) -> dict[str, Any]:
     try:
         return dict(out.get(timeout=5))
     except Exception:
         return {"ok": False, "error": f"stopped without a result (exit code {p.exitcode})"}
+
+
+def brief_with_timeout(
+    settings: Settings, ticker: str, a: str, b: str, skip_calls: bool, timeout_s: int = COMPANY_TIMEOUT_S
+) -> dict[str, Any]:
+    """run_brief in a child process, stopped after `timeout_s`."""
+    p, out = start_brief(settings, ticker, a, b, skip_calls)
+    p.join(timeout_s)
+    if p.is_alive():
+        stop(p)
+        return {"ok": False, "error": f"timed out after {timeout_s // 60} min", "timeout": True}
+    return result_of(p, out)
 
 
 def parked(db: Db, today: date) -> dict[str, str]:
@@ -71,9 +109,9 @@ def parked(db: Db, today: date) -> dict[str, str]:
     return {k: v for k, v in val.items() if v > today.isoformat()}
 
 
-def park(db: Db, today: date, cik: int) -> None:
+def park(db: Db, today: date, cik: int, days: int = PARK_DAYS) -> None:
     cur = parked(db, today)
-    cur[str(cik)] = (today + timedelta(days=PARK_DAYS)).isoformat()
+    cur[str(cik)] = (today + timedelta(days=days)).isoformat()
     db.upsert("app_settings", [{"key": PARK_KEY, "value": cur}], on_conflict="key")
 
 
@@ -158,47 +196,110 @@ def calls_needed(db: Db, cik: int, a: str, b: str) -> int:
     return sum(1 for q in (a, b) if q not in have)
 
 
-def run(settings: Settings, max_companies: int = 15, ai_stop_usd: float = 7.0, av_reserve: int = 6) -> dict[str, Any]:
+def close_stuck_jobs(db: Db, ticker: str, error: str) -> None:
+    """A stopped child leaves its job row "running"; close it so the company page shows no stuck progress bar."""
+    for j in db.select("jobs", {"ticker": f"eq.{ticker}", "status": "eq.running", "select": "id"}):
+        db.update(
+            "jobs",
+            {"id": j["id"]},
+            {"status": "failed", "message": error, "finished_at": datetime.now(UTC).isoformat()},
+        )
+
+
+def run(
+    settings: Settings,
+    max_companies: int = 15,
+    ai_stop_usd: float = 7.0,
+    av_reserve: int = 6,
+    batch: bool = True,
+    workers: int = WORKERS,
+    poll_s: float = 2.0,
+) -> dict[str, Any]:
+    workers = workers if batch else 1
+    saved = {k: os.environ.get(k) for k in (BATCH_ENV, BATCH_WAIT_ENV, RATE_SHARE_ENV)}
+    os.environ[BATCH_ENV] = "1" if batch else "0"
+    os.environ.setdefault(BATCH_WAIT_ENV, str(BATCH_WAIT_S))
+    os.environ[RATE_SHARE_ENV] = str(workers)
+    try:
+        return _run(settings, max_companies, ai_stop_usd, av_reserve, batch, workers, poll_s)
+    finally:
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+
+def _run(
+    settings: Settings,
+    max_companies: int,
+    ai_stop_usd: float,
+    av_reserve: int,
+    batch: bool,
+    workers: int,
+    poll_s: float,
+) -> dict[str, Any]:
     db = Db(settings.supabase_url, settings.supabase_secret_key)
     today = _today_et()
     hold = parked(db, today)
     todo = [c for c in queue(db, today) if str(c["cik"]) not in hold]
+    timeout_s = BATCH_COMPANY_TIMEOUT_S if batch else COMPANY_TIMEOUT_S
+    park_days = BATCH_PARK_DAYS if batch else PARK_DAYS
     done: list[str] = []
     skipped: list[str] = []
-    stop = None
-    for c in todo:
-        if len(done) >= max_companies:
-            stop = f"daily limit of {max_companies} companies"
-            break
-        if float(budget_state(db).spent_usd) >= ai_stop_usd:
-            stop = f"AI spend reached ${ai_stop_usd:.2f} this month; continues next month"
-            break
-        # Fetch the two call transcripts only if the free daily allowance can spare them; otherwise
-        # write the brief from filings and numbers now, and the call comparison follows on a later day.
-        need = calls_needed(db, c["cik"], c["a"], c["b"])
-        skip_calls = bool(need) and av_used(db) + need > AV_LIMIT - av_reserve
-        res = brief_with_timeout(settings, c["ticker"], c["a"], c["b"], skip_calls)
+    stop_reason = None
+    running: list[Running] = []
+    pending = list(todo)
+
+    def finish(r: Running, res: dict[str, Any]) -> None:
+        t = r.company["ticker"]
         if res.get("timeout"):
-            log.warning("%s timed out; parked for %d days", c["ticker"], PARK_DAYS)
-            park(db, today, c["cik"])
-            # the stopped child left its job row "running"; close it so the company page shows no stuck progress bar
-            for j in db.select("jobs", {"ticker": f"eq.{c['ticker']}", "status": "eq.running", "select": "id"}):
-                db.update(
-                    "jobs",
-                    {"id": j["id"]},
-                    {"status": "failed", "message": res["error"], "finished_at": datetime.now(UTC).isoformat()},
-                )
-        (done if res.get("ok") else skipped).append(
-            c["ticker"] if res.get("ok") else f"{c['ticker']} ({str(res.get('error'))[:80]})"
-        )
+            log.warning("%s timed out; parked for %d days", t, park_days)
+            park(db, today, r.company["cik"], park_days)
+            close_stuck_jobs(db, t, res["error"])
+        (done if res.get("ok") else skipped).append(t if res.get("ok") else f"{t} ({str(res.get('error'))[:80]})")
+
+    while pending or running:
+        # Start companies while there is a free slot and nothing says stop.
+        while pending and len(running) < workers and stop_reason is None:
+            if len(done) + len(running) >= max_companies:
+                stop_reason = f"daily limit of {max_companies} companies"
+                break
+            if float(budget_state(db).spent_usd) >= ai_stop_usd:
+                stop_reason = f"AI spend reached ${ai_stop_usd:.2f} this month; continues next month"
+                break
+            c = pending.pop(0)
+            # Fetch the two call transcripts only if the free daily allowance can spare them (counting
+            # those reserved by companies still running); otherwise write the brief from filings and
+            # numbers now, and the call comparison follows on a later day.
+            need = calls_needed(db, c["cik"], c["a"], c["b"])
+            reserved = sum(r.calls for r in running)
+            skip_calls = bool(need) and av_used(db) + reserved + need > AV_LIMIT - av_reserve
+            p, out = start_brief(settings, c["ticker"], c["a"], c["b"], skip_calls)
+            running.append(Running(c, p, out, time.monotonic(), 0 if skip_calls else need))
+        if stop_reason is not None:
+            pending = []
+        if not running:
+            break
+        time.sleep(poll_s)
+        for r in list(running):
+            if not r.proc.is_alive():
+                running.remove(r)
+                finish(r, result_of(r.proc, r.out))
+            elif time.monotonic() - r.started > timeout_s:
+                stop(r.proc)
+                running.remove(r)
+                finish(r, {"ok": False, "error": f"timed out after {timeout_s // 60} min", "timeout": True})
     calls = catch_up_calls(db, settings, today, av_reserve)
     return {
         "queue": len(todo),
         "parked": sorted(hold),
         "written": done,
         "skipped": skipped,
-        "stopped": stop,
+        "stopped": stop_reason,
         "calls": calls,
+        "batch": batch,
+        "workers": workers,
     }
 
 

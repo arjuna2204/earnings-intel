@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import random
 import threading
 import time
@@ -9,9 +10,21 @@ from typing import Any
 
 import httpx
 
+RATE_SHARE_ENV = "EI_RATE_SHARE"
+
+
+def rate_share() -> int:
+    """How many processes are running side by side (auto-research runs several companies at once).
+    Each limiter allows only its share, so together they stay under every site's limit."""
+    try:
+        return max(1, int(os.environ.get(RATE_SHARE_ENV, "1")))
+    except ValueError:
+        return 1
+
 
 class RateLimiter:
-    """Allows at most `rate` calls per second across all threads that share it."""
+    """Allows at most `rate` calls per second across all threads that share it,
+    divided by EI_RATE_SHARE when several processes run at once."""
 
     def __init__(self, rate: float) -> None:
         self._interval = 1.0 / rate
@@ -24,7 +37,7 @@ class RateLimiter:
             if now < self._next:
                 time.sleep(self._next - now)
                 now = time.monotonic()
-            self._next = now + self._interval
+            self._next = now + self._interval * rate_share()
 
 
 RETRY_STATUSES = {429, 500, 502, 503, 504}

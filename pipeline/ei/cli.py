@@ -78,6 +78,9 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("fix-sectors")
     au = sub.add_parser("auto-research")
     au.add_argument("--max", type=int, default=15)
+    au.add_argument("--no-batch", action="store_true", help="normal API calls, one company at a time")
+    au.add_argument("--workers", type=int, default=4)
+    sub.add_parser("batch-check", help="one tiny Haiku call through the Batches API (about $0.0001)")
     op = sub.add_parser("options")
     op.add_argument("ticker", nargs="?", default=None)
     hdd = sub.add_parser("holders-debug")
@@ -250,7 +253,44 @@ def main(argv: list[str] | None = None) -> int:
     elif args.cmd == "auto-research":
         from ei.auto import run as run_auto
 
-        print(json.dumps(run_auto(settings, max_companies=args.max), default=str))
+        print(
+            json.dumps(
+                run_auto(settings, max_companies=args.max, batch=not args.no_batch, workers=args.workers),
+                default=str,
+            )
+        )
+    elif args.cmd == "batch-check":
+        import time
+
+        from ei.ai import HAIKU, AiClient
+        from ei.db import Db
+
+        db = Db(settings.supabase_url, settings.supabase_secret_key)
+        t = time.monotonic()
+        check = AiClient(settings.anthropic_api_key, db, batch=True).json_call(
+            model=HAIKU,
+            purpose="batch-check",
+            system="Answer with the JSON asked for.",
+            user='Return {"ok": true}.',
+            schema={
+                "type": "object",
+                "properties": {"ok": {"type": "boolean"}},
+                "required": ["ok"],
+                "additionalProperties": False,
+            },
+            max_tokens=50,
+        )
+        last = db.select("ai_spend", {"purpose": "eq.batch-check", "order": "created_at.desc", "limit": "1"})
+        print(
+            json.dumps(
+                {
+                    "result": check.data,
+                    "seconds": round(time.monotonic() - t),
+                    "batched": bool(last and last[0].get("batch")),
+                    "cost_usd": str(check.cost),
+                }
+            )
+        )
     elif args.cmd == "options":
         from ei.options import run_all as run_options
 
