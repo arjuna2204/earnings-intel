@@ -43,10 +43,13 @@ PARK_KEY = "auto_research_parked"
 # Batch mode: companies at once, the longest one batch may take before a normal call is made, and
 # a per-company limit that leaves room for batch waits. A timeout may be a slow batch rather than a
 # stuck filing, so it parks the company for days, not weeks.
-WORKERS = 4
+# A one-request batch took about 2 minutes in testing, so a new company (about 8 calls) needs ~15.
+# No company starts after LAUNCH_UNTIL_S, so the run ends within LAUNCH_UNTIL_S + the company limit.
+WORKERS = 6
 BATCH_WAIT_S = 240
-BATCH_COMPANY_TIMEOUT_S = 20 * 60
+BATCH_COMPANY_TIMEOUT_S = 30 * 60
 BATCH_PARK_DAYS = 3
+LAUNCH_UNTIL_S = 40 * 60
 
 
 def _brief_worker(settings: Settings, ticker: str, a: str, b: str, skip_calls: bool, out: Any) -> None:
@@ -214,6 +217,7 @@ def run(
     batch: bool = True,
     workers: int = WORKERS,
     poll_s: float = 2.0,
+    launch_until_s: float = LAUNCH_UNTIL_S,
 ) -> dict[str, Any]:
     workers = workers if batch else 1
     saved = {k: os.environ.get(k) for k in (BATCH_ENV, BATCH_WAIT_ENV, RATE_SHARE_ENV)}
@@ -221,7 +225,7 @@ def run(
     os.environ.setdefault(BATCH_WAIT_ENV, str(BATCH_WAIT_S))
     os.environ[RATE_SHARE_ENV] = str(workers)
     try:
-        return _run(settings, max_companies, ai_stop_usd, av_reserve, batch, workers, poll_s)
+        return _run(settings, max_companies, ai_stop_usd, av_reserve, batch, workers, poll_s, launch_until_s)
     finally:
         for k, v in saved.items():
             if v is None:
@@ -238,7 +242,9 @@ def _run(
     batch: bool,
     workers: int,
     poll_s: float,
+    launch_until_s: float,
 ) -> dict[str, Any]:
+    t0 = time.monotonic()
     db = Db(settings.supabase_url, settings.supabase_secret_key)
     today = _today_et()
     hold = parked(db, today)
@@ -262,6 +268,9 @@ def _run(
     while pending or running:
         # Start companies while there is a free slot and nothing says stop.
         while pending and len(running) < workers and stop_reason is None:
+            if time.monotonic() - t0 >= launch_until_s:
+                stop_reason = f"no new companies after {launch_until_s // 60:.0f} min; the rest follow tomorrow"
+                break
             if len(done) + len(running) >= max_companies:
                 stop_reason = f"daily limit of {max_companies} companies"
                 break

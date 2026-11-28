@@ -193,10 +193,11 @@ jobs:
       - name: Write the brief and call comparison for companies that just reported (AI, budget-capped)
         if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily' || inputs.command == 'auto-research'
         working-directory: pipeline
-        timeout-minutes: 45
+        # Batched AI calls (half price) take a few minutes each; companies start for 40 min and each may take 30.
+        timeout-minutes: 78
         # if this step runs out of time, the free data steps below still run
         continue-on-error: true
-        run: FASTEMBED_CACHE_PATH=$HOME/.cache/fastembed timeout --signal=INT 40m python -m ei.cli auto-research || echo "::warning::auto research stopped early"
+        run: FASTEMBED_CACHE_PATH=$HOME/.cache/fastembed timeout --signal=INT 74m python -m ei.cli auto-research || echo "::warning::auto research stopped early"
       - name: Basic data for the 500 largest companies (prices daily, financials Sundays; free, no AI)
         if: (github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.command == 'daily'
         working-directory: pipeline

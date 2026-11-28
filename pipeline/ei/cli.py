@@ -79,7 +79,7 @@ def main(argv: list[str] | None = None) -> int:
     au = sub.add_parser("auto-research")
     au.add_argument("--max", type=int, default=15)
     au.add_argument("--no-batch", action="store_true", help="normal API calls, one company at a time")
-    au.add_argument("--workers", type=int, default=4)
+    au.add_argument("--workers", type=int, default=6)
     sub.add_parser("batch-check", help="one tiny Haiku call through the Batches API (about $0.0001)")
     op = sub.add_parser("options")
     op.add_argument("ticker", nargs="?", default=None)
